@@ -1,0 +1,79 @@
+Projet : Archivio — Système Local d’Archivage de Fichiers
+
+1. Introduction
+Le projet Archivio est une application web locale conçue pour permettre l’archivage, la gestion et le partage de fichiers au sein d’un réseau local. Cette solution vise à offrir une interface moderne et ergonomique pour stocker, rechercher et organiser des documents, tout en assurant une gestion sécurisée des utilisateurs et de leurs droits d’accès.
+
+2. Objectifs du projet
+• Fournir un système d’archivage simple, efficace et accessible via navigateur.
+• Permettre à plusieurs utilisateurs d’uploader, consulter, rechercher et gérer des fichiers.
+• Assurer une organisation claire des documents par catégories, services et dates.
+• Implémenter une gestion avancée des utilisateurs avec différents rôles et privilèges.
+• Concevoir une architecture évolutive pour faciliter les futures améliorations et déploiements.
+
+3. Fonctionnalités principales
+3.1 Gestion des utilisateurs
+• Authentification sécurisée (mot de passe hashé).
+• Rôles hiérarchisés :
+  - Administrateur système : contrôle total sur la configuration, les utilisateurs et les fichiers.
+  - Super Utilisateur : gestion des utilisateurs et fichiers au sein d’un service ou département.
+  - Utilisateur standard : accès limité à ses propres fichiers et fonctionnalités basiques.
+
+3.2 Archivage et gestion des fichiers
+• Upload des fichiers (formats PDF, Word, Excel, images).
+• Vérification des types et tailles de fichiers autorisés.
+• Organisation des fichiers par type, service et date d’ajout.
+• Visualisation des métadonnées : nom, type, taille, auteur, date.
+• Suppression et restauration des fichiers.
+• Aperçu des fichiers (miniatures pour images et PDF).
+
+3.3 Recherche et filtrage
+• Recherche par nom de fichier.
+• Filtrage par type, date, utilisateur ou service.
+
+3.4 Statistiques (optionnelles)
+• Visualisation du nombre total de fichiers.
+• Espace de stockage utilisé.
+• Répartition des fichiers par type et par service.
+
+4. Architecture technique
+4.1 Stack technologique choisie
+• Backend : Node.js avec Fastify pour un serveur performant et moderne.
+• Base de données : SQLite en local pour la phase initiale, avec possibilité d’évolution vers PostgreSQL.
+• Gestion des fichiers : Multer pour le traitement des uploads.
+• Authentification : JWT et bcrypt pour la sécurité.
+• Frontend : React avec Vite pour une interface rapide, responsive et maintenable.
+• Style : Tailwind CSS pour un design propre et adaptable.
+
+4.2 Structure du projet
+archivio/
+├── apps/
+│   ├── backend/       # Serveur Fastify + API
+│   └── frontend/      # Application React + Vite
+├── prisma/            # Schéma et migrations de base de données
+├── uploads/           # Stockage physique des fichiers
+├── docker/            # Configurations pour déploiement Docker (optionnel)
+├── docker-compose.yml # Services backend et base de données
+
+5. Fonctionnement attendu
+• L’application tourne sur un ordinateur local qui fait office de serveur.
+• Les utilisateurs accèdent à l’application via leur navigateur en entrant l’adresse IP du serveur sur le réseau local.
+• Selon leurs rôles, ils peuvent uploader, rechercher, gérer des fichiers et utilisateurs.
+• Le système garantit la sécurité des données et le respect des permissions.
+
+6. Avantages du projet
+• Évolutif : possibilité d’ajouter facilement des fonctionnalités et de déployer en cloud ou intranet.
+• Modulaire : séparation claire entre backend et frontend.
+• Sécurisé : gestion fine des rôles et permissions, avec une authentification robuste.
+• Accessible : interface intuitive et responsive, utilisable sur PC et tablette.
+• Centralisé : tous les fichiers sont stockés en un seul lieu avec suivi complet.
+
+7. Perspectives d’évolution
+• Ajout de la gestion avancée des métadonnées et versioning des fichiers.
+• Intégration de notifications et alertes.
+• Mise en place de sauvegardes automatiques et planifiées.
+• Support multi-serveurs pour une haute disponibilité.
+• Interface mobile native ou progressive web app.
+
+8. Conclusion
+Le projet Archivio est une solution moderne et robuste pour la gestion documentaire locale, pensée pour grandir avec les besoins de ses utilisateurs. Il combine les meilleures pratiques technologiques actuelles avec une architecture solide, garantissant pérennité, sécurité et facilité d’utilisation.
+
