@@ -7,6 +7,8 @@ Archivio is a local file archiving web application designed for document managem
 ## User Preferences
 
 Preferred communication style: Simple, everyday language.
+User feedback: "je trouve ca vraiment beau" - User is very satisfied with the current interface design and functionality.
+Next step: User wants to integrate their own backend with the current frontend.
 
 ## System Architecture
 
