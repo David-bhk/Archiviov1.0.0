@@ -111,11 +111,11 @@ export default function Departments() {
                     <div className="flex items-center space-x-4 text-sm text-slate-500">
                       <div className="flex items-center space-x-1">
                         <Users className="w-4 h-4" />
-                        <span>0 utilisateurs</span>
+                        <span>{department.userCount || 0} utilisateurs</span>
                       </div>
                       <div className="flex items-center space-x-1">
                         <FileText className="w-4 h-4" />
-                        <span>0 fichiers</span>
+                        <span>{department.fileCount || 0} fichiers</span>
                       </div>
                     </div>
                     {canManageDepartments() && (

@@ -46,12 +46,19 @@ export default function UploadModal({ onClose }: UploadModalProps) {
   });
 
   const uploadMutation = useMutation({
-    mutationFn: async (fileData: any) => {
-      const response = await apiRequest("POST", "/api/files", fileData);
+    mutationFn: async (fileData: FormData) => {
+      const response = await fetch("/api/files", {
+        method: "POST",
+        body: fileData,
+      });
+      if (!response.ok) {
+        throw new Error("Upload failed");
+      }
       return response.json();
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/files"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/stats"] });
       toast({
         title: "Fichier téléchargé",
         description: "Le fichier a été téléchargé avec succès",
@@ -83,31 +90,26 @@ export default function UploadModal({ onClose }: UploadModalProps) {
       return;
     }
 
-    if (!formData.department || !formData.category) {
+    if (!formData.department && user?.role !== "user") {
       toast({
         title: "Erreur",
-        description: "Veuillez remplir tous les champs obligatoires",
+        description: "Veuillez sélectionner un département",
         variant: "destructive",
       });
       return;
     }
 
-    // Simulate file upload for each selected file
+    // Upload each selected file
     for (let i = 0; i < selectedFiles.length; i++) {
       const file = selectedFiles[i];
-      const fileData = {
-        filename: file.name.replace(/\s+/g, "_").toLowerCase(),
-        originalName: file.name,
-        fileType: file.name.split(".").pop() || "",
-        fileSize: file.size,
-        filePath: `/uploads/${file.name}`,
-        uploadedBy: user?.id,
-        department: formData.department,
-        category: formData.category,
-        description: formData.description,
-      };
+      const fileFormData = new FormData();
+      fileFormData.append("file", file);
+      fileFormData.append("uploadedBy", user!.id.toString());
+      fileFormData.append("department", formData.department || user!.department || "");
+      fileFormData.append("category", formData.category);
+      fileFormData.append("description", formData.description);
 
-      await uploadMutation.mutateAsync(fileData);
+      await uploadMutation.mutateAsync(fileFormData);
     }
   };
 

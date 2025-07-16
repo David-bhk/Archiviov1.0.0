@@ -16,6 +16,8 @@ export interface Department {
   name: string;
   description?: string;
   createdAt?: Date;
+  userCount?: number;
+  fileCount?: number;
 }
 
 export interface File {

@@ -1,13 +1,47 @@
 import type { Express } from "express";
 import { createServer, type Server } from "http";
 import { storage } from "./storage";
-import { insertUserSchema, insertFileSchema } from "@shared/schema";
+import { insertUserSchema, insertFileSchema, insertDepartmentSchema } from "@shared/schema";
 import { z } from "zod";
 import bcrypt from "bcryptjs";
+import multer from "multer";
+import path from "path";
+import fs from "fs";
 
 const loginSchema = z.object({
   username: z.string().min(1),
   password: z.string().min(1),
+});
+
+// Ensure uploads directory exists
+const uploadsDir = path.join(process.cwd(), "uploads");
+if (!fs.existsSync(uploadsDir)) {
+  fs.mkdirSync(uploadsDir, { recursive: true });
+}
+
+// Configure multer for file uploads
+const storage_multer = multer.diskStorage({
+  destination: (req, file, cb) => {
+    cb(null, uploadsDir);
+  },
+  filename: (req, file, cb) => {
+    const uniqueSuffix = Date.now() + "-" + Math.round(Math.random() * 1E9);
+    cb(null, uniqueSuffix + path.extname(file.originalname));
+  },
+});
+
+const upload = multer({ 
+  storage: storage_multer,
+  limits: { fileSize: 10 * 1024 * 1024 }, // 10MB limit
+  fileFilter: (req, file, cb) => {
+    const allowedTypes = ['.pdf', '.docx', '.xlsx', '.png', '.jpg', '.jpeg'];
+    const ext = path.extname(file.originalname).toLowerCase();
+    if (allowedTypes.includes(ext)) {
+      cb(null, true);
+    } else {
+      cb(new Error('Invalid file type'));
+    }
+  }
 });
 
 export async function registerRoutes(app: Express): Promise<Server> {
@@ -115,7 +149,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.get("/api/departments", async (req, res) => {
     try {
       const departments = await storage.getAllDepartments();
-      res.json(departments);
+      const users = await storage.getAllUsers();
+      const files = await storage.getAllFiles();
+      
+      // Add counts to each department
+      const departmentsWithCounts = departments.map(dept => ({
+        ...dept,
+        userCount: users.filter(user => user.department === dept.name).length,
+        fileCount: files.filter(file => file.department === dept.name).length,
+      }));
+      
+      res.json(departmentsWithCounts);
     } catch (error) {
       res.status(500).json({ message: "Server error" });
     }
@@ -123,11 +167,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.post("/api/departments", async (req, res) => {
     try {
+      console.log("Received department data:", req.body);
       const departmentData = insertDepartmentSchema.parse(req.body);
       const department = await storage.createDepartment(departmentData);
       res.json(department);
     } catch (error) {
-      res.status(400).json({ message: "Invalid department data" });
+      console.error("Department creation error:", error);
+      res.status(400).json({ message: "Invalid department data", error: error.message });
     }
   });
 
@@ -176,25 +222,58 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.post("/api/files", async (req, res) => {
+  app.post("/api/files", upload.single("file"), async (req, res) => {
     try {
-      const fileData = insertFileSchema.parse(req.body);
+      if (!req.file) {
+        return res.status(400).json({ message: "No file uploaded" });
+      }
+
+      const { uploadedBy, department, category, description } = req.body;
+      
+      const fileData = {
+        filename: req.file.filename,
+        originalName: req.file.originalname,
+        fileType: path.extname(req.file.originalname).slice(1).toLowerCase(),
+        fileSize: req.file.size,
+        filePath: req.file.path,
+        uploadedBy: parseInt(uploadedBy),
+        department: department || null,
+        category: category || null,
+        description: description || null,
+      };
+
       const file = await storage.createFile(fileData);
       res.json(file);
     } catch (error) {
-      res.status(400).json({ message: "Invalid file data" });
+      console.error("File upload error:", error);
+      res.status(500).json({ message: "File upload failed" });
     }
   });
 
   app.delete("/api/files/:id", async (req, res) => {
     try {
       const id = parseInt(req.params.id);
+      
+      // Get file info before deletion to delete physical file
+      const file = await storage.getFile(id);
+      if (!file) {
+        return res.status(404).json({ message: "File not found" });
+      }
+
+      // Delete physical file
+      if (fs.existsSync(file.filePath)) {
+        fs.unlinkSync(file.filePath);
+      }
+
+      // Delete from database
       const success = await storage.deleteFile(id);
       if (!success) {
         return res.status(404).json({ message: "File not found" });
       }
+      
       res.json({ message: "File deleted successfully" });
     } catch (error) {
+      console.error("File deletion error:", error);
       res.status(500).json({ message: "Server error" });
     }
   });
