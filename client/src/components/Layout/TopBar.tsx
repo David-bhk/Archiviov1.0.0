@@ -1,6 +1,7 @@
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Bell, CloudUpload, Search } from "lucide-react";
+import { useRole } from "../../contexts/RoleContext";
 
 interface TopBarProps {
   searchQuery: string;
@@ -9,6 +10,8 @@ interface TopBarProps {
 }
 
 export default function TopBar({ searchQuery, onSearchChange, onUpload }: TopBarProps) {
+  const { canUploadFiles } = useRole();
+  
   return (
     <div className="bg-white border-b border-slate-200 p-4">
       <div className="flex items-center justify-between">
@@ -31,10 +34,12 @@ export default function TopBar({ searchQuery, onSearchChange, onUpload }: TopBar
             />
           </div>
           
-          <Button onClick={onUpload} className="flex items-center space-x-2">
-            <CloudUpload className="w-4 h-4" />
-            <span>Télécharger</span>
-          </Button>
+          {canUploadFiles() && (
+            <Button onClick={onUpload} className="flex items-center space-x-2">
+              <CloudUpload className="w-4 h-4" />
+              <span>Télécharger</span>
+            </Button>
+          )}
           
           <Button variant="ghost" size="icon" className="text-slate-600 hover:text-slate-800">
             <Bell className="w-5 h-5" />

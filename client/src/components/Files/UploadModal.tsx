@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -8,6 +8,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { CloudUpload, X } from "lucide-react";
 import { useAuth } from "../../contexts/AuthContext";
+import { useRole } from "../../contexts/RoleContext";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest } from "../../lib/queryClient";
 import { Department } from "../../types";
@@ -18,6 +19,7 @@ interface UploadModalProps {
 
 export default function UploadModal({ onClose }: UploadModalProps) {
   const { user } = useAuth();
+  const { canUploadFiles, canManageDepartments } = useRole();
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const [selectedFiles, setSelectedFiles] = useState<FileList | null>(null);
@@ -26,6 +28,18 @@ export default function UploadModal({ onClose }: UploadModalProps) {
     category: "",
     description: "",
   });
+
+  // Check if user can upload files
+  if (!canUploadFiles()) {
+    return null;
+  }
+
+  // Set default department for regular users
+  useEffect(() => {
+    if (user && user.role === "user") {
+      setFormData(prev => ({ ...prev, department: user.department }));
+    }
+  }, [user]);
 
   const { data: departments } = useQuery<Department[]>({
     queryKey: ["/api/departments"],
@@ -163,16 +177,23 @@ export default function UploadModal({ onClose }: UploadModalProps) {
               <Select
                 value={formData.department}
                 onValueChange={(value) => setFormData({ ...formData, department: value })}
+                disabled={user?.role === "user"}
               >
                 <SelectTrigger>
                   <SelectValue placeholder="Sélectionner un département" />
                 </SelectTrigger>
                 <SelectContent>
-                  {departments?.map((dept) => (
-                    <SelectItem key={dept.id} value={dept.name}>
-                      {dept.name}
+                  {canManageDepartments() ? (
+                    departments?.map((dept) => (
+                      <SelectItem key={dept.id} value={dept.name}>
+                        {dept.name}
+                      </SelectItem>
+                    ))
+                  ) : (
+                    <SelectItem value={user?.department || ""}>
+                      {user?.department}
                     </SelectItem>
-                  ))}
+                  )}
                 </SelectContent>
               </Select>
             </div>

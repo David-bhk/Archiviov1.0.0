@@ -15,9 +15,14 @@ interface FileCardProps {
 
 export default function FileCard({ file }: FileCardProps) {
   const { user } = useAuth();
-  const { canDeleteFile } = useRole();
+  const { canDeleteFile, canAccessFile } = useRole();
   const { toast } = useToast();
   const queryClient = useQueryClient();
+
+  // If user cannot access this file, don't render the card
+  if (!canAccessFile(file)) {
+    return null;
+  }
 
   const deleteMutation = useMutation({
     mutationFn: (id: number) => apiRequest("DELETE", `/api/files/${id}`),

@@ -124,7 +124,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // File routes
   app.get("/api/files", async (req, res) => {
     try {
-      const { department, search } = req.query;
+      const { department, search, userId } = req.query;
+      
+      // Get current user to check permissions
+      const currentUserId = parseInt(userId as string);
+      const currentUser = await storage.getUser(currentUserId);
+      
+      if (!currentUser) {
+        return res.status(401).json({ message: "Unauthorized" });
+      }
       
       let files;
       if (search) {
@@ -134,6 +142,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
       } else {
         files = await storage.getAllFiles();
       }
+      
+      // Filter files based on user role and department access
+      if (currentUser.role === "user") {
+        // Regular users can only see files from their department
+        files = files.filter(file => file.department === currentUser.department);
+      }
+      // Admin and superuser can see all files
       
       res.json(files);
     } catch (error) {

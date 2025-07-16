@@ -53,4 +53,7 @@ export interface RoleContextType {
   canManageUsers: () => boolean;
   canDeleteFile: (file: File) => boolean;
   canAccessUserManagement: () => boolean;
+  canAccessFile: (file: File) => boolean;
+  canManageDepartments: () => boolean;
+  canUploadFiles: () => boolean;
 }

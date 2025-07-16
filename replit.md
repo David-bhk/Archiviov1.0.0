@@ -8,7 +8,10 @@ Archivio is a local file archiving web application designed for document managem
 
 Preferred communication style: Simple, everyday language.
 User feedback: "je trouve ca vraiment beau" - User is very satisfied with the current interface design and functionality.
-Next step: User wants to integrate their own backend with the current frontend.
+Current deployment: Local network deployment with SQLite database.
+User management: No registration page - users created via seed script or by admins.
+Access control: Regular users can only access files from their departments unless given special permissions.
+Roles: Admin and SuperUsers have full CRUD access to departments, users, and files.
 
 ## System Architecture
 
@@ -39,8 +42,10 @@ The application uses three main entities:
 ### Authentication System
 - Role-based access control with three levels: superuser, admin, and user
 - JWT token-based authentication stored in localStorage
-- Password hashing using bcrypt
+- Password hashing using bcrypt for secure password storage
 - Session management with automatic logout
+- Department-based access control for regular users
+- No registration page - users created via seed script or by admins
 
 ### File Management
 - Multi-format file support (PDF, Word, Excel, images)
@@ -120,3 +125,19 @@ The application uses three main entities:
 - Department-based access restrictions
 
 The application is designed to be easily deployable on various platforms while maintaining security and performance standards for local network usage.
+
+## Recent Changes (January 2025)
+
+### Department-Based Access Control Implementation
+- **File Access Control**: Regular users can only view and manage files from their own department
+- **Upload Restrictions**: Regular users can only upload files to their own department
+- **Role-Based Permissions**: Admin and SuperUser roles have full access to all departments and files
+- **API Security**: Backend routes now validate user permissions before returning file data
+- **Frontend Components**: Updated all file management components to respect department boundaries
+
+### Database Migration to SQLite + Prisma
+- **SQLite Integration**: Migrated from in-memory storage to SQLite database for persistent data
+- **Prisma ORM**: Implemented Prisma for type-safe database operations
+- **Password Security**: Added bcrypt password hashing for secure authentication
+- **Seed Script**: Created automated seed script for initial SuperUser and AdminUser creation
+- **Migration Ready**: Architecture supports future PostgreSQL migration

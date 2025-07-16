@@ -3,6 +3,7 @@ import { Button } from "@/components/ui/button";
 import { ChevronLeft, ChevronRight } from "lucide-react";
 import FileCard from "./FileCard";
 import { File } from "../../types";
+import { useAuth } from "../../contexts/AuthContext";
 
 interface FileGridProps {
   searchQuery: string;
@@ -14,8 +15,10 @@ interface FileGridProps {
 }
 
 export default function FileGrid({ searchQuery, filters }: FileGridProps) {
+  const { user } = useAuth();
+  
   const { data: files, isLoading } = useQuery<File[]>({
-    queryKey: ["/api/files", { search: searchQuery, department: filters.department }],
+    queryKey: ["/api/files", { search: searchQuery, department: filters.department, userId: user?.id }],
   });
 
   const filteredFiles = files?.filter((file) => {
