@@ -3,6 +3,7 @@ import { createServer, type Server } from "http";
 import { storage } from "./storage";
 import { insertUserSchema, insertFileSchema } from "@shared/schema";
 import { z } from "zod";
+import bcrypt from "bcryptjs";
 
 const loginSchema = z.object({
   username: z.string().min(1),
@@ -20,9 +21,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(401).json({ message: "Invalid credentials" });
       }
 
-      // In a real app, you would verify the password hash
-      // For now, we'll just check if any password was provided
-      if (!password) {
+      // Verify password hash
+      const passwordMatch = await bcrypt.compare(password, user.password);
+      if (!passwordMatch) {
         return res.status(401).json({ message: "Invalid credentials" });
       }
 
@@ -74,7 +75,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.post("/api/users", async (req, res) => {
     try {
       const userData = insertUserSchema.parse(req.body);
-      const user = await storage.createUser(userData);
+      
+      // Hash the password before storing
+      const hashedPassword = await bcrypt.hash(userData.password, 10);
+      const userWithHashedPassword = {
+        ...userData,
+        password: hashedPassword,
+      };
+      
+      const user = await storage.createUser(userWithHashedPassword);
       res.json({ 
         id: user.id,
         username: user.username,

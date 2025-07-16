@@ -1,4 +1,5 @@
-import { users, departments, files, type User, type InsertUser, type Department, type InsertDepartment, type File, type InsertFile } from "@shared/schema";
+import { PrismaClient } from '@prisma/client'
+import { type User, type InsertUser, type Department, type InsertDepartment, type File, type InsertFile } from "@shared/schema";
 
 export interface IStorage {
   // User management
@@ -28,257 +29,222 @@ export interface IStorage {
   searchFiles(query: string): Promise<File[]>;
 }
 
-export class MemStorage implements IStorage {
-  private users: Map<number, User>;
-  private departments: Map<number, Department>;
-  private files: Map<number, File>;
-  private currentUserId: number;
-  private currentDepartmentId: number;
-  private currentFileId: number;
+export class PrismaStorage implements IStorage {
+  private prisma: PrismaClient;
 
   constructor() {
-    this.users = new Map();
-    this.departments = new Map();
-    this.files = new Map();
-    this.currentUserId = 1;
-    this.currentDepartmentId = 1;
-    this.currentFileId = 1;
-    this.initializeData();
-  }
-
-  private initializeData() {
-    // Initialize departments
-    const dept1: Department = {
-      id: this.currentDepartmentId++,
-      name: "Administration",
-      description: "Administration générale",
-      createdAt: new Date(),
-    };
-    const dept2: Department = {
-      id: this.currentDepartmentId++,
-      name: "Comptabilité",
-      description: "Gestion financière",
-      createdAt: new Date(),
-    };
-    const dept3: Department = {
-      id: this.currentDepartmentId++,
-      name: "Ressources Humaines",
-      description: "Gestion du personnel",
-      createdAt: new Date(),
-    };
-    const dept4: Department = {
-      id: this.currentDepartmentId++,
-      name: "Marketing",
-      description: "Communication et marketing",
-      createdAt: new Date(),
-    };
-    const dept5: Department = {
-      id: this.currentDepartmentId++,
-      name: "IT",
-      description: "Informatique",
-      createdAt: new Date(),
-    };
-
-    this.departments.set(dept1.id, dept1);
-    this.departments.set(dept2.id, dept2);
-    this.departments.set(dept3.id, dept3);
-    this.departments.set(dept4.id, dept4);
-    this.departments.set(dept5.id, dept5);
-
-    // Initialize users
-    const superUser: User = {
-      id: this.currentUserId++,
-      username: "john.doe",
-      email: "john.doe@archivio.com",
-      password: "hashed_password",
-      role: "superuser",
-      department: "Administration",
-      firstName: "John",
-      lastName: "Doe",
-      isActive: true,
-      createdAt: new Date(),
-      lastLogin: new Date(),
-    };
-
-    const admin: User = {
-      id: this.currentUserId++,
-      username: "marie.dubois",
-      email: "marie.dubois@archivio.com",
-      password: "hashed_password",
-      role: "admin",
-      department: "Comptabilité",
-      firstName: "Marie",
-      lastName: "Dubois",
-      isActive: true,
-      createdAt: new Date(),
-      lastLogin: new Date(Date.now() - 2 * 60 * 60 * 1000),
-    };
-
-    const user: User = {
-      id: this.currentUserId++,
-      username: "pierre.martin",
-      email: "pierre.martin@archivio.com",
-      password: "hashed_password",
-      role: "user",
-      department: "Ressources Humaines",
-      firstName: "Pierre",
-      lastName: "Martin",
-      isActive: true,
-      createdAt: new Date(),
-      lastLogin: new Date(Date.now() - 24 * 60 * 60 * 1000),
-    };
-
-    this.users.set(superUser.id, superUser);
-    this.users.set(admin.id, admin);
-    this.users.set(user.id, user);
+    this.prisma = new PrismaClient();
   }
 
   // User methods
   async getUser(id: number): Promise<User | undefined> {
-    return this.users.get(id);
+    const user = await this.prisma.user.findUnique({
+      where: { id },
+    });
+    return user ? this.mapPrismaUserToUser(user) : undefined;
   }
 
   async getUserByUsername(username: string): Promise<User | undefined> {
-    return Array.from(this.users.values()).find(
-      (user) => user.username === username,
-    );
+    const user = await this.prisma.user.findUnique({
+      where: { username },
+    });
+    return user ? this.mapPrismaUserToUser(user) : undefined;
   }
 
   async getUserByEmail(email: string): Promise<User | undefined> {
-    return Array.from(this.users.values()).find(
-      (user) => user.email === email,
-    );
+    const user = await this.prisma.user.findUnique({
+      where: { email },
+    });
+    return user ? this.mapPrismaUserToUser(user) : undefined;
   }
 
   async createUser(insertUser: InsertUser): Promise<User> {
-    const id = this.currentUserId++;
-    const user: User = {
-      ...insertUser,
-      id,
-      role: insertUser.role || "user",
-      department: insertUser.department || null,
-      isActive: true,
-      createdAt: new Date(),
-      lastLogin: null,
-    };
-    this.users.set(id, user);
-    return user;
+    const user = await this.prisma.user.create({
+      data: {
+        ...insertUser,
+        role: insertUser.role?.toUpperCase() as any || 'USER',
+      },
+    });
+    return this.mapPrismaUserToUser(user);
   }
 
   async updateUser(id: number, updateData: Partial<InsertUser & { lastLogin: Date }>): Promise<User | undefined> {
-    const user = this.users.get(id);
-    if (!user) return undefined;
-
-    const updatedUser = { ...user, ...updateData };
-    this.users.set(id, updatedUser);
-    return updatedUser;
+    try {
+      const user = await this.prisma.user.update({
+        where: { id },
+        data: updateData,
+      });
+      return this.mapPrismaUserToUser(user);
+    } catch (error) {
+      return undefined;
+    }
   }
 
   async deleteUser(id: number): Promise<boolean> {
-    return this.users.delete(id);
+    try {
+      await this.prisma.user.delete({
+        where: { id },
+      });
+      return true;
+    } catch (error) {
+      return false;
+    }
   }
 
   async getAllUsers(): Promise<User[]> {
-    return Array.from(this.users.values());
+    const users = await this.prisma.user.findMany();
+    return users.map(this.mapPrismaUserToUser);
   }
 
   async getUsersByDepartment(department: string): Promise<User[]> {
-    return Array.from(this.users.values()).filter(
-      (user) => user.department === department,
-    );
+    const users = await this.prisma.user.findMany({
+      where: { department },
+    });
+    return users.map(this.mapPrismaUserToUser);
   }
 
   // Department methods
   async getDepartment(id: number): Promise<Department | undefined> {
-    return this.departments.get(id);
+    const department = await this.prisma.department.findUnique({
+      where: { id },
+    });
+    return department ? this.mapPrismaDepartmentToDepartment(department) : undefined;
   }
 
   async getDepartmentByName(name: string): Promise<Department | undefined> {
-    return Array.from(this.departments.values()).find(
-      (dept) => dept.name === name,
-    );
+    const department = await this.prisma.department.findUnique({
+      where: { name },
+    });
+    return department ? this.mapPrismaDepartmentToDepartment(department) : undefined;
   }
 
   async createDepartment(insertDepartment: InsertDepartment): Promise<Department> {
-    const id = this.currentDepartmentId++;
-    const department: Department = {
-      ...insertDepartment,
-      id,
-      description: insertDepartment.description || null,
-      createdAt: new Date(),
-    };
-    this.departments.set(id, department);
-    return department;
+    const department = await this.prisma.department.create({
+      data: insertDepartment,
+    });
+    return this.mapPrismaDepartmentToDepartment(department);
   }
 
   async getAllDepartments(): Promise<Department[]> {
-    return Array.from(this.departments.values());
+    const departments = await this.prisma.department.findMany();
+    return departments.map(this.mapPrismaDepartmentToDepartment);
   }
 
   // File methods
   async getFile(id: number): Promise<File | undefined> {
-    return this.files.get(id);
+    const file = await this.prisma.file.findUnique({
+      where: { id },
+    });
+    return file ? this.mapPrismaFileToFile(file) : undefined;
   }
 
   async createFile(insertFile: InsertFile): Promise<File> {
-    const id = this.currentFileId++;
-    const file: File = {
-      ...insertFile,
-      id,
-      uploadedBy: insertFile.uploadedBy || null,
-      department: insertFile.department || null,
-      category: insertFile.category || null,
-      description: insertFile.description || null,
-      isDeleted: false,
-      createdAt: new Date(),
-    };
-    this.files.set(id, file);
-    return file;
+    const file = await this.prisma.file.create({
+      data: insertFile,
+    });
+    return this.mapPrismaFileToFile(file);
   }
 
   async updateFile(id: number, updateData: Partial<InsertFile>): Promise<File | undefined> {
-    const file = this.files.get(id);
-    if (!file) return undefined;
-
-    const updatedFile = { ...file, ...updateData };
-    this.files.set(id, updatedFile);
-    return updatedFile;
+    try {
+      const file = await this.prisma.file.update({
+        where: { id },
+        data: updateData,
+      });
+      return this.mapPrismaFileToFile(file);
+    } catch (error) {
+      return undefined;
+    }
   }
 
   async deleteFile(id: number): Promise<boolean> {
-    const file = this.files.get(id);
-    if (!file) return false;
-
-    const updatedFile = { ...file, isDeleted: true };
-    this.files.set(id, updatedFile);
-    return true;
+    try {
+      await this.prisma.file.update({
+        where: { id },
+        data: { isDeleted: true },
+      });
+      return true;
+    } catch (error) {
+      return false;
+    }
   }
 
   async getAllFiles(): Promise<File[]> {
-    return Array.from(this.files.values()).filter(file => !file.isDeleted);
+    const files = await this.prisma.file.findMany({
+      where: { isDeleted: false },
+    });
+    return files.map(this.mapPrismaFileToFile);
   }
 
   async getFilesByUser(userId: number): Promise<File[]> {
-    return Array.from(this.files.values()).filter(
-      (file) => file.uploadedBy === userId && !file.isDeleted,
-    );
+    const files = await this.prisma.file.findMany({
+      where: { 
+        uploadedBy: userId,
+        isDeleted: false 
+      },
+    });
+    return files.map(this.mapPrismaFileToFile);
   }
 
   async getFilesByDepartment(department: string): Promise<File[]> {
-    return Array.from(this.files.values()).filter(
-      (file) => file.department === department && !file.isDeleted,
-    );
+    const files = await this.prisma.file.findMany({
+      where: { 
+        department,
+        isDeleted: false 
+      },
+    });
+    return files.map(this.mapPrismaFileToFile);
   }
 
   async searchFiles(query: string): Promise<File[]> {
-    const lowerQuery = query.toLowerCase();
-    return Array.from(this.files.values()).filter(
-      (file) => 
-        !file.isDeleted && 
-        (file.originalName.toLowerCase().includes(lowerQuery) ||
-         file.description?.toLowerCase().includes(lowerQuery)),
-    );
+    const files = await this.prisma.file.findMany({
+      where: {
+        isDeleted: false,
+        OR: [
+          { originalName: { contains: query, mode: 'insensitive' } },
+          { description: { contains: query, mode: 'insensitive' } },
+        ],
+      },
+    });
+    return files.map(this.mapPrismaFileToFile);
   }
+
+  // Mapping functions
+  private mapPrismaUserToUser = (prismaUser: any): User => ({
+    id: prismaUser.id,
+    username: prismaUser.username,
+    email: prismaUser.email,
+    password: prismaUser.password,
+    role: prismaUser.role.toLowerCase(),
+    department: prismaUser.department,
+    firstName: prismaUser.firstName,
+    lastName: prismaUser.lastName,
+    isActive: prismaUser.isActive,
+    createdAt: prismaUser.createdAt,
+    lastLogin: prismaUser.lastLogin,
+  });
+
+  private mapPrismaDepartmentToDepartment = (prismaDepartment: any): Department => ({
+    id: prismaDepartment.id,
+    name: prismaDepartment.name,
+    description: prismaDepartment.description,
+    createdAt: prismaDepartment.createdAt,
+  });
+
+  private mapPrismaFileToFile = (prismaFile: any): File => ({
+    id: prismaFile.id,
+    filename: prismaFile.filename,
+    originalName: prismaFile.originalName,
+    fileType: prismaFile.fileType,
+    fileSize: prismaFile.fileSize,
+    filePath: prismaFile.filePath,
+    uploadedBy: prismaFile.uploadedBy,
+    department: prismaFile.department,
+    category: prismaFile.category,
+    description: prismaFile.description,
+    isDeleted: prismaFile.isDeleted,
+    createdAt: prismaFile.createdAt,
+  });
 }
 
-export const storage = new MemStorage();
+export const storage = new PrismaStorage();
