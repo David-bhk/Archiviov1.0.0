@@ -7,6 +7,11 @@ import { AuthProvider, useAuth } from "./contexts/AuthContext";
 import { RoleProvider } from "./contexts/RoleContext";
 import Login from "./pages/Login";
 import Dashboard from "./pages/Dashboard";
+import MyFiles from "./pages/MyFiles";
+import Departments from "./pages/Departments";
+import Statistics from "./pages/Statistics";
+import Search from "./pages/Search";
+import Configuration from "./pages/Configuration";
 import NotFound from "@/pages/not-found";
 
 function AppContent() {
@@ -28,6 +33,11 @@ function AppContent() {
     <RoleProvider>
       <Switch>
         <Route path="/" component={Dashboard} />
+        <Route path="/my-files" component={MyFiles} />
+        <Route path="/departments" component={Departments} />
+        <Route path="/statistics" component={Statistics} />
+        <Route path="/search" component={Search} />
+        <Route path="/configuration" component={Configuration} />
         <Route component={NotFound} />
       </Switch>
     </RoleProvider>

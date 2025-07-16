@@ -121,6 +121,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  app.post("/api/departments", async (req, res) => {
+    try {
+      const departmentData = insertDepartmentSchema.parse(req.body);
+      const department = await storage.createDepartment(departmentData);
+      res.json(department);
+    } catch (error) {
+      res.status(400).json({ message: "Invalid department data" });
+    }
+  });
+
   // File routes
   app.get("/api/files", async (req, res) => {
     try {
@@ -192,9 +202,26 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Statistics routes
   app.get("/api/stats", async (req, res) => {
     try {
-      const files = await storage.getAllFiles();
+      const { userId } = req.query;
+      const currentUserId = parseInt(userId as string);
+      const currentUser = await storage.getUser(currentUserId);
+      
+      if (!currentUser) {
+        return res.status(401).json({ message: "Unauthorized" });
+      }
+
+      const allFiles = await storage.getAllFiles();
       const users = await storage.getAllUsers();
       const departments = await storage.getAllDepartments();
+
+      // Filter files based on user role
+      let files = allFiles;
+      if (currentUser.role === "user") {
+        files = allFiles.filter(file => file.department === currentUser.department);
+      }
+
+      // Get user-specific file count
+      const userFiles = await storage.getFilesByUser(currentUserId);
 
       const totalFiles = files.length;
       const totalSize = files.reduce((sum, file) => sum + file.fileSize, 0);
@@ -212,6 +239,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
         activeUsers,
         totalDepartments: departments.length,
         fileTypes,
+        userFiles: userFiles.length,
+        totalUsers: users.length,
       });
     } catch (error) {
       res.status(500).json({ message: "Server error" });

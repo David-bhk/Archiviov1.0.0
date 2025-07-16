@@ -1,10 +1,14 @@
 import { useQuery } from "@tanstack/react-query";
 import { Upload, UserPlus, Edit } from "lucide-react";
+import { useAuth } from "../../contexts/AuthContext";
 import { Stats } from "../../types";
 
 export default function RightPanel() {
+  const { user } = useAuth();
+  
   const { data: stats } = useQuery<Stats>({
-    queryKey: ["/api/stats"],
+    queryKey: ["/api/stats", { userId: user?.id }],
+    enabled: !!user,
   });
 
   const formatFileSize = (bytes: number) => {

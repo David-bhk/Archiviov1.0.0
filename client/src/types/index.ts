@@ -39,6 +39,8 @@ export interface Stats {
   activeUsers: number;
   totalDepartments: number;
   fileTypes: Record<string, number>;
+  userFiles: number;
+  totalUsers: number;
 }
 
 export interface AuthContextType {
