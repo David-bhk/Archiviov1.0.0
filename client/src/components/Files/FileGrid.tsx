@@ -4,6 +4,7 @@ import { ChevronLeft, ChevronRight } from "lucide-react";
 import FileCard from "./FileCard";
 import { File } from "../../types";
 import { useAuth } from "../../contexts/AuthContext";
+import { apiRequest } from "../../lib/queryClient";
 
 interface FileGridProps {
   searchQuery: string;
@@ -18,15 +19,29 @@ export default function FileGrid({ searchQuery, filters }: FileGridProps) {
   const { user } = useAuth();
   
   const { data: files, isLoading } = useQuery<File[]>({
-    queryKey: ["/api/files", { search: searchQuery, department: filters.department, userId: user?.id }],
+    queryKey: ["/api/files", { search: searchQuery, department: filters.department, date: filters.date }],
+    queryFn: async () => {
+      const params = new URLSearchParams();
+      if (searchQuery) params.append("search", searchQuery);
+      if (filters.department && filters.department !== "all") params.append("department", filters.department);
+      if (filters.date && filters.date !== "all") {
+        // On suppose que filters.date est du type "30days", "7days", etc.
+        const match = filters.date.match(/(\d+)/);
+        if (match) params.append("date", match[1]);
+      }
+      const url = `/api/files?${params.toString()}`;
+      const res = await apiRequest("GET", url);
+      return res.json();
+    },
   });
 
-  const filteredFiles = files?.filter((file) => {
+  const safeFiles = Array.isArray(files) ? files : [];
+  const filteredFiles = safeFiles.filter((file) => {
     if (filters.type !== "all" && file.fileType !== filters.type) return false;
     if (filters.department !== "all" && file.department !== filters.department) return false;
     if (searchQuery && !file.originalName.toLowerCase().includes(searchQuery.toLowerCase())) return false;
     return true;
-  }) || [];
+  });
 
   if (isLoading) {
     return (

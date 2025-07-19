@@ -13,6 +13,8 @@ import Statistics from "./pages/Statistics";
 import Search from "./pages/Search";
 import Configuration from "./pages/Configuration";
 import NotFound from "@/pages/not-found";
+import PendingFiles from "./pages/PendingFiles";
+import ActivityHistory from "./pages/ActivityHistory";
 
 function AppContent() {
   const { user, isLoading } = useAuth();

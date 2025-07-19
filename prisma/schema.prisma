@@ -25,6 +25,7 @@ model User {
   
   // Relations
   uploadedFiles File[]
+  activities Activity[]
   
   @@map("users")
 }
@@ -53,13 +54,26 @@ model File {
   description  String?
   isDeleted    Boolean     @default(false)
   createdAt    DateTime    @default(now())
+  status       String      @default("pending")
   
   // Relations
   uploadedBy   Int?
   user         User?       @relation(fields: [uploadedBy], references: [id], onDelete: SetNull)
   departmentRef Department? @relation(fields: [department], references: [name])
+  activities Activity[]
   
   @@map("files")
+}
+
+model Activity {
+  id         Int      @id @default(autoincrement())
+  type       String
+  userId     Int?
+  user       User?    @relation(fields: [userId], references: [id], onDelete: SetNull)
+  fileId     Int?
+  file       File?    @relation(fields: [fileId], references: [id], onDelete: SetNull)
+  description String?
+  createdAt  DateTime @default(now())
 }
 
 enum Role {

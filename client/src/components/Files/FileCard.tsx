@@ -90,17 +90,7 @@ export default function FileCard({ file }: FileCardProps) {
     return d.toLocaleDateString("fr-FR");
   };
 
-  const getAuthorName = (uploadedBy: number | undefined) => {
-    // In a real app, you would fetch user details
-    // For now, we'll use mock data
-    const users: Record<number, string> = {
-      1: "John Doe",
-      2: "Marie Dubois",
-      3: "Pierre Martin",
-      4: "Thomas Dupont",
-    };
-    return users[uploadedBy || 0] || "Inconnu";
-  };
+
 
   const handleDelete = () => {
     if (window.confirm("Êtes-vous sûr de vouloir supprimer ce fichier ?")) {
@@ -146,8 +136,20 @@ export default function FileCard({ file }: FileCardProps) {
         <div className="space-y-2 text-sm text-slate-600">
           <div className="flex items-center space-x-2">
             <span className="w-4 text-slate-400">👤</span>
-            <span>{getAuthorName(file.uploadedBy)}</span>
+            <span>
+              {file.uploaderName
+                ? file.uploaderName
+                : file.uploadedBy
+                  ? `ID: ${file.uploadedBy}`
+                  : "Inconnu"}
+            </span>
           </div>
+          {file.description && (
+            <div className="flex items-center space-x-2">
+              <span className="w-4 text-slate-400">📝</span>
+              <span>{file.description}</span>
+            </div>
+          )}
           <div className="flex items-center space-x-2">
             <span className="w-4 text-slate-400">🏢</span>
             <span>{file.department || "Non spécifié"}</span>
@@ -170,7 +172,28 @@ export default function FileCard({ file }: FileCardProps) {
             <Button variant="ghost" size="sm">
               <Eye className="w-4 h-4" />
             </Button>
-            <Button variant="ghost" size="sm">
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={async (e) => {
+                e.preventDefault();
+                try {
+                  const response = await fetch(`/api/files/${file.id}/download`);
+                  if (!response.ok) throw new Error("Erreur lors du téléchargement");
+                  const blob = await response.blob();
+                  const url = window.URL.createObjectURL(blob);
+                  const a = document.createElement("a");
+                  a.href = url;
+                  a.download = file.originalName || file.filename;
+                  document.body.appendChild(a);
+                  a.click();
+                  a.remove();
+                  window.URL.revokeObjectURL(url);
+                } catch (err) {
+                  alert("Erreur lors du téléchargement du fichier");
+                }
+              }}
+            >
               <Download className="w-4 h-4" />
             </Button>
             {canDeleteFile(file) && (

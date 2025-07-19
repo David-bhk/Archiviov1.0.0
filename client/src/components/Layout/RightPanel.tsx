@@ -1,14 +1,49 @@
 import { useQuery } from "@tanstack/react-query";
 import { Upload, UserPlus, Edit } from "lucide-react";
 import { useAuth } from "../../contexts/AuthContext";
-import { Stats } from "../../types";
+import { Stats, File, User } from "../../types";
+import { apiRequest } from "../../lib/queryClient";
 
 export default function RightPanel() {
   const { user } = useAuth();
   
   const { data: stats } = useQuery<Stats>({
-    queryKey: ["/api/stats", { userId: user?.id }],
-    enabled: !!user,
+    queryKey: ["/api/stats", user?.id],
+    queryFn: async () => {
+      if (!user?.id) return null;
+      const res = await apiRequest("GET", `/api/stats?userId=${user.id}`);
+      return res.json();
+    },
+    enabled: !!user?.id,
+  });
+
+  // Récupère les derniers fichiers uploadés par l'utilisateur connecté
+  const { data: recentFiles } = useQuery<File[]>({
+    queryKey: ["/api/files/user", user?.id, "recent"],
+    queryFn: async () => {
+      if (!user?.id) return [];
+      const res = await apiRequest("GET", `/api/files/user/${user.id}`);
+      const files = await res.json();
+      // Trie par date décroissante et prend les 3 derniers
+      return Array.isArray(files)
+        ? files.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()).slice(0, 3)
+        : [];
+    },
+    enabled: !!user?.id,
+  });
+
+  // Récupère les derniers utilisateurs créés (pour superuser/admin)
+  const { data: recentUsers } = useQuery<User[]>({
+    queryKey: ["/api/users", "recent"],
+    queryFn: async () => {
+      const res = await apiRequest("GET", "/api/users");
+      const users = await res.json();
+      // Trie par date décroissante et prend les 2 derniers
+      return Array.isArray(users)
+        ? users.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()).slice(0, 2)
+        : [];
+    },
+    enabled: !!user && (user.role === "admin" || user.role === "superuser"),
   });
 
   const formatFileSize = (bytes: number) => {
@@ -40,43 +75,36 @@ export default function RightPanel() {
       <div className="p-6">
         <h3 className="text-lg font-semibold text-slate-800 mb-4">Activité récente</h3>
         <div className="space-y-4">
-          <div className="flex items-start space-x-3">
-            <div className="w-8 h-8 bg-primary rounded-full flex items-center justify-center">
-              <Upload className="text-white" size={14} />
+          {/* Fichiers uploadés récemment */}
+          {recentFiles && recentFiles.length > 0 && recentFiles.map(file => (
+            <div key={file.id} className="flex items-start space-x-3">
+              <div className="w-8 h-8 bg-primary rounded-full flex items-center justify-center">
+                <Upload className="text-white" size={14} />
+              </div>
+              <div>
+                <p className="text-sm text-slate-800">
+                  <span className="font-medium">Vous</span> avez téléchargé
+                  <span className="font-medium"> {file.originalName}</span>
+                </p>
+                <p className="text-xs text-slate-500">{new Date(file.createdAt).toLocaleString()}</p>
+              </div>
             </div>
-            <div>
-              <p className="text-sm text-slate-800">
-                <span className="font-medium">Marie Dubois</span> a téléchargé 
-                <span className="font-medium"> Rapport_Q1_2024.pdf</span>
-              </p>
-              <p className="text-xs text-slate-500">Il y a 2 heures</p>
+          ))}
+
+          {/* Nouveaux utilisateurs (admin/superuser) */}
+          {recentUsers && recentUsers.length > 0 && recentUsers.map(user => (
+            <div key={user.id} className="flex items-start space-x-3">
+              <div className="w-8 h-8 bg-emerald-500 rounded-full flex items-center justify-center">
+                <UserPlus className="text-white" size={14} />
+              </div>
+              <div>
+                <p className="text-sm text-slate-800">
+                  <span className="font-medium">{user.firstName} {user.lastName}</span> ajouté au département {user.department || "-"}
+                </p>
+                <p className="text-xs text-slate-500">{new Date(user.createdAt).toLocaleString()}</p>
+              </div>
             </div>
-          </div>
-          
-          <div className="flex items-start space-x-3">
-            <div className="w-8 h-8 bg-emerald-500 rounded-full flex items-center justify-center">
-              <UserPlus className="text-white" size={14} />
-            </div>
-            <div>
-              <p className="text-sm text-slate-800">
-                <span className="font-medium">Nouvel utilisateur</span> ajouté au département IT
-              </p>
-              <p className="text-xs text-slate-500">Il y a 4 heures</p>
-            </div>
-          </div>
-          
-          <div className="flex items-start space-x-3">
-            <div className="w-8 h-8 bg-amber-500 rounded-full flex items-center justify-center">
-              <Edit className="text-white" size={14} />
-            </div>
-            <div>
-              <p className="text-sm text-slate-800">
-                <span className="font-medium">Pierre Martin</span> a modifié 
-                <span className="font-medium"> Manuel_Procedures.docx</span>
-              </p>
-              <p className="text-xs text-slate-500">Hier</p>
-            </div>
-          </div>
+          ))}
         </div>
       </div>
       

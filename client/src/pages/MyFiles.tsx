@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { useAuth } from "../contexts/AuthContext";
+import { useRole } from "../contexts/RoleContext";
 import { useQuery } from "@tanstack/react-query";
 import Sidebar from "../components/Layout/Sidebar";
 import TopBar from "../components/Layout/TopBar";
@@ -9,9 +10,11 @@ import FiltersBar from "../components/Files/FiltersBar";
 import UploadModal from "../components/Files/UploadModal";
 import UserManagementModal from "../components/Users/UserManagementModal";
 import { File } from "../types";
+import { apiRequest } from "../lib/queryClient";
 
 export default function MyFiles() {
   const { user } = useAuth();
+  const { canManageDepartments } = useRole();
   const [showUploadModal, setShowUploadModal] = useState(false);
   const [showUserModal, setShowUserModal] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
@@ -21,18 +24,31 @@ export default function MyFiles() {
     date: "30days",
   });
 
-  const { data: files, isLoading } = useQuery<File[]>({
-    queryKey: [`/api/files/user/${user?.id}`],
+  const isAdmin = user?.role === "admin" || user?.role === "superuser";
+  const { data: files, isLoading, isError, error } = useQuery<File[]>({
+    queryKey: [isAdmin ? "/api/files" : `/api/files/user/${user?.id}`],
+    queryFn: async () => {
+      if (isAdmin) {
+        const res = await apiRequest("GET", "/api/files");
+        return res.json();
+      } else {
+        const res = await apiRequest("GET", `/api/files/user/${user?.id}`);
+        return res.json();
+      }
+    },
     enabled: !!user,
   });
 
-  const filteredFiles = files?.filter((file) => {
+  const safeFiles = Array.isArray(files) ? files : [];
+  const filteredFiles = safeFiles.filter((file) => {
     if (filters.type !== "all" && file.fileType !== filters.type) return false;
     if (searchQuery && !file.originalName.toLowerCase().includes(searchQuery.toLowerCase())) return false;
     return true;
-  }) || [];
+  });
 
-  if (!user) return null;
+  if (!user) {
+    return null;
+  }
 
   return (
     <div className="min-h-screen flex bg-slate-50">
@@ -59,6 +75,11 @@ export default function MyFiles() {
           {isLoading ? (
             <div className="flex items-center justify-center h-64">
               <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+            </div>
+          ) : isError ? (
+            <div className="text-center py-12">
+              <p className="text-red-600 font-semibold">Erreur lors du chargement des fichiers.</p>
+              <p className="text-slate-500 text-sm mt-2">{error instanceof Error ? error.message : "Veuillez réessayer plus tard."}</p>
             </div>
           ) : filteredFiles.length === 0 ? (
             <div className="text-center py-12">

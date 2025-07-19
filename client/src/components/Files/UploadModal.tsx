@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -19,20 +19,23 @@ interface UploadModalProps {
 
 export default function UploadModal({ onClose }: UploadModalProps) {
   const { user } = useAuth();
-  const { canUploadFiles, canManageDepartments } = useRole();
+  const { canManageDepartments } = useRole();
   const { toast } = useToast();
   const queryClient = useQueryClient();
-  const [selectedFiles, setSelectedFiles] = useState<FileList | null>(null);
+  const [selectedFiles, setSelectedFiles] = useState<Array<{
+    file: File;
+    progress: number;
+    status: 'pending' | 'uploading' | 'done' | 'error';
+    xhr?: XMLHttpRequest | null;
+  }>>([]);
+  const inputRef = useRef<HTMLInputElement>(null);
   const [formData, setFormData] = useState({
     department: "",
     category: "",
     description: "",
   });
 
-  // Check if user can upload files
-  if (!canUploadFiles()) {
-    return null;
-  }
+  // Suppression du blocage d'upload : tous les utilisateurs connectés peuvent uploader
 
   // Set default department for regular users
   useEffect(() => {
@@ -75,13 +78,28 @@ export default function UploadModal({ onClose }: UploadModalProps) {
   });
 
   const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
-    setSelectedFiles(e.target.files);
+    const files = Array.from(e.target.files || []);
+    setSelectedFiles(prev => [
+      ...prev,
+      ...files.map(file => ({ file, progress: 0, status: 'pending' as const }))
+    ]);
+    if (inputRef.current) inputRef.current.value = "";
+  };
+
+  const handleRemoveFile = (index: number) => {
+    // Si upload en cours, annule le XHR
+    setSelectedFiles(prev => {
+      const fileObj = prev[index];
+      if (fileObj && fileObj.status === 'uploading' && fileObj.xhr) {
+        fileObj.xhr.abort();
+      }
+      return prev.filter((_, i) => i !== index);
+    });
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    
-    if (!selectedFiles || selectedFiles.length === 0) {
+    if (selectedFiles.length === 0) {
       toast({
         title: "Erreur",
         description: "Veuillez sélectionner au moins un fichier",
@@ -89,7 +107,6 @@ export default function UploadModal({ onClose }: UploadModalProps) {
       });
       return;
     }
-
     if (!formData.department && user?.role !== "user") {
       toast({
         title: "Erreur",
@@ -98,19 +115,58 @@ export default function UploadModal({ onClose }: UploadModalProps) {
       });
       return;
     }
-
-    // Upload each selected file
+    // Upload each file with progress
     for (let i = 0; i < selectedFiles.length; i++) {
-      const file = selectedFiles[i];
-      const fileFormData = new FormData();
-      fileFormData.append("file", file);
-      fileFormData.append("uploadedBy", user!.id.toString());
-      fileFormData.append("department", formData.department || user!.department || "");
-      fileFormData.append("category", formData.category);
-      fileFormData.append("description", formData.description);
-
-      await uploadMutation.mutateAsync(fileFormData);
+      await new Promise<void>((resolve, reject) => {
+        const fileObj = selectedFiles[i];
+        setSelectedFiles(prev => prev.map((f, idx) => idx === i ? { ...f, status: 'uploading', progress: 0 } : f));
+        const fileFormData = new FormData();
+        fileFormData.append("file", fileObj.file);
+        fileFormData.append("uploadedBy", user!.id.toString());
+        fileFormData.append("department", formData.department || user!.department || "");
+        fileFormData.append("category", formData.category);
+        fileFormData.append("description", formData.description);
+        // ...ne plus gérer le champ status
+        const xhr = new XMLHttpRequest();
+        setSelectedFiles(prev => prev.map((f, idx) => idx === i ? { ...f, xhr } : f));
+        xhr.open("POST", "/api/files");
+        const token = localStorage.getItem("archivio_token");
+        if (token) {
+          xhr.setRequestHeader("Authorization", `Bearer ${token}`);
+        }
+        xhr.upload.onprogress = (event) => {
+          if (event.lengthComputable) {
+            const percent = Math.round((event.loaded / event.total) * 100);
+            setSelectedFiles(prev => prev.map((f, idx) => idx === i ? { ...f, progress: percent } : f));
+          }
+        };
+        xhr.onload = () => {
+          if (xhr.status >= 200 && xhr.status < 300) {
+            setSelectedFiles(prev => prev.map((f, idx) => idx === i ? { ...f, status: 'done', progress: 100, xhr: undefined } : f));
+            resolve();
+          } else {
+            setSelectedFiles(prev => prev.map((f, idx) => idx === i ? { ...f, status: 'error', xhr: undefined } : f));
+            reject();
+          }
+        };
+        xhr.onerror = () => {
+          setSelectedFiles(prev => prev.map((f, idx) => idx === i ? { ...f, status: 'error', xhr: undefined } : f));
+          reject();
+        };
+        xhr.onabort = () => {
+          setSelectedFiles(prev => prev.map((f, idx) => idx === i ? { ...f, status: 'error', xhr: undefined } : f));
+          reject();
+        };
+        xhr.send(fileFormData);
+      });
     }
+    queryClient.invalidateQueries({ queryKey: ["/api/files"] });
+    queryClient.invalidateQueries({ queryKey: ["/api/stats"] });
+    toast({
+      title: "Fichiers téléchargés",
+      description: "Tous les fichiers ont été téléchargés avec succès",
+    });
+    onClose();
   };
 
   const handleDragOver = (e: React.DragEvent) => {
@@ -121,8 +177,11 @@ export default function UploadModal({ onClose }: UploadModalProps) {
   const handleDrop = (e: React.DragEvent) => {
     e.preventDefault();
     e.stopPropagation();
-    const files = e.dataTransfer.files;
-    setSelectedFiles(files);
+    const files = Array.from(e.dataTransfer.files || []);
+    setSelectedFiles(prev => [
+      ...prev,
+      ...files.map(file => ({ file, progress: 0, status: 'pending' as const, xhr: undefined }))
+    ]);
   };
 
   return (
@@ -148,24 +207,39 @@ export default function UploadModal({ onClose }: UploadModalProps) {
               Glissez et déposez vos fichiers ici
             </p>
             <p className="text-sm text-slate-500 mb-4">ou cliquez pour sélectionner</p>
-            <Button type="button" variant="outline">
-              <Input
-                type="file"
-                multiple
-                accept=".pdf,.doc,.docx,.xls,.xlsx,.jpg,.jpeg,.png,.gif"
-                onChange={handleFileSelect}
-                className="absolute inset-0 opacity-0 cursor-pointer"
-              />
+
+            <label className="inline-block cursor-pointer bg-white border border-slate-300 rounded px-4 py-2 hover:border-primary transition-colors">
               Sélectionner des fichiers
-            </Button>
+            <Input
+              ref={inputRef}
+              type="file"
+              multiple
+              accept=".pdf,.doc,.docx,.xls,.xlsx,.jpg,.jpeg,.png,.gif"
+              onChange={handleFileSelect}
+              className="hidden"
+            />
+            </label>
             
-            {selectedFiles && selectedFiles.length > 0 && (
+            {selectedFiles.length > 0 && (
               <div className="mt-4 text-sm text-slate-600">
                 <p>Fichiers sélectionnés: {selectedFiles.length}</p>
                 <ul className="mt-2 space-y-1">
-                  {Array.from(selectedFiles).map((file, index) => (
-                    <li key={index} className="text-left">
-                      {file.name} ({Math.round(file.size / 1024)} KB)
+                  {selectedFiles.map((f, index) => (
+                    <li key={index} className="flex items-center justify-between gap-2 text-left">
+                      <span>{f.file.name} ({Math.round(f.file.size / 1024)} KB)</span>
+                      <div className="flex items-center gap-2">
+                        {/* Progress bar toujours visible */}
+                        <span className="w-32 bg-slate-200 rounded h-2 block overflow-hidden">
+                          <span style={{ width: `${f.progress}%` }} className={`block h-2 ${f.status === 'error' ? 'bg-red-400' : 'bg-primary'} transition-all`}></span>
+                        </span>
+                        {f.status === 'done' && <span className="text-green-600">✔</span>}
+                        {f.status === 'error' && <span className="text-red-600">✖</span>}
+                        {(f.status === 'pending' || f.status === 'uploading') && (
+                          <Button type="button" size="sm" variant="ghost" onClick={() => handleRemoveFile(index)}>
+                            <X className="w-4 h-4" />
+                          </Button>
+                        )}
+                      </div>
                     </li>
                   ))}
                 </ul>
@@ -235,8 +309,11 @@ export default function UploadModal({ onClose }: UploadModalProps) {
             <Button type="button" variant="outline" onClick={onClose}>
               Annuler
             </Button>
-            <Button type="submit" disabled={uploadMutation.isPending}>
-              {uploadMutation.isPending ? "Téléchargement..." : "Télécharger"}
+            <Button
+              type="submit"
+              disabled={selectedFiles.some(f => f.status === 'uploading') || selectedFiles.length === 0}
+            >
+              {selectedFiles.some(f => f.status === 'uploading') ? "Téléchargement..." : "Télécharger"}
             </Button>
           </div>
         </form>

@@ -1,6 +1,31 @@
-node_modules
-dist
+# Node/Vite/React
+node_modules/
+dist/
+build/
+.env
+.env.local
+.env.*.local
+
+# Replit
+.replit
+replit.nix
+replit.md
+
+# Copilot/VSCode
+.vscode/
+*.code-workspace
+
+# Database/Prisma
+prisma/dev.db
+prisma/migrations/
+uploads/
+*.sqlite
+*.db
+
+# Assets temporaires
+attached_assets/
+*.log
+
+# Autres fichiers à ignorer
 .DS_Store
-server/public
-vite.config.ts.*
-*.tar.gz
+Thumbs.db

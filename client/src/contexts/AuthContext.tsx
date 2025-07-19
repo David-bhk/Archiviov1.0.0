@@ -27,6 +27,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       const data = await response.json();
       setUser(data.user);
       localStorage.setItem("archivio_user", JSON.stringify(data.user));
+      if (data.token) {
+        localStorage.setItem("archivio_token", data.token);
+      }
     } catch (error) {
       throw new Error("Invalid credentials");
     } finally {
@@ -40,6 +43,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       await apiRequest("POST", "/api/auth/logout");
       setUser(null);
       localStorage.removeItem("archivio_user");
+      localStorage.removeItem("archivio_token");
     } catch (error) {
       // Handle logout error
     } finally {

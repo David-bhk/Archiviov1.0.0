@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { useAuth } from "../contexts/AuthContext";
 import { useQuery } from "@tanstack/react-query";
+import { apiRequest } from "../lib/queryClient";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
 import { Badge } from "@/components/ui/badge";
@@ -18,9 +19,14 @@ export default function Statistics() {
   const [showUserModal, setShowUserModal] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
 
-  const { data: stats, isLoading } = useQuery<Stats>({
-    queryKey: ["/api/stats", { userId: user?.id }],
-    enabled: !!user,
+  const { data: stats, isLoading, isError, error } = useQuery<Stats>({
+    queryKey: ["/api/stats", user?.id],
+    queryFn: async () => {
+      if (!user?.id) return null;
+      const res = await apiRequest("GET", `/api/stats?userId=${user.id}`);
+      return res.json();
+    },
+    enabled: !!user?.id,
   });
 
   const formatFileSize = (bytes: number) => {

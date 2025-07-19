@@ -2,22 +2,14 @@ export interface User {
   id: number;
   username: string;
   email: string;
+  password?: string;
   role: "superuser" | "admin" | "user";
-  department: string;
+  department?: string;
   firstName: string;
   lastName: string;
   isActive?: boolean;
   createdAt?: Date;
   lastLogin?: Date;
-}
-
-export interface Department {
-  id: number;
-  name: string;
-  description?: string;
-  createdAt?: Date;
-  userCount?: number;
-  fileCount?: number;
 }
 
 export interface File {
@@ -28,9 +20,11 @@ export interface File {
   fileSize: number;
   filePath: string;
   uploadedBy?: number;
+  uploaderName?: string; // Ajouté pour affichage frontend
   department?: string;
   category?: string;
   description?: string;
+  status?: string;
   createdAt?: Date;
   isDeleted?: boolean;
 }

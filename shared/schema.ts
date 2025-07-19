@@ -34,6 +34,7 @@ export const files = pgTable("files", {
   department: text("department"),
   category: text("category"),
   description: text("description"),
+  status: text("status").notNull().default("pending"), // 'pending', 'approved', 'rejected'
   createdAt: timestamp("created_at").defaultNow(),
   isDeleted: boolean("is_deleted").notNull().default(false),
 });
@@ -63,6 +64,7 @@ export const insertFileSchema = createInsertSchema(files).pick({
   department: true,
   category: true,
   description: true,
+  status: true,
 });
 
 export type InsertUser = z.infer<typeof insertUserSchema>;

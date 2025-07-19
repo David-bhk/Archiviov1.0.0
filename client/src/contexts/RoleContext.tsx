@@ -39,7 +39,8 @@ export function RoleProvider({ children }: { children: React.ReactNode }) {
 
   const canUploadFiles = (): boolean => {
     if (!user) return false;
-    return user.isActive;
+    // Tous les utilisateurs actifs peuvent uploader
+    return !!user.isActive;
   };
 
   const canAccessUserManagement = (): boolean => {

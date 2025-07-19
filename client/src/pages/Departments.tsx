@@ -27,13 +27,14 @@ export default function Departments() {
   const [showUploadModal, setShowUploadModal] = useState(false);
   const [showUserModal, setShowUserModal] = useState(false);
   const [showAddModal, setShowAddModal] = useState(false);
+  const [editingDepartment, setEditingDepartment] = useState<Department | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
-  const [newDepartment, setNewDepartment] = useState({
+  const [departmentForm, setDepartmentForm] = useState({
     name: "",
     description: "",
   });
 
-  const { data: departments, isLoading } = useQuery<Department[]>({
+  const { data: departments, isLoading, isError, error } = useQuery<Department[]>({
     queryKey: ["/api/departments"],
   });
 
@@ -46,7 +47,8 @@ export default function Departments() {
         description: "Le département a été créé avec succès",
       });
       setShowAddModal(false);
-      setNewDepartment({ name: "", description: "" });
+      setEditingDepartment(null);
+      setDepartmentForm({ name: "", description: "" });
     },
     onError: () => {
       toast({
@@ -57,10 +59,54 @@ export default function Departments() {
     },
   });
 
-  const handleCreateDepartment = (e: React.FormEvent) => {
+  const updateDepartmentMutation = useMutation({
+    mutationFn: (data: { id: number; values: any }) =>
+      apiRequest("PUT", `/api/departments/${data.id}`, data.values),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/departments"] });
+      toast({
+        title: "Département modifié",
+        description: "Le département a été modifié avec succès",
+      });
+      setShowAddModal(false);
+      setEditingDepartment(null);
+      setDepartmentForm({ name: "", description: "" });
+    },
+    onError: () => {
+      toast({
+        title: "Erreur",
+        description: "Impossible de modifier le département",
+        variant: "destructive",
+      });
+    },
+  });
+  const deleteDepartmentMutation = useMutation({
+    mutationFn: (id: number) => apiRequest("DELETE", `/api/departments/${id}`),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/departments"] });
+      toast({
+        title: "Département supprimé",
+        description: "Le département a été supprimé avec succès",
+      });
+    },
+    onError: () => {
+      toast({
+        title: "Erreur",
+        description: "Impossible de supprimer le département",
+        variant: "destructive",
+      });
+    },
+  });
+
+
+  const handleDepartmentForm = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!newDepartment.name.trim()) return;
-    createDepartmentMutation.mutate(newDepartment);
+    if (!departmentForm.name.trim()) return;
+    if (editingDepartment) {
+      updateDepartmentMutation.mutate({ id: editingDepartment.id, values: departmentForm });
+    } else {
+      createDepartmentMutation.mutate(departmentForm);
+    }
   };
 
   if (!user) return null;
@@ -96,6 +142,11 @@ export default function Departments() {
             <div className="flex items-center justify-center h-64">
               <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
             </div>
+          ) : isError ? (
+            <div className="text-center py-12">
+              <p className="text-red-600 font-semibold">Erreur lors du chargement des départements.</p>
+              <p className="text-slate-500 text-sm mt-2">{error instanceof Error ? error.message : "Veuillez réessayer plus tard."}</p>
+            </div>
           ) : (
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
               {departments?.map((department) => (
@@ -120,13 +171,29 @@ export default function Departments() {
                     </div>
                     {canManageDepartments() && (
                       <div className="mt-4 flex space-x-2">
-                        <Button variant="outline" size="sm">
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => {
+                            setEditingDepartment(department);
+                            setDepartmentForm({
+                              name: department.name,
+                              description: department.description || "",
+                            });
+                            setShowAddModal(true);
+                          }}
+                        >
                           <Edit className="w-4 h-4 mr-1" />
                           Modifier
                         </Button>
-                        <Button variant="outline" size="sm">
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => deleteDepartmentMutation.mutate(department.id)}
+                          disabled={deleteDepartmentMutation.isPending}
+                        >
                           <Trash2 className="w-4 h-4 mr-1" />
-                          Supprimer
+                          {deleteDepartmentMutation.isPending ? "Suppression..." : "Supprimer"}
                         </Button>
                       </div>
                     )}
@@ -149,18 +216,24 @@ export default function Departments() {
       )}
 
       {showAddModal && (
-        <Dialog open={showAddModal} onOpenChange={setShowAddModal}>
+        <Dialog open={showAddModal} onOpenChange={(open) => {
+          setShowAddModal(open);
+          if (!open) {
+            setEditingDepartment(null);
+            setDepartmentForm({ name: "", description: "" });
+          }
+        }}>
           <DialogContent>
             <DialogHeader>
-              <DialogTitle>Nouveau département</DialogTitle>
+              <DialogTitle>{editingDepartment ? "Modifier le département" : "Nouveau département"}</DialogTitle>
             </DialogHeader>
-            <form onSubmit={handleCreateDepartment} className="space-y-4">
+            <form onSubmit={handleDepartmentForm} className="space-y-4">
               <div>
                 <Label htmlFor="name">Nom du département *</Label>
                 <Input
                   id="name"
-                  value={newDepartment.name}
-                  onChange={(e) => setNewDepartment({ ...newDepartment, name: e.target.value })}
+                  value={departmentForm.name}
+                  onChange={(e) => setDepartmentForm({ ...departmentForm, name: e.target.value })}
                   required
                 />
               </div>
@@ -168,17 +241,30 @@ export default function Departments() {
                 <Label htmlFor="description">Description</Label>
                 <Textarea
                   id="description"
-                  value={newDepartment.description}
-                  onChange={(e) => setNewDepartment({ ...newDepartment, description: e.target.value })}
+                  value={departmentForm.description}
+                  onChange={(e) => setDepartmentForm({ ...departmentForm, description: e.target.value })}
                   rows={3}
                 />
               </div>
               <div className="flex justify-end space-x-2">
-                <Button type="button" variant="outline" onClick={() => setShowAddModal(false)}>
+                <Button type="button" variant="outline" onClick={() => {
+                  setShowAddModal(false);
+                  setEditingDepartment(null);
+                  setDepartmentForm({ name: "", description: "" });
+                }}>
                   Annuler
                 </Button>
-                <Button type="submit" disabled={createDepartmentMutation.isPending}>
-                  {createDepartmentMutation.isPending ? "Création..." : "Créer"}
+                <Button
+                  type="submit"
+                  disabled={createDepartmentMutation.isPending || updateDepartmentMutation.isPending}
+                >
+                  {editingDepartment
+                    ? updateDepartmentMutation.isPending
+                      ? "Modification..."
+                      : "Modifier"
+                    : createDepartmentMutation.isPending
+                      ? "Création..."
+                      : "Créer"}
                 </Button>
               </div>
             </form>

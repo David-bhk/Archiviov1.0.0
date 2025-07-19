@@ -17,6 +17,8 @@ export interface IStorage {
   getDepartmentByName(name: string): Promise<Department | undefined>;
   createDepartment(department: InsertDepartment): Promise<Department>;
   getAllDepartments(): Promise<Department[]>;
+  deleteDepartment(id: number): Promise<boolean>;
+  updateDepartment(id: number, data: Partial<InsertDepartment>): Promise<Department | undefined>;
   
   // File management
   getFile(id: number): Promise<File | undefined>;
@@ -27,6 +29,10 @@ export interface IStorage {
   getFilesByUser(userId: number): Promise<File[]>;
   getFilesByDepartment(department: string): Promise<File[]>;
   searchFiles(query: string): Promise<File[]>;
+
+  // Activity management
+  createActivity(activity: { type: string; userId?: number; fileId?: number; description?: string }): Promise<any>;
+  getRecentActivities(limit?: number): Promise<any[]>;
 }
 
 export class PrismaStorage implements IStorage {
@@ -130,6 +136,31 @@ export class PrismaStorage implements IStorage {
     return departments.map(this.mapPrismaDepartmentToDepartment);
   }
 
+  // Department update
+  async updateDepartment(id: number, data: Partial<InsertDepartment>): Promise<Department | undefined> {
+    try {
+      const department = await this.prisma.department.update({
+        where: { id },
+        data,
+      });
+      return this.mapPrismaDepartmentToDepartment(department);
+    } catch (error) {
+      return undefined;
+    }
+  }
+
+  // Department delete
+  async deleteDepartment(id: number): Promise<boolean> {
+    try {
+      await this.prisma.department.delete({
+        where: { id },
+      });
+      return true;
+    } catch (error) {
+      return false;
+    }
+  }
+
   // File methods
   async getFile(id: number): Promise<File | undefined> {
     const file = await this.prisma.file.findUnique({
@@ -139,8 +170,20 @@ export class PrismaStorage implements IStorage {
   }
 
   async createFile(insertFile: InsertFile): Promise<File> {
+    // Utilise les bons champs pour Prisma
     const file = await this.prisma.file.create({
-      data: insertFile,
+      data: {
+        filename: insertFile.filename,
+        originalName: insertFile.originalName,
+        fileType: insertFile.fileType,
+        fileSize: insertFile.fileSize,
+        filePath: insertFile.filePath,
+        department: insertFile.department || null,
+        category: insertFile.category || null,
+        description: insertFile.description || null,
+        uploadedBy: insertFile.uploadedBy ?? null,
+        // Les champs status, isDeleted, createdAt sont gérés par Prisma (default)
+      },
     });
     return this.mapPrismaFileToFile(file);
   }
@@ -219,7 +262,7 @@ export class PrismaStorage implements IStorage {
     department: prismaUser.department,
     firstName: prismaUser.firstName,
     lastName: prismaUser.lastName,
-    isActive: prismaUser.isActive,
+    isActive: prismaUser.isActive === undefined ? true : prismaUser.isActive,
     createdAt: prismaUser.createdAt,
     lastLogin: prismaUser.lastLogin,
   });
@@ -242,9 +285,32 @@ export class PrismaStorage implements IStorage {
     department: prismaFile.department,
     category: prismaFile.category,
     description: prismaFile.description,
+    status: prismaFile.status,
     isDeleted: prismaFile.isDeleted,
     createdAt: prismaFile.createdAt,
   });
+  // Activity methods
+  async createActivity(activity: { type: string; userId?: number; fileId?: number; description?: string }): Promise<any> {
+    return await this.prisma.activity.create({
+      data: {
+        type: activity.type,
+        userId: activity.userId,
+        fileId: activity.fileId,
+        description: activity.description,
+      },
+    });
+  }
+
+  async getRecentActivities(limit: number = 10): Promise<any[]> {
+    return await this.prisma.activity.findMany({
+      orderBy: { createdAt: 'desc' },
+      take: limit,
+      include: {
+        user: true,
+        file: true,
+      },
+    });
+  }
 }
 
 export const storage = new PrismaStorage();

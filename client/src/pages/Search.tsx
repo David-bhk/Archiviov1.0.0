@@ -11,7 +11,7 @@ import RightPanel from "../components/Layout/RightPanel";
 import FileCard from "../components/Files/FileCard";
 import UploadModal from "../components/Files/UploadModal";
 import UserManagementModal from "../components/Users/UserManagementModal";
-import { File, Department } from "../types";
+import { File } from "../types";
 
 export default function Search() {
   const { user } = useAuth();
@@ -24,12 +24,12 @@ export default function Search() {
     fileType: "",
   });
 
-  const { data: files, isLoading } = useQuery<File[]>({
+  const { data: files, isLoading, isError, error } = useQuery<File[]>({
     queryKey: ["/api/files", { search: activeQuery, userId: user?.id }],
     enabled: !!user && activeQuery.length > 0,
   });
 
-  const { data: departments } = useQuery<Department[]>({
+  const { data: departments } = useQuery<any[]>({
     queryKey: ["/api/departments"],
     enabled: !!user,
   });
@@ -51,7 +51,7 @@ export default function Search() {
     setFilters({ department: "", fileType: "" });
   };
 
-  const fileTypes = [...new Set(files?.map(f => f.fileType) || [])];
+  const fileTypes = Array.from(new Set(files?.map(f => f.fileType) || []));
 
   if (!user) return null;
 
@@ -168,6 +168,11 @@ export default function Search() {
             <div className="flex items-center justify-center h-64">
               <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
             </div>
+          ) : isError ? (
+            <div className="text-center py-12">
+              <p className="text-red-600 font-semibold">Erreur lors du chargement des fichiers.</p>
+              <p className="text-slate-500 text-sm mt-2">{error instanceof Error ? error.message : "Veuillez réessayer plus tard."}</p>
+            </div>
           ) : filteredFiles.length === 0 ? (
             <div className="text-center py-12">
               <p className="text-xl text-slate-600 mb-2">Aucun résultat trouvé</p>
@@ -180,7 +185,7 @@ export default function Search() {
               <div className="mb-4 flex items-center justify-between">
                 <p className="text-slate-600">
                   {filteredFiles.length} résultat{filteredFiles.length > 1 ? 's' : ''} 
-                  {activeQuery && ` pour "${activeQuery}"`}
+                  {activeQuery && ` pour "{activeQuery}"`}
                 </p>
               </div>
               

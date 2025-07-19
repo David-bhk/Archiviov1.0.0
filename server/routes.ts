@@ -1,4 +1,6 @@
+
 import type { Express } from "express";
+import { generateToken, requireAuth, requireRole, requireSelfOrAdmin, AuthRequest } from "./middleware/auth";
 import { createServer, type Server } from "http";
 import { storage } from "./storage";
 import { insertUserSchema, insertFileSchema, insertDepartmentSchema } from "@shared/schema";
@@ -45,6 +47,61 @@ const upload = multer({
 });
 
 export async function registerRoutes(app: Express): Promise<Server> {
+  // Route pour récupérer les activités récentes
+  app.get("/api/activities", requireAuth, async (req: AuthRequest, res) => {
+    try {
+      const limit = parseInt(req.query.limit as string) || 10;
+      const activities = await storage.getRecentActivities(limit);
+      res.json(activities);
+    } catch (error) {
+      res.status(500).json({ message: "Erreur serveur" });
+    }
+  });
+  // Route pour approuver un fichier (admin/superuser)
+  app.patch("/api/files/:id/approve", requireAuth, requireRole("admin", "superuser"), async (req: AuthRequest, res) => {
+    try {
+      const id = parseInt(req.params.id);
+      // TODO: vérifier que l'utilisateur est admin/superuser (à sécuriser selon ton auth)
+      const file = await storage.updateFile(id, { status: "approved" });
+      if (!file) {
+        return res.status(404).json({ message: "Fichier non trouvé" });
+      }
+      res.json({ message: "Fichier approuvé", file });
+    } catch (error) {
+      res.status(500).json({ message: "Erreur lors de l'approbation" });
+    }
+  });
+  // Download file route
+  app.get("/api/files/:id/download", requireAuth, async (req: AuthRequest, res) => {
+    try {
+      const id = parseInt(req.params.id);
+      const file = await storage.getFile(id);
+      if (!file || !file.filePath) {
+        return res.status(404).json({ message: "Fichier introuvable" });
+      }
+      const absolutePath = path.isAbsolute(file.filePath)
+        ? file.filePath
+        : path.join(process.cwd(), file.filePath);
+      if (!fs.existsSync(absolutePath)) {
+        return res.status(404).json({ message: "Fichier non trouvé sur le serveur" });
+      }
+      // Détermine le type MIME
+      const ext = path.extname(file.originalName || file.filename).toLowerCase();
+      const mimeTypes: Record<string, string> = {
+        ".pdf": "application/pdf",
+        ".docx": "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+        ".xlsx": "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+        ".png": "image/png",
+        ".jpg": "image/jpeg",
+        ".jpeg": "image/jpeg",
+      };
+      const mimeType = mimeTypes[ext] || "application/octet-stream";
+      res.setHeader("Content-Type", mimeType);
+      res.download(absolutePath, file.originalName || file.filename);
+    } catch (error) {
+      res.status(500).json({ message: "Erreur serveur" });
+    }
+  });
   // Auth routes
   app.post("/api/auth/login", async (req, res) => {
     try {
@@ -64,7 +121,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Update last login
       await storage.updateUser(user.id, { lastLogin: new Date() });
 
-      res.json({ 
+      // Génère un token JWT sécurisé
+      const token = generateToken(user);
+      res.json({
+        token,
         user: {
           id: user.id,
           username: user.username,
@@ -85,7 +145,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // User routes
-  app.get("/api/users", async (req, res) => {
+  app.get("/api/users", requireAuth, requireRole("admin", "superuser"), async (req, res) => {
     try {
       const users = await storage.getAllUsers();
       const sanitizedUsers = users.map(user => ({
@@ -106,7 +166,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.post("/api/users", async (req, res) => {
+  app.post("/api/users", requireAuth, requireRole("admin", "superuser"), async (req, res) => {
     try {
       const userData = insertUserSchema.parse(req.body);
       
@@ -132,7 +192,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.delete("/api/users/:id", async (req, res) => {
+  app.delete("/api/users/:id", requireAuth, requireRole("admin", "superuser"), async (req, res) => {
     try {
       const id = parseInt(req.params.id);
       const success = await storage.deleteUser(id);
@@ -146,7 +206,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Department routes
-  app.get("/api/departments", async (req, res) => {
+  app.get("/api/departments", requireAuth, async (req, res) => {
     try {
       const departments = await storage.getAllDepartments();
       const users = await storage.getAllUsers();
@@ -165,7 +225,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.post("/api/departments", async (req, res) => {
+  app.post("/api/departments", requireAuth, requireRole("admin", "superuser"), async (req, res) => {
     try {
       console.log("Received department data:", req.body);
       const departmentData = insertDepartmentSchema.parse(req.body);
@@ -177,19 +237,40 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // File routes
-  app.get("/api/files", async (req, res) => {
+  // Update department
+  app.put("/api/departments/:id", requireAuth, requireRole("admin", "superuser"), async (req, res) => {
     try {
-      const { department, search, userId } = req.query;
-      
-      // Get current user to check permissions
-      const currentUserId = parseInt(userId as string);
-      const currentUser = await storage.getUser(currentUserId);
-      
-      if (!currentUser) {
-        return res.status(401).json({ message: "Unauthorized" });
+      const id = parseInt(req.params.id);
+      const updateData = req.body;
+      const updated = await storage.updateDepartment(id, updateData);
+      if (!updated) {
+        return res.status(404).json({ message: "Department not found" });
       }
-      
+      res.json(updated);
+    } catch (error) {
+      res.status(500).json({ message: "Server error" });
+    }
+  });
+
+  // Delete department
+  app.delete("/api/departments/:id", requireAuth, requireRole("admin", "superuser"), async (req, res) => {
+    try {
+      const id = parseInt(req.params.id);
+      const deleted = await storage.deleteDepartment(id);
+      if (!deleted) {
+        return res.status(404).json({ message: "Department not found or cannot be deleted" });
+      }
+      res.json({ message: "Department deleted successfully" });
+    } catch (error) {
+      res.status(500).json({ message: "Server error" });
+    }
+  });
+
+  // File routes
+  app.get("/api/files", requireAuth, async (req: AuthRequest, res) => {
+    try {
+      const { department, search, date } = req.query;
+      const currentUser = req.user;
       let files;
       if (search) {
         files = await storage.searchFiles(search as string);
@@ -198,48 +279,88 @@ export async function registerRoutes(app: Express): Promise<Server> {
       } else {
         files = await storage.getAllFiles();
       }
-      
+      // Filtrage par date (date = nombre de jours)
+      if (date) {
+        const days = parseInt(date as string);
+        if (!isNaN(days)) {
+          const now = new Date();
+          files = files.filter(file => {
+            if (!file.createdAt) return false;
+            const fileDate = new Date(file.createdAt);
+            const diff = (now.getTime() - fileDate.getTime()) / (1000 * 60 * 60 * 24);
+            return diff <= days;
+          });
+        }
+      }
       // Filter files based on user role and department access
       if (currentUser.role === "user") {
-        // Regular users can only see files from their department
         files = files.filter(file => file.department === currentUser.department);
       }
-      // Admin and superuser can see all files
-      
-      res.json(files);
+      // Pour chaque fichier, ajoute le nom de l'uploader
+      const filesWithUploader = await Promise.all(files.map(async (file) => {
+        let uploaderName = "Inconnu";
+        if (file.uploadedBy) {
+          const uploader = await storage.getUser(file.uploadedBy);
+          if (uploader) {
+            if (uploader.firstName || uploader.lastName) {
+              uploaderName = `${uploader.firstName || ''} ${uploader.lastName || ''}`.trim();
+            } else {
+              uploaderName = uploader.username || uploader.email || `ID ${uploader.id}`;
+            }
+          }
+        }
+        return { ...file, uploaderName };
+      }));
+      res.json(filesWithUploader);
     } catch (error) {
       res.status(500).json({ message: "Server error" });
     }
   });
 
-  app.get("/api/files/user/:userId", async (req, res) => {
+  app.get("/api/files/user/:userId", requireAuth, requireSelfOrAdmin, async (req: AuthRequest, res) => {
     try {
       const userId = parseInt(req.params.userId);
       const files = await storage.getFilesByUser(userId);
-      res.json(files);
+      // Ajoute le nom de l'uploader pour chaque fichier
+      const filesWithUploader = await Promise.all(files.map(async (file) => {
+        let uploaderName = "Inconnu";
+        if (file.uploadedBy) {
+          const uploader = await storage.getUser(file.uploadedBy);
+          if (uploader) {
+            if (uploader.firstName || uploader.lastName) {
+              uploaderName = `${uploader.firstName || ''} ${uploader.lastName || ''}`.trim();
+            } else {
+              uploaderName = uploader.username || uploader.email || `ID ${uploader.id}`;
+            }
+          }
+        }
+        return { ...file, uploaderName };
+      }));
+      res.json(filesWithUploader);
     } catch (error) {
       res.status(500).json({ message: "Server error" });
     }
   });
 
-  app.post("/api/files", upload.single("file"), async (req, res) => {
+  app.post("/api/files", requireAuth, upload.single("file"), async (req: AuthRequest, res) => {
     try {
       if (!req.file) {
         return res.status(400).json({ message: "No file uploaded" });
       }
 
-      const { uploadedBy, department, category, description } = req.body;
-      
+      const { department, category, description } = req.body;
+      // uploadedBy est maintenant sécurisé via req.user
       const fileData = {
         filename: req.file.filename,
         originalName: req.file.originalname,
         fileType: path.extname(req.file.originalname).slice(1).toLowerCase(),
         fileSize: req.file.size,
         filePath: req.file.path,
-        uploadedBy: parseInt(uploadedBy),
-        department: department || null,
+        uploadedBy: req.user.id,
+        department: department || req.user.department || null,
         category: category || null,
         description: description || null,
+        // status removed: all files are visible immediately
       };
 
       const file = await storage.createFile(fileData);
@@ -250,7 +371,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.delete("/api/files/:id", async (req, res) => {
+  app.delete("/api/files/:id", requireAuth, async (req: AuthRequest, res) => {
     try {
       const id = parseInt(req.params.id);
       

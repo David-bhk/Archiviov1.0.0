@@ -10,8 +10,7 @@ interface TopBarProps {
 }
 
 export default function TopBar({ searchQuery, onSearchChange, onUpload }: TopBarProps) {
-  const { canUploadFiles } = useRole();
-  
+  // Le bouton doit toujours être visible pour tout utilisateur connecté
   return (
     <div className="bg-white border-b border-slate-200 p-4">
       <div className="flex items-center justify-between">
@@ -34,12 +33,10 @@ export default function TopBar({ searchQuery, onSearchChange, onUpload }: TopBar
             />
           </div>
           
-          {canUploadFiles() && (
-            <Button onClick={onUpload} className="flex items-center space-x-2">
-              <CloudUpload className="w-4 h-4" />
-              <span>Télécharger</span>
-            </Button>
-          )}
+          <Button onClick={onUpload} className="flex items-center space-x-2">
+            <CloudUpload className="w-4 h-4" />
+            <span>Télécharger</span>
+          </Button>
           
           <Button variant="ghost" size="icon" className="text-slate-600 hover:text-slate-800">
             <Bell className="w-5 h-5" />

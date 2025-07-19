@@ -4,46 +4,34 @@ import bcrypt from 'bcryptjs'
 const prisma = new PrismaClient()
 
 async function main() {
-  // Create departments
-  const departments = await Promise.all([
-    prisma.department.create({
-      data: {
-        name: 'Administration',
-        description: 'Administration générale',
-      },
-    }),
-    prisma.department.create({
-      data: {
-        name: 'Comptabilité',
-        description: 'Gestion financière',
-      },
-    }),
-    prisma.department.create({
-      data: {
-        name: 'Ressources Humaines',
-        description: 'Gestion du personnel',
-      },
-    }),
-    prisma.department.create({
-      data: {
-        name: 'Marketing',
-        description: 'Communication et marketing',
-      },
-    }),
-    prisma.department.create({
-      data: {
-        name: 'IT',
-        description: 'Informatique',
-      },
-    }),
-  ])
+  const departmentData = [
+    { name: 'Administration', description: 'Administration générale' },
+    { name: 'Comptabilité', description: 'Gestion financière' },
+    { name: 'Ressources Humaines', description: 'Gestion du personnel' },
+    { name: 'Marketing', description: 'Communication et marketing' },
+    { name: 'IT', description: 'Informatique' },
+  ]
 
-  // Create users
+  // Upsert departments
+  const departments = await Promise.all(
+    departmentData.map((dept) =>
+      prisma.department.upsert({
+        where: { name: dept.name },
+        update: {},
+        create: dept,
+      })
+    )
+  )
+
+  // Hash password once
   const hashedPassword = await bcrypt.hash('password123', 10)
-  
+
+  // Upsert users
   const users = await Promise.all([
-    prisma.user.create({
-      data: {
+    prisma.user.upsert({
+      where: { email: 'john.doe@archivio.com' },
+      update: {},
+      create: {
         username: 'john.doe',
         email: 'john.doe@archivio.com',
         password: hashedPassword,
@@ -53,8 +41,10 @@ async function main() {
         lastName: 'Doe',
       },
     }),
-    prisma.user.create({
-      data: {
+    prisma.user.upsert({
+      where: { email: 'marie.dubois@archivio.com' },
+      update: {},
+      create: {
         username: 'marie.dubois',
         email: 'marie.dubois@archivio.com',
         password: hashedPassword,
@@ -64,8 +54,10 @@ async function main() {
         lastName: 'Dubois',
       },
     }),
-    prisma.user.create({
-      data: {
+    prisma.user.upsert({
+      where: { email: 'pierre.martin@archivio.com' },
+      update: {},
+      create: {
         username: 'pierre.martin',
         email: 'pierre.martin@archivio.com',
         password: hashedPassword,
@@ -120,7 +112,7 @@ async function main() {
     }),
   ])
 
-  console.log('Seed data created successfully!')
+  console.log('✅ Seed data created successfully!')
 }
 
 main()
@@ -128,7 +120,7 @@ main()
     await prisma.$disconnect()
   })
   .catch(async (e) => {
-    console.error(e)
+    console.error('❌ Error seeding data:', e)
     await prisma.$disconnect()
     process.exit(1)
   })
