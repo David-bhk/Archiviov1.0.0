@@ -9,6 +9,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { ResponsiveCard, ResponsiveCardActions } from "@/components/ui/responsive-card";
 import { Building, Users, FileText, Plus, Edit, Trash2 } from "lucide-react";
 import Sidebar from "../components/Layout/Sidebar";
 import TopBar from "../components/Layout/TopBar";
@@ -150,55 +151,58 @@ export default function Departments() {
           ) : (
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
               {departments?.map((department) => (
-                <Card key={department.id}>
-                  <CardHeader>
-                    <CardTitle className="flex items-center space-x-2">
-                      <Building className="w-5 h-5 text-primary" />
-                      <span>{department.name}</span>
-                    </CardTitle>
-                  </CardHeader>
-                  <CardContent>
-                    <p className="text-slate-600 mb-4">{department.description}</p>
-                    <div className="flex items-center space-x-4 text-sm text-slate-500">
-                      <div className="flex items-center space-x-1">
-                        <Users className="w-4 h-4" />
-                        <span>{department.userCount || 0} utilisateurs</span>
+                <ResponsiveCard
+                  key={department.id}
+                  title={department.name}
+                  icon={<Building className="w-5 h-5 text-primary" />}
+                  description={department.description}
+                  footer={
+                    <div className="space-y-4">
+                      <div className="flex items-center justify-between text-sm text-slate-500">
+                        <div className="flex items-center space-x-1">
+                          <Users className="w-4 h-4 flex-shrink-0" />
+                          <span>{department.userCount || 0} utilisateurs</span>
+                        </div>
+                        <div className="flex items-center space-x-1">
+                          <FileText className="w-4 h-4 flex-shrink-0" />
+                          <span>{department.fileCount || 0} fichiers</span>
+                        </div>
                       </div>
-                      <div className="flex items-center space-x-1">
-                        <FileText className="w-4 h-4" />
-                        <span>{department.fileCount || 0} fichiers</span>
-                      </div>
+                      {canManageDepartments() && (
+                        <ResponsiveCardActions>
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            className="flex-1 min-w-0"
+                            onClick={() => {
+                              setEditingDepartment(department);
+                              setDepartmentForm({
+                                name: department.name,
+                                description: department.description || "",
+                              });
+                              setShowAddModal(true);
+                            }}
+                          >
+                            <Edit className="w-4 h-4 mr-1 flex-shrink-0" />
+                            <span className="truncate">Modifier</span>
+                          </Button>
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            className="flex-1 min-w-0 text-red-600 hover:text-red-700 hover:bg-red-50"
+                            onClick={() => deleteDepartmentMutation.mutate(department.id)}
+                            disabled={deleteDepartmentMutation.isPending}
+                          >
+                            <Trash2 className="w-4 h-4 mr-1 flex-shrink-0" />
+                            <span className="truncate">
+                              {deleteDepartmentMutation.isPending ? "Suppression..." : "Supprimer"}
+                            </span>
+                          </Button>
+                        </ResponsiveCardActions>
+                      )}
                     </div>
-                    {canManageDepartments() && (
-                      <div className="mt-4 flex space-x-2">
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          onClick={() => {
-                            setEditingDepartment(department);
-                            setDepartmentForm({
-                              name: department.name,
-                              description: department.description || "",
-                            });
-                            setShowAddModal(true);
-                          }}
-                        >
-                          <Edit className="w-4 h-4 mr-1" />
-                          Modifier
-                        </Button>
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          onClick={() => deleteDepartmentMutation.mutate(department.id)}
-                          disabled={deleteDepartmentMutation.isPending}
-                        >
-                          <Trash2 className="w-4 h-4 mr-1" />
-                          {deleteDepartmentMutation.isPending ? "Suppression..." : "Supprimer"}
-                        </Button>
-                      </div>
-                    )}
-                  </CardContent>
-                </Card>
+                  }
+                />
               ))}
             </div>
           )}

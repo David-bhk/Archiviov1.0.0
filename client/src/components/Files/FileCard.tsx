@@ -6,6 +6,7 @@ import { Eye, Download, Trash2, MoreVertical, FileText, File as FileIcon, Image,
 import { useRole } from "../../contexts/RoleContext";
 import { useAuth } from "../../contexts/AuthContext";
 import { useToast } from "@/hooks/use-toast";
+import { getTruncatedTextStyle } from "../../hooks/useTextOverflow";
 import { apiRequest } from "../../lib/queryClient";
 import { File, User } from "../../types";
 
@@ -99,24 +100,28 @@ export default function FileCard({ file }: FileCardProps) {
   };
 
   return (
-    <Card className="hover:shadow-lg transition-shadow cursor-pointer group">
-      <CardContent className="p-4">
-        <div className="flex items-center justify-between mb-3">
-          <div className="flex items-center space-x-2">
-            <div className={`w-10 h-10 ${getFileTypeColor(file.fileType)} rounded-lg flex items-center justify-center`}>
+    <Card className="hover:shadow-lg transition-shadow cursor-pointer group h-full">
+      <CardContent className="p-4 h-full flex flex-col">
+        <div className="flex items-start justify-between mb-3">
+          <div className="flex items-start space-x-3 min-w-0 flex-1">
+            <div className={`w-10 h-10 ${getFileTypeColor(file.fileType)} rounded-lg flex items-center justify-center flex-shrink-0`}>
               {getFileIcon(file.fileType)}
             </div>
-            <div>
-              <h3 className="font-medium text-slate-800 truncate" title={file.originalName}>
+            <div className="min-w-0 flex-1">
+              <h3 
+                className="font-medium text-slate-800 text-sm leading-tight mb-1 break-words" 
+                title={file.originalName}
+                style={getTruncatedTextStyle(2)}
+              >
                 {file.originalName}
               </h3>
-              <p className="text-sm text-slate-500">{formatFileSize(file.fileSize)}</p>
+              <p className="text-xs text-slate-500">{formatFileSize(file.fileSize)}</p>
             </div>
           </div>
           <Button
             variant="ghost"
             size="sm"
-            className="opacity-0 group-hover:opacity-100 transition-opacity"
+            className="opacity-0 group-hover:opacity-100 transition-opacity flex-shrink-0 h-8 w-8 p-0"
           >
             <MoreVertical className="w-4 h-4" />
           </Button>
@@ -133,10 +138,10 @@ export default function FileCard({ file }: FileCardProps) {
           </div>
         )}
         
-        <div className="space-y-2 text-sm text-slate-600">
-          <div className="flex items-center space-x-2">
-            <span className="w-4 text-slate-400">👤</span>
-            <span>
+        <div className="flex-1 space-y-2 text-sm text-slate-600">
+          <div className="flex items-start space-x-2">
+            <span className="w-4 text-slate-400 flex-shrink-0 mt-0.5">👤</span>
+            <span className="min-w-0 flex-1 break-words text-xs">
               {file.uploaderName
                 ? file.uploaderName
                 : file.uploadedBy
@@ -145,36 +150,43 @@ export default function FileCard({ file }: FileCardProps) {
             </span>
           </div>
           {file.description && (
-            <div className="flex items-center space-x-2">
-              <span className="w-4 text-slate-400">📝</span>
-              <span>{file.description}</span>
+            <div className="flex items-start space-x-2">
+              <span className="w-4 text-slate-400 flex-shrink-0 mt-0.5">📝</span>
+              <span 
+                className="min-w-0 flex-1 break-words text-xs"
+                style={getTruncatedTextStyle(2)}
+                title={file.description}
+              >
+                {file.description}
+              </span>
             </div>
           )}
-          <div className="flex items-center space-x-2">
-            <span className="w-4 text-slate-400">🏢</span>
-            <span>{file.department || "Non spécifié"}</span>
+          <div className="flex items-start space-x-2">
+            <span className="w-4 text-slate-400 flex-shrink-0 mt-0.5">🏢</span>
+            <span className="min-w-0 flex-1 break-words text-xs">{file.department || "Non spécifié"}</span>
           </div>
-          <div className="flex items-center space-x-2">
-            <span className="w-4 text-slate-400">📅</span>
-            <span>{formatDate(file.createdAt)}</span>
+          <div className="flex items-start space-x-2">
+            <span className="w-4 text-slate-400 flex-shrink-0 mt-0.5">📅</span>
+            <span className="text-xs">{formatDate(file.createdAt)}</span>
           </div>
         </div>
         
-        <div className="mt-4 flex items-center justify-between">
+        <div className="mt-auto pt-4 flex items-center justify-between">
           <div className="flex items-center space-x-2">
             {file.category && (
-              <Badge variant="secondary" className="text-xs">
+              <Badge variant="secondary" className="text-xs px-2 py-1">
                 {file.category}
               </Badge>
             )}
           </div>
           <div className="flex items-center space-x-1">
-            <Button variant="ghost" size="sm">
+            <Button variant="ghost" size="sm" className="h-8 w-8 p-0">
               <Eye className="w-4 h-4" />
             </Button>
             <Button
               variant="ghost"
               size="sm"
+              className="h-8 w-8 p-0"
               onClick={async (e) => {
                 e.preventDefault();
                 try {
@@ -202,7 +214,7 @@ export default function FileCard({ file }: FileCardProps) {
                 size="sm"
                 onClick={handleDelete}
                 disabled={deleteMutation.isPending}
-                className="text-red-500 hover:text-red-700"
+                className="text-red-500 hover:text-red-700 h-8 w-8 p-0"
               >
                 <Trash2 className="w-4 h-4" />
               </Button>
