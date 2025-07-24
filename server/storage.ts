@@ -6,6 +6,14 @@ export interface PaginationOptions {
   limit?: number;
 }
 
+export interface FileFilters {
+  department?: string;
+  fileType?: string;
+  search?: string;
+  dateRange?: number; // days
+  uploadedBy?: number;
+}
+
 export interface PaginatedResult<T> {
   data: T[];
   total: number;
@@ -42,6 +50,7 @@ export interface IStorage {
   getFilesByUser(userId: number, options?: PaginationOptions): Promise<PaginatedResult<File>>;
   getFilesByDepartment(department: string, options?: PaginationOptions): Promise<PaginatedResult<File>>;
   searchFiles(query: string, options?: PaginationOptions): Promise<PaginatedResult<File>>;
+  getFilesWithFilters(filters: FileFilters, options?: PaginationOptions): Promise<PaginatedResult<File>>;
 
   // Activity management
   createActivity(activity: { type: string; userId?: number; fileId?: number; description?: string }): Promise<any>;
@@ -89,9 +98,15 @@ export class PrismaStorage implements IStorage {
 
   async updateUser(id: number, updateData: Partial<InsertUser & { lastLogin: Date }>): Promise<User | undefined> {
     try {
+      // Transform role to match Prisma enum if it exists
+      const prismaUpdateData: any = { ...updateData };
+      if (prismaUpdateData.role) {
+        prismaUpdateData.role = prismaUpdateData.role.toUpperCase();
+      }
+      
       const user = await this.prisma.user.update({
         where: { id },
-        data: updateData,
+        data: prismaUpdateData,
       });
       return this.mapPrismaUserToUser(user);
     } catch (error) {
@@ -332,6 +347,63 @@ export class PrismaStorage implements IStorage {
         { description: { contains: query } },
       ],
     };
+
+    const [total, files] = await Promise.all([
+      this.prisma.file.count({ where }),
+      this.prisma.file.findMany({
+        where,
+        skip,
+        take: limit,
+        orderBy: { createdAt: 'desc' },
+      }),
+    ]);
+
+    return {
+      data: files.map(this.mapPrismaFileToFile),
+      total,
+      page,
+      limit,
+      totalPages: Math.ceil(total / limit),
+    };
+  }
+
+  async getFilesWithFilters(filters: FileFilters, options: PaginationOptions = {}): Promise<PaginatedResult<File>> {
+    const { page = 1, limit = 12 } = options;
+    const skip = (page - 1) * limit;
+
+    // Build dynamic where clause
+    const where: any = {
+      isDeleted: false,
+    };
+
+    // Apply filters
+    if (filters.department && filters.department !== "all") {
+      where.department = filters.department;
+    }
+
+    if (filters.fileType && filters.fileType !== "all") {
+      where.fileType = filters.fileType;
+    }
+
+    if (filters.uploadedBy) {
+      where.uploadedBy = filters.uploadedBy;
+    }
+
+    if (filters.search) {
+      where.OR = [
+        { originalName: { contains: filters.search } },
+        { description: { contains: filters.search } },
+      ];
+    }
+
+    if (filters.dateRange) {
+      const days = filters.dateRange;
+      const cutoffDate = new Date();
+      cutoffDate.setDate(cutoffDate.getDate() - days);
+      where.createdAt = {
+        gte: cutoffDate,
+      };
+    }
 
     const [total, files] = await Promise.all([
       this.prisma.file.count({ where }),

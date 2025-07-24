@@ -298,7 +298,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // File routes
   app.get("/api/files", requireAuth, async (req: AuthRequest, res) => {
     try {
-      const { department, search, date, page, limit } = req.query;
+      const { department, search, date, type, page, limit } = req.query;
       const currentUser = req.user;
       
       // Parse pagination parameters
@@ -306,34 +306,29 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const limitNum = limit ? parseInt(limit as string) : 12;
       const paginationOptions = { page: pageNum, limit: limitNum };
       
-      let result;
-      if (search) {
-        result = await storage.searchFiles(search as string, paginationOptions);
-      } else if (department) {
-        result = await storage.getFilesByDepartment(department as string, paginationOptions);
-      } else {
-        result = await storage.getAllFiles(paginationOptions);
-      }
+      // Build filters object
+      const filters: any = {};
       
-      let files = result.data;
-      
-      // Filtrage par date (date = nombre de jours)
+      if (search) filters.search = search as string;
+      if (department && department !== "all") filters.department = department as string;
+      if (type && type !== "all") filters.fileType = type as string;
       if (date) {
         const days = parseInt(date as string);
         if (!isNaN(days)) {
-          const now = new Date();
-          files = files.filter(file => {
-            if (!file.createdAt) return false;
-            const fileDate = new Date(file.createdAt);
-            const diff = (now.getTime() - fileDate.getTime()) / (1000 * 60 * 60 * 24);
-            return diff <= days;
-          });
+          filters.dateRange = days;
         }
       }
       
+      // Use the new filtered method
+      let result = await storage.getFilesWithFilters(filters, paginationOptions);
+      let files = result.data;
+      
       // Filter files based on user role and department access
       if (currentUser.role === "user") {
-        files = files.filter(file => file.department === currentUser.department);
+        // For regular users, we need to filter by their department
+        const userFilters = { ...filters, department: currentUser.department };
+        result = await storage.getFilesWithFilters(userFilters, paginationOptions);
+        files = result.data;
       }
       
       // Pour chaque fichier, ajoute le nom de l'uploader

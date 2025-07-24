@@ -27,15 +27,15 @@ interface PaginatedResponse {
 export default function FileGrid({ searchQuery, filters }: FileGridProps) {
   const { user } = useAuth();
   const [currentPage, setCurrentPage] = useState(1);
-  const limit = 12; // Files per page
+  const limit = 12; // Files per page - optimal for grid layout
   
   // Reset page when filters change
   useEffect(() => {
     setCurrentPage(1);
   }, [searchQuery, filters.department, filters.date, filters.type]);
   
-  const { data: response, isLoading } = useQuery<PaginatedResponse>({
-    queryKey: ["/api/files", { search: searchQuery, department: filters.department, date: filters.date, page: currentPage, limit }],
+  const { data: response, isLoading, error } = useQuery<PaginatedResponse>({
+    queryKey: ["/api/files", { search: searchQuery, department: filters.department, date: filters.date, type: filters.type, page: currentPage, limit }],
     queryFn: async () => {
       const params = new URLSearchParams();
       if (searchQuery) params.append("search", searchQuery);
@@ -45,20 +45,30 @@ export default function FileGrid({ searchQuery, filters }: FileGridProps) {
         const match = filters.date.match(/(\d+)/);
         if (match) params.append("date", match[1]);
       }
+      if (filters.type && filters.type !== "all") params.append("type", filters.type);
       params.append("page", currentPage.toString());
       params.append("limit", limit.toString());
       
       const url = `/api/files?${params.toString()}`;
       const res = await apiRequest("GET", url);
-      return res.json();
+      const data = await res.json();
+      return data;
     },
   });
 
   const files = response?.data || [];
-  const filteredFiles = files.filter((file) => {
-    if (filters.type !== "all" && file.fileType !== filters.type) return false;
-    return true;
-  });
+
+  if (error) {
+    console.error("FileGrid error:", error);
+    return (
+      <div className="flex-1 p-6 flex items-center justify-center">
+        <div className="text-center">
+          <p className="text-red-600">Erreur lors du chargement des fichiers</p>
+          <p className="text-sm text-slate-500 mt-2">{error.message}</p>
+        </div>
+      </div>
+    );
+  }
 
   if (isLoading) {
     return (
@@ -71,7 +81,7 @@ export default function FileGrid({ searchQuery, filters }: FileGridProps) {
     );
   }
 
-  if (filteredFiles.length === 0) {
+  if (files.length === 0) {
     return (
       <div className="flex-1 p-6 flex items-center justify-center">
         <div className="text-center">
@@ -117,52 +127,66 @@ export default function FileGrid({ searchQuery, filters }: FileGridProps) {
     return pages;
   };
 
+  const renderPagination = () => {
+    if (totalPages <= 1) return null;
+    
+    return (
+      <div className="flex items-center justify-between">
+        <div className="text-sm text-slate-600">
+          Affichage de {startItem} à {endItem} sur {total} fichiers
+        </div>
+        <div className="flex items-center space-x-2">
+          <Button 
+            variant="outline" 
+            size="sm" 
+            disabled={currentPage === 1}
+            onClick={() => handlePageChange(currentPage - 1)}
+          >
+            <ChevronLeft className="w-4 h-4" />
+          </Button>
+          
+          {getPageNumbers().map((pageNum) => (
+            <Button 
+              key={pageNum}
+              variant={currentPage === pageNum ? "default" : "outline"} 
+              size="sm"
+              onClick={() => handlePageChange(pageNum)}
+            >
+              {pageNum}
+            </Button>
+          ))}
+          
+          <Button 
+            variant="outline" 
+            size="sm" 
+            disabled={currentPage === totalPages}
+            onClick={() => handlePageChange(currentPage + 1)}
+          >
+            <ChevronRight className="w-4 h-4" />
+          </Button>
+        </div>
+      </div>
+    );
+  };
+
   return (
-    <div className="flex-1 p-6 overflow-y-auto">
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-        {filteredFiles.map((file) => (
-          <FileCard key={file.id} file={file} />
-        ))}
+    <div className="flex-1 p-6 flex flex-col">
+      {/* Top pagination */}
+      {renderPagination()}
+      
+      {/* File grid with fixed height to prevent excessive scrolling */}
+      <div className="flex-1 mt-4">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-6 gap-4">
+          {files.map((file) => (
+            <FileCard key={file.id} file={file} />
+          ))}
+        </div>
       </div>
       
-      {/* Pagination */}
-      {totalPages > 1 && (
-        <div className="mt-8 flex items-center justify-between">
-          <div className="text-sm text-slate-600">
-            Affichage de {startItem} à {endItem} sur {total} fichiers
-          </div>
-          <div className="flex items-center space-x-2">
-            <Button 
-              variant="outline" 
-              size="sm" 
-              disabled={currentPage === 1}
-              onClick={() => handlePageChange(currentPage - 1)}
-            >
-              <ChevronLeft className="w-4 h-4" />
-            </Button>
-            
-            {getPageNumbers().map((pageNum) => (
-              <Button 
-                key={pageNum}
-                variant={currentPage === pageNum ? "default" : "outline"} 
-                size="sm"
-                onClick={() => handlePageChange(pageNum)}
-              >
-                {pageNum}
-              </Button>
-            ))}
-            
-            <Button 
-              variant="outline" 
-              size="sm" 
-              disabled={currentPage === totalPages}
-              onClick={() => handlePageChange(currentPage + 1)}
-            >
-              <ChevronRight className="w-4 h-4" />
-            </Button>
-          </div>
-        </div>
-      )}
+      {/* Bottom pagination */}
+      <div className="mt-6">
+        {renderPagination()}
+      </div>
     </div>
   );
 }
