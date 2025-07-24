@@ -1,7 +1,11 @@
 import jwt from "jsonwebtoken";
 import { Request, Response, NextFunction } from "express";
 
-const JWT_SECRET = process.env.JWT_SECRET || "changeme";
+const JWT_SECRET = process.env.JWT_SECRET || "your-fallback-secret-key";
+
+if (!process.env.JWT_SECRET) {
+  console.warn("⚠️  JWT_SECRET not set in environment variables. Using fallback key.");
+}
 
 export interface AuthRequest extends Request {
   user?: any;

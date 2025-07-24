@@ -1,75 +1,72 @@
-import { pgTable, text, serial, integer, boolean, timestamp } from "drizzle-orm/pg-core";
-import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod";
 
-export const users = pgTable("users", {
-  id: serial("id").primaryKey(),
-  username: text("username").notNull().unique(),
-  email: text("email").notNull().unique(),
-  password: text("password").notNull(),
-  role: text("role").notNull().default("user"), // "superuser", "admin", "user"
-  department: text("department"),
-  firstName: text("first_name").notNull(),
-  lastName: text("last_name").notNull(),
-  isActive: boolean("is_active").notNull().default(true),
-  createdAt: timestamp("created_at").defaultNow(),
-  lastLogin: timestamp("last_login"),
+// Prisma-based type definitions that match the Prisma schema
+export interface User {
+  id: number;
+  username: string;
+  email: string;
+  password: string;
+  role: string;
+  department: string | null;
+  firstName: string;
+  lastName: string;
+  isActive: boolean;
+  createdAt: Date;
+  lastLogin: Date | null;
+}
+
+export interface Department {
+  id: number;
+  name: string;
+  description: string | null;
+  createdAt: Date;
+}
+
+export interface File {
+  id: number;
+  filename: string;
+  originalName: string;
+  fileType: string;
+  fileSize: number;
+  filePath: string;
+  uploadedBy: number;
+  department: string | null;
+  category: string | null;
+  description: string | null;
+  status: string;
+  createdAt: Date;
+  isDeleted: boolean;
+}
+
+// Zod schemas for validation
+export const insertUserSchema = z.object({
+  username: z.string().min(1),
+  email: z.string().email(),
+  password: z.string().min(6),
+  role: z.enum(["superuser", "admin", "user"]).default("user"),
+  department: z.string().optional(),
+  firstName: z.string().min(1),
+  lastName: z.string().min(1),
 });
 
-export const departments = pgTable("departments", {
-  id: serial("id").primaryKey(),
-  name: text("name").notNull().unique(),
-  description: text("description"),
-  createdAt: timestamp("created_at").defaultNow(),
+export const insertDepartmentSchema = z.object({
+  name: z.string().min(1),
+  description: z.string().optional(),
 });
 
-export const files = pgTable("files", {
-  id: serial("id").primaryKey(),
-  filename: text("filename").notNull(),
-  originalName: text("original_name").notNull(),
-  fileType: text("file_type").notNull(),
-  fileSize: integer("file_size").notNull(),
-  filePath: text("file_path").notNull(),
-  uploadedBy: integer("uploaded_by").references(() => users.id),
-  department: text("department"),
-  category: text("category"),
-  description: text("description"),
-  status: text("status").notNull().default("pending"), // 'pending', 'approved', 'rejected'
-  createdAt: timestamp("created_at").defaultNow(),
-  isDeleted: boolean("is_deleted").notNull().default(false),
-});
-
-export const insertUserSchema = createInsertSchema(users).pick({
-  username: true,
-  email: true,
-  password: true,
-  role: true,
-  department: true,
-  firstName: true,
-  lastName: true,
-});
-
-export const insertDepartmentSchema = createInsertSchema(departments).pick({
-  name: true,
-  description: true,
-});
-
-export const insertFileSchema = createInsertSchema(files).pick({
-  filename: true,
-  originalName: true,
-  fileType: true,
-  fileSize: true,
-  filePath: true,
-  uploadedBy: true,
-  department: true,
-  category: true,
-  description: true,
-  status: true,
+export const insertFileSchema = z.object({
+  filename: z.string().min(1),
+  originalName: z.string().min(1),
+  fileType: z.string().min(1),
+  fileSize: z.number().positive(),
+  filePath: z.string().min(1),
+  uploadedBy: z.number().positive(),
+  department: z.string().optional(),
+  category: z.string().optional(),
+  description: z.string().optional(),
+  status: z.enum(["pending", "approved", "rejected"]).default("pending"),
 });
 
 export type InsertUser = z.infer<typeof insertUserSchema>;
-export type User = typeof users.$inferSelect;
 export type InsertDepartment = z.infer<typeof insertDepartmentSchema>;
-export type Department = typeof departments.$inferSelect;
 export type InsertFile = z.infer<typeof insertFileSchema>;
-export type File = typeof files.$inferSelect;

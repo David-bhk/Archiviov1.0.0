@@ -11,10 +11,32 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     // Check if user is logged in on app start
     const storedUser = localStorage.getItem("archivio_user");
-    if (storedUser) {
-      setUser(JSON.parse(storedUser));
+    const storedToken = localStorage.getItem("archivio_token");
+    
+    if (storedUser && storedToken) {
+      // Validate token by making a test API call
+      fetch("/api/auth/validate", {
+        headers: {
+          "Authorization": `Bearer ${storedToken}`
+        }
+      }).then(res => {
+        if (res.ok) {
+          setUser(JSON.parse(storedUser));
+        } else {
+          // Token is invalid, clear localStorage
+          localStorage.removeItem("archivio_user");
+          localStorage.removeItem("archivio_token");
+        }
+      }).catch(() => {
+        // Network error or token invalid, clear localStorage
+        localStorage.removeItem("archivio_user");
+        localStorage.removeItem("archivio_token");
+      }).finally(() => {
+        setIsLoading(false);
+      });
+    } else {
+      setIsLoading(false);
     }
-    setIsLoading(false);
   }, []);
 
   const login = async (username: string, password: string) => {

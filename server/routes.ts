@@ -144,6 +144,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
     res.json({ message: "Logged out successfully" });
   });
 
+  // Token validation endpoint
+  app.get("/api/auth/validate", requireAuth, async (req: AuthRequest, res) => {
+    res.json({ valid: true, user: req.user });
+  });
+
   // User routes
   app.get("/api/users", requireAuth, requireRole("admin", "superuser"), async (req, res) => {
     try {
@@ -233,7 +238,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.json(department);
     } catch (error) {
       console.error("Department creation error:", error);
-      res.status(400).json({ message: "Invalid department data", error: error.message });
+      res.status(400).json({ 
+        message: "Invalid department data", 
+        error: error instanceof Error ? error.message : "Unknown error" 
+      });
     }
   });
 
@@ -357,10 +365,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
         fileSize: req.file.size,
         filePath: req.file.path,
         uploadedBy: req.user.id,
-        department: department || req.user.department || null,
-        category: category || null,
-        description: description || null,
-        // status removed: all files are visible immediately
+        department: department || req.user.department || undefined,
+        category: category || undefined,
+        description: description || undefined,
+        status: "approved" as const, // Default status for new files
       };
 
       const file = await storage.createFile(fileData);
