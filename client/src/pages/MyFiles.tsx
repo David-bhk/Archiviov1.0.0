@@ -12,6 +12,14 @@ import UserManagementModal from "../components/Users/UserManagementModal";
 import { File } from "../types";
 import { apiRequest } from "../lib/queryClient";
 
+interface PaginatedResponse {
+  data: File[];
+  total: number;
+  page: number;
+  limit: number;
+  totalPages: number;
+}
+
 export default function MyFiles() {
   const { user } = useAuth();
   const { canManageDepartments } = useRole();
@@ -25,7 +33,7 @@ export default function MyFiles() {
   });
 
   const isAdmin = user?.role === "admin" || user?.role === "superuser";
-  const { data: files, isLoading, isError, error } = useQuery<File[]>({
+  const { data: response, isLoading, isError, error } = useQuery<PaginatedResponse>({
     queryKey: [isAdmin ? "/api/files" : `/api/files/user/${user?.id}`],
     queryFn: async () => {
       if (isAdmin) {
@@ -39,8 +47,8 @@ export default function MyFiles() {
     enabled: !!user,
   });
 
-  const safeFiles = Array.isArray(files) ? files : [];
-  const filteredFiles = safeFiles.filter((file) => {
+  const files = response?.data || [];
+  const filteredFiles = files.filter((file) => {
     if (filters.type !== "all" && file.fileType !== filters.type) return false;
     if (searchQuery && !file.originalName.toLowerCase().includes(searchQuery.toLowerCase())) return false;
     return true;

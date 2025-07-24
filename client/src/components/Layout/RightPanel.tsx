@@ -23,10 +23,11 @@ export default function RightPanel() {
     queryFn: async () => {
       if (!user?.id) return [];
       const res = await apiRequest("GET", `/api/files/user/${user.id}`);
-      const files = await res.json();
+      const response = await res.json();
+      const files = response.data || [];
       // Trie par date décroissante et prend les 3 derniers
       return Array.isArray(files)
-        ? files.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()).slice(0, 3)
+        ? files.sort((a, b) => new Date(b.createdAt || 0).getTime() - new Date(a.createdAt || 0).getTime()).slice(0, 3)
         : [];
     },
     enabled: !!user?.id,
@@ -37,10 +38,11 @@ export default function RightPanel() {
     queryKey: ["/api/users", "recent"],
     queryFn: async () => {
       const res = await apiRequest("GET", "/api/users");
-      const users = await res.json();
+      const response = await res.json();
+      const users = response.data || [];
       // Trie par date décroissante et prend les 2 derniers
       return Array.isArray(users)
-        ? users.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()).slice(0, 2)
+        ? users.sort((a, b) => new Date(b.createdAt || 0).getTime() - new Date(a.createdAt || 0).getTime()).slice(0, 2)
         : [];
     },
     enabled: !!user && (user.role === "admin" || user.role === "superuser"),
@@ -86,7 +88,7 @@ export default function RightPanel() {
                   <span className="font-medium">Vous</span> avez téléchargé
                   <span className="font-medium"> {file.originalName}</span>
                 </p>
-                <p className="text-xs text-slate-500">{new Date(file.createdAt).toLocaleString()}</p>
+                <p className="text-xs text-slate-500">{file.createdAt ? new Date(file.createdAt).toLocaleString() : 'Date inconnue'}</p>
               </div>
             </div>
           ))}
@@ -101,7 +103,7 @@ export default function RightPanel() {
                 <p className="text-sm text-slate-800">
                   <span className="font-medium">{user.firstName} {user.lastName}</span> ajouté au département {user.department || "-"}
                 </p>
-                <p className="text-xs text-slate-500">{new Date(user.createdAt).toLocaleString()}</p>
+                <p className="text-xs text-slate-500">{user.createdAt ? new Date(user.createdAt).toLocaleString() : 'Date inconnue'}</p>
               </div>
             </div>
           ))}

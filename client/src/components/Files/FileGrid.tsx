@@ -5,6 +5,7 @@ import FileCard from "./FileCard";
 import { File } from "../../types";
 import { useAuth } from "../../contexts/AuthContext";
 import { apiRequest } from "../../lib/queryClient";
+import { useState, useEffect } from "react";
 
 interface FileGridProps {
   searchQuery: string;
@@ -15,11 +16,26 @@ interface FileGridProps {
   };
 }
 
+interface PaginatedResponse {
+  data: File[];
+  total: number;
+  page: number;
+  limit: number;
+  totalPages: number;
+}
+
 export default function FileGrid({ searchQuery, filters }: FileGridProps) {
   const { user } = useAuth();
+  const [currentPage, setCurrentPage] = useState(1);
+  const limit = 12; // Files per page
   
-  const { data: files, isLoading } = useQuery<File[]>({
-    queryKey: ["/api/files", { search: searchQuery, department: filters.department, date: filters.date }],
+  // Reset page when filters change
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [searchQuery, filters.department, filters.date, filters.type]);
+  
+  const { data: response, isLoading } = useQuery<PaginatedResponse>({
+    queryKey: ["/api/files", { search: searchQuery, department: filters.department, date: filters.date, page: currentPage, limit }],
     queryFn: async () => {
       const params = new URLSearchParams();
       if (searchQuery) params.append("search", searchQuery);
@@ -29,17 +45,18 @@ export default function FileGrid({ searchQuery, filters }: FileGridProps) {
         const match = filters.date.match(/(\d+)/);
         if (match) params.append("date", match[1]);
       }
+      params.append("page", currentPage.toString());
+      params.append("limit", limit.toString());
+      
       const url = `/api/files?${params.toString()}`;
       const res = await apiRequest("GET", url);
       return res.json();
     },
   });
 
-  const safeFiles = Array.isArray(files) ? files : [];
-  const filteredFiles = safeFiles.filter((file) => {
+  const files = response?.data || [];
+  const filteredFiles = files.filter((file) => {
     if (filters.type !== "all" && file.fileType !== filters.type) return false;
-    if (filters.department !== "all" && file.department !== filters.department) return false;
-    if (searchQuery && !file.originalName.toLowerCase().includes(searchQuery.toLowerCase())) return false;
     return true;
   });
 
@@ -69,6 +86,37 @@ export default function FileGrid({ searchQuery, filters }: FileGridProps) {
     );
   }
 
+  const totalPages = response?.totalPages || 1;
+  const total = response?.total || 0;
+  const startItem = (currentPage - 1) * limit + 1;
+  const endItem = Math.min(currentPage * limit, total);
+
+  const handlePageChange = (page: number) => {
+    if (page >= 1 && page <= totalPages) {
+      setCurrentPage(page);
+    }
+  };
+
+  const getPageNumbers = () => {
+    const pages = [];
+    const maxVisiblePages = 5;
+    
+    if (totalPages <= maxVisiblePages) {
+      for (let i = 1; i <= totalPages; i++) {
+        pages.push(i);
+      }
+    } else {
+      const start = Math.max(1, currentPage - 2);
+      const end = Math.min(totalPages, start + maxVisiblePages - 1);
+      
+      for (let i = start; i <= end; i++) {
+        pages.push(i);
+      }
+    }
+    
+    return pages;
+  };
+
   return (
     <div className="flex-1 p-6 overflow-y-auto">
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
@@ -78,28 +126,43 @@ export default function FileGrid({ searchQuery, filters }: FileGridProps) {
       </div>
       
       {/* Pagination */}
-      <div className="mt-8 flex items-center justify-between">
-        <div className="text-sm text-slate-600">
-          Affichage de 1 à {filteredFiles.length} sur {filteredFiles.length} fichiers
+      {totalPages > 1 && (
+        <div className="mt-8 flex items-center justify-between">
+          <div className="text-sm text-slate-600">
+            Affichage de {startItem} à {endItem} sur {total} fichiers
+          </div>
+          <div className="flex items-center space-x-2">
+            <Button 
+              variant="outline" 
+              size="sm" 
+              disabled={currentPage === 1}
+              onClick={() => handlePageChange(currentPage - 1)}
+            >
+              <ChevronLeft className="w-4 h-4" />
+            </Button>
+            
+            {getPageNumbers().map((pageNum) => (
+              <Button 
+                key={pageNum}
+                variant={currentPage === pageNum ? "default" : "outline"} 
+                size="sm"
+                onClick={() => handlePageChange(pageNum)}
+              >
+                {pageNum}
+              </Button>
+            ))}
+            
+            <Button 
+              variant="outline" 
+              size="sm" 
+              disabled={currentPage === totalPages}
+              onClick={() => handlePageChange(currentPage + 1)}
+            >
+              <ChevronRight className="w-4 h-4" />
+            </Button>
+          </div>
         </div>
-        <div className="flex items-center space-x-2">
-          <Button variant="outline" size="sm" disabled>
-            <ChevronLeft className="w-4 h-4" />
-          </Button>
-          <Button variant="default" size="sm">
-            1
-          </Button>
-          <Button variant="outline" size="sm" disabled>
-            2
-          </Button>
-          <Button variant="outline" size="sm" disabled>
-            3
-          </Button>
-          <Button variant="outline" size="sm" disabled>
-            <ChevronRight className="w-4 h-4" />
-          </Button>
-        </div>
-      </div>
+      )}
     </div>
   );
 }

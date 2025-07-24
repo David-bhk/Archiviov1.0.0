@@ -1,6 +1,19 @@
 import { PrismaClient } from '@prisma/client'
 import { type User, type InsertUser, type Department, type InsertDepartment, type File, type InsertFile } from "@shared/schema";
 
+export interface PaginationOptions {
+  page?: number;
+  limit?: number;
+}
+
+export interface PaginatedResult<T> {
+  data: T[];
+  total: number;
+  page: number;
+  limit: number;
+  totalPages: number;
+}
+
 export interface IStorage {
   // User management
   getUser(id: number): Promise<User | undefined>;
@@ -9,7 +22,7 @@ export interface IStorage {
   createUser(user: InsertUser): Promise<User>;
   updateUser(id: number, user: Partial<InsertUser & { lastLogin: Date }>): Promise<User | undefined>;
   deleteUser(id: number): Promise<boolean>;
-  getAllUsers(): Promise<User[]>;
+  getAllUsers(options?: PaginationOptions): Promise<PaginatedResult<User>>;
   getUsersByDepartment(department: string): Promise<User[]>;
   
   // Department management
@@ -25,10 +38,10 @@ export interface IStorage {
   createFile(file: InsertFile): Promise<File>;
   updateFile(id: number, file: Partial<InsertFile>): Promise<File | undefined>;
   deleteFile(id: number): Promise<boolean>;
-  getAllFiles(): Promise<File[]>;
-  getFilesByUser(userId: number): Promise<File[]>;
-  getFilesByDepartment(department: string): Promise<File[]>;
-  searchFiles(query: string): Promise<File[]>;
+  getAllFiles(options?: PaginationOptions): Promise<PaginatedResult<File>>;
+  getFilesByUser(userId: number, options?: PaginationOptions): Promise<PaginatedResult<File>>;
+  getFilesByDepartment(department: string, options?: PaginationOptions): Promise<PaginatedResult<File>>;
+  searchFiles(query: string, options?: PaginationOptions): Promise<PaginatedResult<File>>;
 
   // Activity management
   createActivity(activity: { type: string; userId?: number; fileId?: number; description?: string }): Promise<any>;
@@ -97,9 +110,26 @@ export class PrismaStorage implements IStorage {
     }
   }
 
-  async getAllUsers(): Promise<User[]> {
-    const users = await this.prisma.user.findMany();
-    return users.map(this.mapPrismaUserToUser);
+  async getAllUsers(options: PaginationOptions = {}): Promise<PaginatedResult<User>> {
+    const { page = 1, limit = 10 } = options;
+    const skip = (page - 1) * limit;
+
+    const [total, users] = await Promise.all([
+      this.prisma.user.count(),
+      this.prisma.user.findMany({
+        skip,
+        take: limit,
+        orderBy: { createdAt: 'desc' },
+      }),
+    ]);
+
+    return {
+      data: users.map(this.mapPrismaUserToUser),
+      total,
+      page,
+      limit,
+      totalPages: Math.ceil(total / limit),
+    };
   }
 
   async getUsersByDepartment(department: string): Promise<User[]> {
@@ -212,44 +242,114 @@ export class PrismaStorage implements IStorage {
     }
   }
 
-  async getAllFiles(): Promise<File[]> {
-    const files = await this.prisma.file.findMany({
-      where: { isDeleted: false },
-    });
-    return files.map(this.mapPrismaFileToFile);
+  async getAllFiles(options: PaginationOptions = {}): Promise<PaginatedResult<File>> {
+    const { page = 1, limit = 12 } = options;
+    const skip = (page - 1) * limit;
+
+    const [total, files] = await Promise.all([
+      this.prisma.file.count({ where: { isDeleted: false } }),
+      this.prisma.file.findMany({
+        where: { isDeleted: false },
+        skip,
+        take: limit,
+        orderBy: { createdAt: 'desc' },
+      }),
+    ]);
+
+    return {
+      data: files.map(this.mapPrismaFileToFile),
+      total,
+      page,
+      limit,
+      totalPages: Math.ceil(total / limit),
+    };
   }
 
-  async getFilesByUser(userId: number): Promise<File[]> {
-    const files = await this.prisma.file.findMany({
-      where: { 
-        uploadedBy: userId,
-        isDeleted: false 
-      },
-    });
-    return files.map(this.mapPrismaFileToFile);
+  async getFilesByUser(userId: number, options: PaginationOptions = {}): Promise<PaginatedResult<File>> {
+    const { page = 1, limit = 12 } = options;
+    const skip = (page - 1) * limit;
+
+    const where = { 
+      uploadedBy: userId,
+      isDeleted: false 
+    };
+
+    const [total, files] = await Promise.all([
+      this.prisma.file.count({ where }),
+      this.prisma.file.findMany({
+        where,
+        skip,
+        take: limit,
+        orderBy: { createdAt: 'desc' },
+      }),
+    ]);
+
+    return {
+      data: files.map(this.mapPrismaFileToFile),
+      total,
+      page,
+      limit,
+      totalPages: Math.ceil(total / limit),
+    };
   }
 
-  async getFilesByDepartment(department: string): Promise<File[]> {
-    const files = await this.prisma.file.findMany({
-      where: { 
-        department,
-        isDeleted: false 
-      },
-    });
-    return files.map(this.mapPrismaFileToFile);
+  async getFilesByDepartment(department: string, options: PaginationOptions = {}): Promise<PaginatedResult<File>> {
+    const { page = 1, limit = 12 } = options;
+    const skip = (page - 1) * limit;
+
+    const where = { 
+      department,
+      isDeleted: false 
+    };
+
+    const [total, files] = await Promise.all([
+      this.prisma.file.count({ where }),
+      this.prisma.file.findMany({
+        where,
+        skip,
+        take: limit,
+        orderBy: { createdAt: 'desc' },
+      }),
+    ]);
+
+    return {
+      data: files.map(this.mapPrismaFileToFile),
+      total,
+      page,
+      limit,
+      totalPages: Math.ceil(total / limit),
+    };
   }
 
-  async searchFiles(query: string): Promise<File[]> {
-    const files = await this.prisma.file.findMany({
-      where: {
-        isDeleted: false,
-        OR: [
-          { originalName: { contains: query, mode: 'insensitive' } },
-          { description: { contains: query, mode: 'insensitive' } },
-        ],
-      },
-    });
-    return files.map(this.mapPrismaFileToFile);
+  async searchFiles(query: string, options: PaginationOptions = {}): Promise<PaginatedResult<File>> {
+    const { page = 1, limit = 12 } = options;
+    const skip = (page - 1) * limit;
+
+    const where = {
+      isDeleted: false,
+      OR: [
+        { originalName: { contains: query } },
+        { description: { contains: query } },
+      ],
+    };
+
+    const [total, files] = await Promise.all([
+      this.prisma.file.count({ where }),
+      this.prisma.file.findMany({
+        where,
+        skip,
+        take: limit,
+        orderBy: { createdAt: 'desc' },
+      }),
+    ]);
+
+    return {
+      data: files.map(this.mapPrismaFileToFile),
+      total,
+      page,
+      limit,
+      totalPages: Math.ceil(total / limit),
+    };
   }
 
   // Mapping functions

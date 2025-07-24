@@ -155,8 +155,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // User routes
   app.get("/api/users", requireAuth, requireRole("admin", "superuser"), async (req, res) => {
     try {
-      const users = await storage.getAllUsers();
-      const sanitizedUsers = users.map(user => ({
+      const { page, limit } = req.query;
+      
+      // Parse pagination parameters
+      const pageNum = page ? parseInt(page as string) : 1;
+      const limitNum = limit ? parseInt(limit as string) : 10;
+      const paginationOptions = { page: pageNum, limit: limitNum };
+      
+      const result = await storage.getAllUsers(paginationOptions);
+      const sanitizedUsers = result.data.map(user => ({
         id: user.id,
         username: user.username,
         email: user.email,
@@ -168,8 +175,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
         createdAt: user.createdAt,
         lastLogin: user.lastLogin,
       }));
-      res.json(sanitizedUsers);
+      
+      // Return paginated response
+      res.json({
+        data: sanitizedUsers,
+        total: result.total,
+        page: result.page,
+        limit: result.limit,
+        totalPages: result.totalPages
+      });
     } catch (error) {
+      console.error("Error in /api/users:", error);
       res.status(500).json({ message: "Server error" });
     }
   });
@@ -217,18 +233,20 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.get("/api/departments", requireAuth, async (req, res) => {
     try {
       const departments = await storage.getAllDepartments();
-      const users = await storage.getAllUsers();
-      const files = await storage.getAllFiles();
+      // For department stats, we need all data
+      const usersResult = await storage.getAllUsers({ page: 1, limit: 10000 });
+      const filesResult = await storage.getAllFiles({ page: 1, limit: 10000 });
       
       // Add counts to each department
       const departmentsWithCounts = departments.map(dept => ({
         ...dept,
-        userCount: users.filter(user => user.department === dept.name).length,
-        fileCount: files.filter(file => file.department === dept.name).length,
+        userCount: usersResult.data.filter(user => user.department === dept.name).length,
+        fileCount: filesResult.data.filter(file => file.department === dept.name).length,
       }));
       
       res.json(departmentsWithCounts);
     } catch (error) {
+      console.error("Error in /api/departments:", error);
       res.status(500).json({ message: "Server error" });
     }
   });
@@ -280,16 +298,25 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // File routes
   app.get("/api/files", requireAuth, async (req: AuthRequest, res) => {
     try {
-      const { department, search, date } = req.query;
+      const { department, search, date, page, limit } = req.query;
       const currentUser = req.user;
-      let files;
+      
+      // Parse pagination parameters
+      const pageNum = page ? parseInt(page as string) : 1;
+      const limitNum = limit ? parseInt(limit as string) : 12;
+      const paginationOptions = { page: pageNum, limit: limitNum };
+      
+      let result;
       if (search) {
-        files = await storage.searchFiles(search as string);
+        result = await storage.searchFiles(search as string, paginationOptions);
       } else if (department) {
-        files = await storage.getFilesByDepartment(department as string);
+        result = await storage.getFilesByDepartment(department as string, paginationOptions);
       } else {
-        files = await storage.getAllFiles();
+        result = await storage.getAllFiles(paginationOptions);
       }
+      
+      let files = result.data;
+      
       // Filtrage par date (date = nombre de jours)
       if (date) {
         const days = parseInt(date as string);
@@ -303,10 +330,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
           });
         }
       }
+      
       // Filter files based on user role and department access
       if (currentUser.role === "user") {
         files = files.filter(file => file.department === currentUser.department);
       }
+      
       // Pour chaque fichier, ajoute le nom de l'uploader
       const filesWithUploader = await Promise.all(files.map(async (file) => {
         let uploaderName = "Inconnu";
@@ -322,8 +351,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
         }
         return { ...file, uploaderName };
       }));
-      res.json(filesWithUploader);
+      
+      // Return paginated response
+      res.json({
+        data: filesWithUploader,
+        total: result.total,
+        page: result.page,
+        limit: result.limit,
+        totalPages: result.totalPages
+      });
     } catch (error) {
+      console.error("Error in /api/files:", error);
       res.status(500).json({ message: "Server error" });
     }
   });
@@ -331,7 +369,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.get("/api/files/user/:userId", requireAuth, requireSelfOrAdmin, async (req: AuthRequest, res) => {
     try {
       const userId = parseInt(req.params.userId);
-      const files = await storage.getFilesByUser(userId);
+      const { page, limit } = req.query;
+      
+      // Parse pagination parameters
+      const pageNum = page ? parseInt(page as string) : 1;
+      const limitNum = limit ? parseInt(limit as string) : 12;
+      const paginationOptions = { page: pageNum, limit: limitNum };
+      
+      const result = await storage.getFilesByUser(userId, paginationOptions);
+      const files = result.data;
+      
       // Ajoute le nom de l'uploader pour chaque fichier
       const filesWithUploader = await Promise.all(files.map(async (file) => {
         let uploaderName = "Inconnu";
@@ -347,8 +394,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
         }
         return { ...file, uploaderName };
       }));
-      res.json(filesWithUploader);
+      
+      // Return paginated response
+      res.json({
+        data: filesWithUploader,
+        total: result.total,
+        page: result.page,
+        limit: result.limit,
+        totalPages: result.totalPages
+      });
     } catch (error) {
+      console.error("Error in /api/files/user/:userId:", error);
       res.status(500).json({ message: "Server error" });
     }
   });
@@ -468,22 +524,23 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(401).json({ message: "Unauthorized" });
       }
 
-      const allFiles = await storage.getAllFiles();
-      const users = await storage.getAllUsers();
+      // For stats, we need all data, so use a large limit
+      const allFilesResult = await storage.getAllFiles({ page: 1, limit: 10000 });
+      const usersResult = await storage.getAllUsers({ page: 1, limit: 10000 });
       const departments = await storage.getAllDepartments();
 
       // Filter files based on user role
-      let files = allFiles;
+      let files = allFilesResult.data;
       if (currentUser.role === "user") {
-        files = allFiles.filter(file => file.department === currentUser.department);
+        files = allFilesResult.data.filter(file => file.department === currentUser.department);
       }
 
       // Get user-specific file count
-      const userFiles = await storage.getFilesByUser(currentUserId);
+      const userFilesResult = await storage.getFilesByUser(currentUserId, { page: 1, limit: 10000 });
 
       const totalFiles = files.length;
       const totalSize = files.reduce((sum, file) => sum + file.fileSize, 0);
-      const activeUsers = users.filter(user => user.isActive).length;
+      const activeUsers = usersResult.data.filter(user => user.isActive).length;
 
       // File type distribution
       const fileTypes = files.reduce((acc, file) => {
@@ -497,10 +554,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
         activeUsers,
         totalDepartments: departments.length,
         fileTypes,
-        userFiles: userFiles.length,
-        totalUsers: users.length,
+        userFiles: userFilesResult.data.length,
+        totalUsers: usersResult.data.length,
       });
     } catch (error) {
+      console.error("Error in /api/stats:", error);
       res.status(500).json({ message: "Server error" });
     }
   });
