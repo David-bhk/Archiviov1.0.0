@@ -34,14 +34,17 @@ const storage_multer = multer.diskStorage({
 
 const upload = multer({ 
   storage: storage_multer,
-  limits: { fileSize: 10 * 1024 * 1024 }, // 10MB limit
+  limits: { 
+    fileSize: 10 * 1024 * 1024, // 10MB limit
+    files: 10 // Max 10 files at once
+  },
   fileFilter: (req, file, cb) => {
-    const allowedTypes = ['.pdf', '.docx', '.xlsx', '.png', '.jpg', '.jpeg'];
+    const allowedTypes = ['.pdf', '.doc', '.docx', '.xls', '.xlsx', '.png', '.jpg', '.jpeg', '.gif'];
     const ext = path.extname(file.originalname).toLowerCase();
     if (allowedTypes.includes(ext)) {
       cb(null, true);
     } else {
-      cb(new Error('Invalid file type'));
+      cb(new Error(`Type de fichier non autorisé: ${ext}. Types autorisés: ${allowedTypes.join(', ')}`));
     }
   }
 });
@@ -350,14 +353,47 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.post("/api/files", requireAuth, upload.single("file"), async (req: AuthRequest, res) => {
+  app.post("/api/files", requireAuth, (req: AuthRequest, res, next) => {
+    upload.single("file")(req, res, (err) => {
+      if (err) {
+        if (err instanceof multer.MulterError) {
+          if (err.code === 'LIMIT_FILE_SIZE') {
+            return res.status(400).json({ 
+              message: "Fichier trop volumineux", 
+              details: "La taille maximale autorisée est de 10MB" 
+            });
+          }
+          if (err.code === 'LIMIT_FILE_COUNT') {
+            return res.status(400).json({ 
+              message: "Trop de fichiers", 
+              details: "Maximum 10 fichiers autorisés" 
+            });
+          }
+        }
+        return res.status(400).json({ 
+          message: "Erreur de fichier", 
+          details: err.message 
+        });
+      }
+      next();
+    });
+  }, async (req: AuthRequest, res) => {
     try {
       if (!req.file) {
-        return res.status(400).json({ message: "No file uploaded" });
+        return res.status(400).json({ message: "Aucun fichier fourni" });
       }
 
       const { department, category, description } = req.body;
-      // uploadedBy est maintenant sécurisé via req.user
+      
+      // Validate required fields
+      if (!department && req.user.role !== "user") {
+        // Clean up uploaded file if validation fails
+        if (fs.existsSync(req.file.path)) {
+          fs.unlinkSync(req.file.path);
+        }
+        return res.status(400).json({ message: "Département requis" });
+      }
+
       const fileData = {
         filename: req.file.filename,
         originalName: req.file.originalname,
@@ -368,14 +404,28 @@ export async function registerRoutes(app: Express): Promise<Server> {
         department: department || req.user.department || undefined,
         category: category || undefined,
         description: description || undefined,
-        status: "approved" as const, // Default status for new files
+        status: "approved" as const,
       };
 
       const file = await storage.createFile(fileData);
+      
+      // Log successful upload
+      console.log(`File uploaded successfully: ${fileData.originalName} by user ${req.user.id}`);
+      
       res.json(file);
     } catch (error) {
       console.error("File upload error:", error);
-      res.status(500).json({ message: "File upload failed" });
+      
+      // Clean up uploaded file if database operation fails
+      if (req.file && fs.existsSync(req.file.path)) {
+        try {
+          fs.unlinkSync(req.file.path);
+        } catch (cleanupError) {
+          console.error("Failed to cleanup file:", cleanupError);
+        }
+      }
+      
+      res.status(500).json({ message: "Échec de l'upload du fichier" });
     }
   });
 
