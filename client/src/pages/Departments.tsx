@@ -121,6 +121,9 @@ export default function Departments() {
           searchQuery={searchQuery}
           onSearchChange={setSearchQuery}
           onUpload={() => setShowUploadModal(true)}
+          showUploadButton={false}
+          pageTitle="Départements"
+          breadcrumb="/ Gestion des départements"
         />
         
         <div className="bg-white border-b border-slate-200 p-4">

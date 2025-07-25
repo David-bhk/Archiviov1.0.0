@@ -67,6 +67,9 @@ export default function MyFiles() {
           searchQuery={searchQuery}
           onSearchChange={setSearchQuery}
           onUpload={() => setShowUploadModal(true)}
+          showUploadButton={true}
+          pageTitle="Mes fichiers"
+          breadcrumb="/ Mes documents"
         />
         
         <div className="bg-white border-b border-slate-200 p-4">

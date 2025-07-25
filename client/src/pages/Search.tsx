@@ -61,12 +61,13 @@ export default function Search() {
       
       <div className="flex-1 flex flex-col">
         <TopBar
-          searchQuery=""
-          onSearchChange={() => {}}
+          searchQuery={globalSearchQuery}
+          onSearchChange={setGlobalSearchQuery}
           onUpload={() => setShowUploadModal(true)}
-        />
-        
-        <div className="bg-white border-b border-slate-200 p-4">
+          showUploadButton={false}
+          pageTitle="Recherche"
+          breadcrumb="/ Recherche globale"
+        />        <div className="bg-white border-b border-slate-200 p-4">
           <div className="flex items-center space-x-2 mb-4">
             <SearchIcon className="w-6 h-6 text-primary" />
             <h2 className="text-2xl font-bold text-slate-800">Recherche avancée</h2>

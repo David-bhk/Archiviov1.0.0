@@ -7,17 +7,26 @@ interface TopBarProps {
   searchQuery: string;
   onSearchChange: (query: string) => void;
   onUpload: () => void;
+  showUploadButton?: boolean;
+  pageTitle?: string;
+  breadcrumb?: string;
 }
 
-export default function TopBar({ searchQuery, onSearchChange, onUpload }: TopBarProps) {
-  // Le bouton doit toujours être visible pour tout utilisateur connecté
+export default function TopBar({ 
+  searchQuery, 
+  onSearchChange, 
+  onUpload, 
+  showUploadButton = false,
+  pageTitle = "Gestion des fichiers",
+  breadcrumb = "/ Tous les fichiers"
+}: TopBarProps) {
   return (
     <div className="bg-white border-b border-slate-200 p-4">
       <div className="flex items-center justify-between">
         <div className="flex items-center space-x-4">
-          <h2 className="text-2xl font-bold text-slate-800">Gestion des fichiers</h2>
+          <h2 className="text-xl xl:text-2xl font-bold text-slate-800">{pageTitle}</h2>
           <div className="text-sm text-slate-500">
-            <span>/ Tous les fichiers</span>
+            <span>{breadcrumb}</span>
           </div>
         </div>
         
@@ -29,14 +38,16 @@ export default function TopBar({ searchQuery, onSearchChange, onUpload }: TopBar
               placeholder="Rechercher des fichiers..."
               value={searchQuery}
               onChange={(e) => onSearchChange(e.target.value)}
-              className="w-80 pl-10"
+              className="w-64 xl:w-80 pl-10"
             />
           </div>
           
-          <Button onClick={onUpload} className="flex items-center space-x-2">
-            <CloudUpload className="w-4 h-4" />
-            <span>Télécharger</span>
-          </Button>
+          {showUploadButton && (
+            <Button onClick={onUpload} className="flex items-center space-x-2">
+              <CloudUpload className="w-4 h-4" />
+              <span className="hidden sm:inline">Télécharger</span>
+            </Button>
+          )}
           
           <Button variant="ghost" size="icon" className="text-slate-600 hover:text-slate-800">
             <Bell className="w-5 h-5" />

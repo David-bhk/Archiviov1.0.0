@@ -34,6 +34,9 @@ export default function Dashboard() {
           searchQuery={searchQuery}
           onSearchChange={setSearchQuery}
           onUpload={() => setShowUploadModal(true)}
+          showUploadButton={true}
+          pageTitle="Tableau de bord"
+          breadcrumb="/ Accueil"
         />
         
         <FiltersBar
