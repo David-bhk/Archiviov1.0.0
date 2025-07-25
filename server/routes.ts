@@ -192,7 +192,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.post("/api/users", requireAuth, requireRole("admin", "superuser"), async (req, res) => {
     try {
+      console.log("Données reçues pour création d'utilisateur:", req.body);
       const userData = insertUserSchema.parse(req.body);
+      console.log("Validation réussie, données parsées:", userData);
       
       // Hash the password before storing
       const hashedPassword = await bcrypt.hash(userData.password, 10);
@@ -212,7 +214,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
         lastName: user.lastName,
       });
     } catch (error) {
-      res.status(400).json({ message: "Invalid user data" });
+      console.error("Erreur lors de la création d'utilisateur:", error);
+      if (error instanceof Error) {
+        console.error("Message d'erreur:", error.message);
+      }
+      res.status(400).json({ message: "Invalid user data", error: error instanceof Error ? error.message : "Unknown error" });
     }
   });
 

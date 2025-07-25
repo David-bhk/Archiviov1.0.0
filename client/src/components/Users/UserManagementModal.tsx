@@ -31,22 +31,41 @@ export default function UserManagementModal({ onClose }: UserManagementModalProp
     password: "",
     firstName: "",
     lastName: "",
-    role: "user",
+    role: "USER", // Utiliser majuscules pour correspondre à la DB
     department: "",
   });
 
   const { data: users, isLoading } = useQuery<User[]>({
     queryKey: ["/api/users"],
+    queryFn: async () => {
+      const res = await apiRequest("GET", "/api/users");
+      const response = await res.json();
+      return response.data || [];
+    },
   });
 
   const { data: departments } = useQuery<Department[]>({
     queryKey: ["/api/departments"],
+    queryFn: async () => {
+      const res = await apiRequest("GET", "/api/departments");
+      const response = await res.json();
+      return response.data || [];
+    },
   });
 
   const createUserMutation = useMutation({
-    mutationFn: (userData: any) => apiRequest("POST", "/api/users", userData),
-    onSuccess: () => {
+    mutationFn: async (userData: any) => {
+      const response = await apiRequest("POST", "/api/users", userData);
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || errorData.message || 'Erreur inconnue');
+      }
+      return response.json();
+    },
+    onSuccess: (data) => {
+      // Force a complete refetch of users data
       queryClient.invalidateQueries({ queryKey: ["/api/users"] });
+      queryClient.refetchQueries({ queryKey: ["/api/users"] });
       queryClient.invalidateQueries({ queryKey: ["/api/stats"] });
       toast({
         title: "Utilisateur créé",
@@ -59,14 +78,37 @@ export default function UserManagementModal({ onClose }: UserManagementModalProp
         password: "",
         firstName: "",
         lastName: "",
-        role: "user",
+        role: "USER",
         department: "",
       });
     },
-    onError: () => {
+    onError: (error: any) => {
+      // Parse Zod validation errors if available
+      let errorMessage = error.message || "Impossible de créer l'utilisateur";
+      
+      try {
+        // Check if it's a Zod error with JSON format
+        if (errorMessage.includes('"validation"') || errorMessage.includes('"code"')) {
+          const jsonMatch = errorMessage.match(/\[[\s\S]*\]/);
+          if (jsonMatch) {
+            const errorDetails = JSON.parse(jsonMatch[0]);
+            if (Array.isArray(errorDetails) && errorDetails[0]) {
+              const firstError = errorDetails[0];
+              if (firstError.path && firstError.path[0] === 'email') {
+                errorMessage = "Format d'email invalide. Veuillez utiliser un format valide (ex: utilisateur@domaine.com)";
+              } else if (firstError.message) {
+                errorMessage = firstError.message;
+              }
+            }
+          }
+        }
+      } catch (parseError) {
+        // Keep original error message if parsing fails
+      }
+      
       toast({
-        title: "Erreur",
-        description: "Impossible de créer l'utilisateur",
+        title: "Erreur de création",
+        description: errorMessage,
         variant: "destructive",
       });
     },
@@ -75,33 +117,66 @@ export default function UserManagementModal({ onClose }: UserManagementModalProp
   const handleCreateUser = async (e: React.FormEvent) => {
     e.preventDefault();
     
-    if (!newUser.username || !newUser.email || !newUser.password || !newUser.firstName || !newUser.lastName || !newUser.department) {
+    // Validation détaillée
+    const requiredFields = [
+      { field: newUser.username, name: "Nom d'utilisateur" },
+      { field: newUser.email, name: "Email" },
+      { field: newUser.password, name: "Mot de passe" },
+      { field: newUser.firstName, name: "Prénom" },
+      { field: newUser.lastName, name: "Nom" },
+      { field: newUser.department, name: "Département" }
+    ];
+
+    const missingFields = requiredFields.filter(({ field }) => !field || !field.trim());
+    
+    if (missingFields.length > 0) {
       toast({
-        title: "Erreur",
-        description: "Veuillez remplir tous les champs obligatoires",
+        title: "Champs manquants",
+        description: `Veuillez remplir: ${missingFields.map(f => f.name).join(", ")}`,
         variant: "destructive",
       });
       return;
     }
 
+    // Validation de l'email
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(newUser.email)) {
+      toast({
+        title: "Email invalide",
+        description: "Veuillez entrer une adresse email valide (ex: utilisateur@domaine.com)",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    if (newUser.password.length < 6) {
+      toast({
+        title: "Mot de passe trop court",
+        description: "Le mot de passe doit contenir au moins 6 caractères",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    console.log("Tentative de création d'utilisateur:", newUser);
     createUserMutation.mutate(newUser);
   };
 
-  const filteredUsers = users?.filter((u) => {
+  const filteredUsers = Array.isArray(users) ? users.filter((u) => {
     const matchesSearch = 
-      u.firstName.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      u.lastName.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      u.email.toLowerCase().includes(searchQuery.toLowerCase());
+      u.firstName?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      u.lastName?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      u.email?.toLowerCase().includes(searchQuery.toLowerCase());
     
     const matchesRole = roleFilter === "all" || u.role === roleFilter;
     
-    // Admin can only see users from their department
+    // Admin can only see users from their department, SUPERUSER can see all
     const matchesDepartment = 
-      user?.role === "superuser" || 
+      user?.role?.toUpperCase() === "SUPERUSER" || 
       u.department === user?.department;
     
     return matchesSearch && matchesRole && matchesDepartment;
-  }) || [];
+  }) : [];
 
   if (!hasAccess(["superuser", "admin"])) {
     return null;
@@ -137,9 +212,9 @@ export default function UserManagementModal({ onClose }: UserManagementModalProp
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="all">Tous les rôles</SelectItem>
-                <SelectItem value="superuser">SuperUser</SelectItem>
-                <SelectItem value="admin">Admin</SelectItem>
-                <SelectItem value="user">Utilisateur</SelectItem>
+                <SelectItem value="SUPERUSER">SuperUser</SelectItem>
+                <SelectItem value="ADMIN">Admin</SelectItem>
+                <SelectItem value="USER">Utilisateur</SelectItem>
               </SelectContent>
             </Select>
           </div>
@@ -186,6 +261,7 @@ export default function UserManagementModal({ onClose }: UserManagementModalProp
                   <Input
                     id="email"
                     type="email"
+                    placeholder="utilisateur@domaine.com"
                     value={newUser.email}
                     onChange={(e) => setNewUser({ ...newUser, email: e.target.value })}
                     required
@@ -208,10 +284,10 @@ export default function UserManagementModal({ onClose }: UserManagementModalProp
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="user">Utilisateur</SelectItem>
-                      <SelectItem value="admin">Administrateur</SelectItem>
-                      {user?.role === "superuser" && (
-                        <SelectItem value="superuser">Super Utilisateur</SelectItem>
+                      <SelectItem value="USER">Utilisateur</SelectItem>
+                      <SelectItem value="ADMIN">Administrateur</SelectItem>
+                      {user?.role === "SUPERUSER" && (
+                        <SelectItem value="SUPERUSER">Super Utilisateur</SelectItem>
                       )}
                     </SelectContent>
                   </Select>

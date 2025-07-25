@@ -14,27 +14,27 @@ export function RoleProvider({ children }: { children: React.ReactNode }) {
 
   const canManageUsers = (): boolean => {
     if (!user) return false;
-    return user.role === "superuser" || user.role === "admin";
+    return user.role === "SUPERUSER" || user.role === "ADMIN";
   };
 
   const canDeleteFile = (file: File): boolean => {
     if (!user) return false;
-    if (user.role === "superuser") return true;
-    if (user.role === "admin") return true;
+    if (user.role === "SUPERUSER") return true;
+    if (user.role === "ADMIN") return true;
     // Regular users can only delete files from their department that they uploaded
     return file.uploadedBy === user.id && file.department === user.department;
   };
 
   const canAccessFile = (file: File): boolean => {
     if (!user) return false;
-    if (user.role === "superuser" || user.role === "admin") return true;
+    if (user.role === "SUPERUSER" || user.role === "ADMIN") return true;
     // Regular users can only access files from their department
     return file.department === user.department;
   };
 
   const canManageDepartments = (): boolean => {
     if (!user) return false;
-    return user.role === "superuser" || user.role === "admin";
+    return user.role === "SUPERUSER" || user.role === "ADMIN";
   };
 
   const canUploadFiles = (): boolean => {
@@ -45,7 +45,7 @@ export function RoleProvider({ children }: { children: React.ReactNode }) {
 
   const canAccessUserManagement = (): boolean => {
     if (!user) return false;
-    return user.role === "superuser" || user.role === "admin";
+    return user.role === "SUPERUSER" || user.role === "ADMIN";
   };
 
   return (

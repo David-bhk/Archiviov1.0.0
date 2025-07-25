@@ -42,12 +42,12 @@ export default function UserTable({ users }: UserTableProps) {
   };
 
   const getRoleColor = (role: string) => {
-    switch (role) {
-      case "superuser":
+    switch (role.toUpperCase()) {
+      case "SUPERUSER":
         return "bg-red-100 text-red-800";
-      case "admin":
+      case "ADMIN":
         return "bg-blue-100 text-blue-800";
-      case "user":
+      case "USER":
         return "bg-slate-100 text-slate-800";
       default:
         return "bg-slate-100 text-slate-800";
@@ -55,12 +55,12 @@ export default function UserTable({ users }: UserTableProps) {
   };
 
   const getRoleLabel = (role: string) => {
-    switch (role) {
-      case "superuser":
+    switch (role.toUpperCase()) {
+      case "SUPERUSER":
         return "SuperUser";
-      case "admin":
+      case "ADMIN":
         return "Admin";
-      case "user":
+      case "USER":
         return "Utilisateur";
       default:
         return role;

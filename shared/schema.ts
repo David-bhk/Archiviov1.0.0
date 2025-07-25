@@ -43,8 +43,8 @@ export const insertUserSchema = z.object({
   username: z.string().min(1),
   email: z.string().email(),
   password: z.string().min(6),
-  role: z.enum(["superuser", "admin", "user"]).default("user"),
-  department: z.string().optional(),
+  role: z.enum(["SUPERUSER", "ADMIN", "USER"]).default("USER"),
+  department: z.string().min(1),
   firstName: z.string().min(1),
   lastName: z.string().min(1),
 });
