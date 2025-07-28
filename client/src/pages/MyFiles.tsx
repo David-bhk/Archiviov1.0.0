@@ -1,24 +1,13 @@
 import { useState } from "react";
 import { useAuth } from "../contexts/AuthContext";
 import { useRole } from "../contexts/RoleContext";
-import { useQuery } from "@tanstack/react-query";
 import Sidebar from "../components/Layout/Sidebar";
 import TopBar from "../components/Layout/TopBar";
 import RightPanel from "../components/Layout/RightPanel";
-import FileCard from "../components/Files/FileCard";
+import FileGrid from "../components/Files/FileGrid";
 import FiltersBar from "../components/Files/FiltersBar";
 import UploadModal from "../components/Files/UploadModal";
 import UserManagementModal from "../components/Users/UserManagementModal";
-import { File } from "../types";
-import { apiRequest } from "../lib/queryClient";
-
-interface PaginatedResponse {
-  data: File[];
-  total: number;
-  page: number;
-  limit: number;
-  totalPages: number;
-}
 
 export default function MyFiles() {
   const { user } = useAuth();
@@ -32,27 +21,7 @@ export default function MyFiles() {
     date: "30days",
   });
 
-  const isAdmin = user?.role === "admin" || user?.role === "superuser";
-  const { data: response, isLoading, isError, error } = useQuery<PaginatedResponse>({
-    queryKey: [isAdmin ? "/api/files" : `/api/files/user/${user?.id}`],
-    queryFn: async () => {
-      if (isAdmin) {
-        const res = await apiRequest("GET", "/api/files");
-        return res.json();
-      } else {
-        const res = await apiRequest("GET", `/api/files/user/${user?.id}`);
-        return res.json();
-      }
-    },
-    enabled: !!user,
-  });
-
-  const files = response?.data || [];
-  const filteredFiles = files.filter((file) => {
-    if (filters.type !== "all" && file.fileType !== filters.type) return false;
-    if (searchQuery && !file.originalName.toLowerCase().includes(searchQuery.toLowerCase())) return false;
-    return true;
-  });
+  const isRegularUser = user?.role?.toUpperCase() === "USER";
 
   if (!user) {
     return null;
@@ -68,47 +37,60 @@ export default function MyFiles() {
           onSearchChange={setSearchQuery}
           onUpload={() => setShowUploadModal(true)}
           showUploadButton={true}
-          pageTitle="Mes fichiers"
-          breadcrumb="/ Mes documents"
+          pageTitle={isRegularUser ? "Mes fichiers" : "Gestion des fichiers"}
+          breadcrumb={isRegularUser ? "/ Mes documents" : "/ Tous les fichiers"}
         />
         
         <div className="bg-white border-b border-slate-200 p-4">
-          <h2 className="text-2xl font-bold text-slate-800">Mes fichiers</h2>
-          <p className="text-slate-600">Gérez vos fichiers personnels</p>
+          <h2 className="text-2xl font-bold text-slate-800">
+            {isRegularUser ? "Mes fichiers" : "Gestion des fichiers"}
+          </h2>
+          <p className="text-slate-600">
+            {isRegularUser 
+              ? "Vos fichiers personnels et ceux de votre département" 
+              : "Gérez tous les fichiers de l'organisation"
+            }
+          </p>
         </div>
         
-        <FiltersBar
-          filters={filters}
-          onFiltersChange={setFilters}
-        />
+        {/* Show filters bar only for admins or simplified version for regular users */}
+        {!isRegularUser && (
+          <FiltersBar
+            filters={filters}
+            onFiltersChange={setFilters}
+          />
+        )}
         
-        <div className="flex-1 p-6 overflow-y-auto">
-          {isLoading ? (
-            <div className="flex items-center justify-center h-64">
-              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+        {/* Simplified filter bar for regular users */}
+        {isRegularUser && (
+          <div className="bg-white border-b border-slate-200 p-4">
+            <div className="flex items-center space-x-4">
+              <div className="flex items-center space-x-2">
+                <label className="text-sm font-medium text-slate-700">Type de fichier:</label>
+                <select 
+                  value={filters.type} 
+                  onChange={(e) => setFilters({...filters, type: e.target.value})}
+                  className="px-3 py-1 border border-slate-300 rounded-md text-sm"
+                >
+                  <option value="all">Tous les types</option>
+                  <option value="pdf">PDF</option>
+                  <option value="docx">Word</option>
+                  <option value="xlsx">Excel</option>
+                  <option value="png">Images</option>
+                </select>
+              </div>
             </div>
-          ) : isError ? (
-            <div className="text-center py-12">
-              <p className="text-red-600 font-semibold">Erreur lors du chargement des fichiers.</p>
-              <p className="text-slate-500 text-sm mt-2">{error instanceof Error ? error.message : "Veuillez réessayer plus tard."}</p>
-            </div>
-          ) : filteredFiles.length === 0 ? (
-            <div className="text-center py-12">
-              <p className="text-slate-600">Vous n'avez encore téléchargé aucun fichier</p>
-              <button
-                onClick={() => setShowUploadModal(true)}
-                className="mt-4 bg-primary text-white px-6 py-2 rounded-lg hover:bg-primary/90"
-              >
-                Télécharger votre premier fichier
-              </button>
-            </div>
-          ) : (
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-              {filteredFiles.map((file) => (
-                <FileCard key={file.id} file={file} />
-              ))}
-            </div>
-          )}
+          </div>
+        )}
+        
+        <div className="flex-1 flex">
+          {/* Main content area with FileGrid */}
+          <div className="flex-1">
+            <FileGrid
+              searchQuery={searchQuery}
+              filters={filters}
+            />
+          </div>
         </div>
       </div>
       

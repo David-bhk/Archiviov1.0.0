@@ -83,8 +83,8 @@ export default function UserTable({ users }: UserTableProps) {
 
   const canDeleteUser = (user: User) => {
     if (currentUser?.id === user.id) return false; // Can't delete self
-    if (currentUser?.role === "superuser") return true;
-    if (currentUser?.role === "admin" && user.role === "user") return true;
+    if (currentUser?.role?.toUpperCase() === "SUPERUSER") return true;
+    if (currentUser?.role?.toUpperCase() === "ADMIN" && user.role?.toUpperCase() === "USER") return true;
     return false;
   };
 

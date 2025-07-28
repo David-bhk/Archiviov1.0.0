@@ -21,6 +21,8 @@ export default function Dashboard() {
     date: "30days",
   });
 
+  const isRegularUser = user?.role?.toUpperCase() === "USER";
+
   if (!user) {
     return null;
   }
@@ -35,14 +37,43 @@ export default function Dashboard() {
           onSearchChange={setSearchQuery}
           onUpload={() => setShowUploadModal(true)}
           showUploadButton={true}
-          pageTitle="Tableau de bord"
+          pageTitle={isRegularUser ? "Mon espace" : "Tableau de bord"}
           breadcrumb="/ Accueil"
         />
         
-        <FiltersBar
-          filters={filters}
-          onFiltersChange={setFilters}
-        />
+        {/* Show filters only for admins */}
+        {!isRegularUser && (
+          <FiltersBar
+            filters={filters}
+            onFiltersChange={setFilters}
+          />
+        )}
+        
+        {/* Simplified filter for regular users */}
+        {isRegularUser && (
+          <div className="bg-white border-b border-slate-200 p-4">
+            <div className="flex items-center justify-between">
+              <div>
+                <h2 className="text-xl font-bold text-slate-800">Mes fichiers récents</h2>
+                <p className="text-sm text-slate-600">Fichiers de votre département et vos uploads</p>
+              </div>
+              <div className="flex items-center space-x-2">
+                <label className="text-sm font-medium text-slate-700">Filtrer par type:</label>
+                <select 
+                  value={filters.type} 
+                  onChange={(e) => setFilters({...filters, type: e.target.value})}
+                  className="px-3 py-1 border border-slate-300 rounded-md text-sm"
+                >
+                  <option value="all">Tous</option>
+                  <option value="pdf">PDF</option>
+                  <option value="docx">Word</option>
+                  <option value="xlsx">Excel</option>
+                  <option value="png">Images</option>
+                </select>
+              </div>
+            </div>
+          </div>
+        )}
         
         <FileGrid
           searchQuery={searchQuery}

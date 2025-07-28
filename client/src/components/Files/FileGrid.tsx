@@ -27,7 +27,10 @@ interface PaginatedResponse {
 export default function FileGrid({ searchQuery, filters }: FileGridProps) {
   const { user } = useAuth();
   const [currentPage, setCurrentPage] = useState(1);
-  const limit = 12; // Files per page - optimal for grid layout
+  
+  // Adjust grid size based on user role - regular users get smaller grid for more activity space
+  const isRegularUser = user?.role?.toUpperCase() === "USER";
+  const limit = isRegularUser ? 9 : 12; // 9 files (3x3 grid) for regular users, 12 for admins
   
   // Reset page when filters change
   useEffect(() => {
@@ -128,12 +131,19 @@ export default function FileGrid({ searchQuery, filters }: FileGridProps) {
   };
 
   const renderPagination = () => {
-    if (totalPages <= 1) return null;
+    // For regular users, only show pagination if there are actually files to paginate
+    // This prevents empty pages when they don't have access to many files
+    if (totalPages <= 1 || (isRegularUser && files.length === 0)) return null;
     
     return (
       <div className="flex items-center justify-between">
         <div className="text-sm text-slate-600">
           Affichage de {startItem} à {endItem} sur {total} fichiers
+          {isRegularUser && (
+            <span className="text-xs text-slate-500 block">
+              (Fichiers de votre département et vos uploads)
+            </span>
+          )}
         </div>
         <div className="flex items-center space-x-2">
           <Button 
@@ -174,9 +184,13 @@ export default function FileGrid({ searchQuery, filters }: FileGridProps) {
       {/* Top pagination */}
       {renderPagination()}
       
-      {/* File grid with fixed height to prevent excessive scrolling */}
+      {/* File grid with adaptive layout based on user role */}
       <div className="flex-1 mt-4">
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-6 gap-4">
+        <div className={`grid gap-4 ${
+          isRegularUser 
+            ? "grid-cols-1 md:grid-cols-2 lg:grid-cols-3" // 3 columns max for regular users
+            : "grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-6" // Full responsive for admins
+        }`}>
           {files.map((file) => (
             <FileCard key={file.id} file={file} />
           ))}

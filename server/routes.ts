@@ -325,16 +325,40 @@ export async function registerRoutes(app: Express): Promise<Server> {
         }
       }
       
-      // Use the new filtered method
-      let result = await storage.getFilesWithFilters(filters, paginationOptions);
-      let files = result.data;
+      let result;
+      let files;
       
-      // Filter files based on user role and department access
-      if (currentUser.role === "user") {
-        // For regular users, we need to filter by their department
-        const userFilters = { ...filters, department: currentUser.department };
-        result = await storage.getFilesWithFilters(userFilters, paginationOptions);
+      // Filter files based on user role
+      if (currentUser.role === "SUPERUSER" || currentUser.role === "ADMIN") {
+        // Superuser and Admin can see all files
+        result = await storage.getFilesWithFilters(filters, paginationOptions);
         files = result.data;
+      } else {
+        // Regular users can only see files they uploaded OR files from their department
+        const userFiles = await storage.getFilesByUser(currentUser.id, { page: 1, limit: 10000 });
+        const departmentFilters = { ...filters, department: currentUser.department };
+        const departmentFiles = await storage.getFilesWithFilters(departmentFilters, { page: 1, limit: 10000 });
+        
+        // Combine and deduplicate files
+        const combinedFiles = [...userFiles.data];
+        departmentFiles.data.forEach(file => {
+          if (!combinedFiles.find(f => f.id === file.id)) {
+            combinedFiles.push(file);
+          }
+        });
+        
+        // Apply pagination to combined results
+        const startIndex = (pageNum - 1) * limitNum;
+        const endIndex = startIndex + limitNum;
+        files = combinedFiles.slice(startIndex, endIndex);
+        
+        result = {
+          data: files,
+          total: combinedFiles.length,
+          page: pageNum,
+          limit: limitNum,
+          totalPages: Math.ceil(combinedFiles.length / limitNum)
+        };
       }
       
       // Pour chaque fichier, ajoute le nom de l'uploader
