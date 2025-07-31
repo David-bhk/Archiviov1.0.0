@@ -21,11 +21,17 @@ export default function Dashboard() {
     date: "30days",
   });
 
-  const isRegularUser = user?.role?.toUpperCase() === "USER";
-
   if (!user) {
     return null;
   }
+  
+  if (!user.role) {
+    return <div>Erreur: Utilisateur sans rôle défini</div>;
+  }
+
+  const userRoleUpper = user.role.toUpperCase();
+  const isRegularUser = userRoleUpper === "USER";
+  const isAdmin = userRoleUpper === "ADMIN" || userRoleUpper === "SUPERUSER";
 
   return (
     <div className="min-h-screen flex bg-slate-50">
@@ -37,16 +43,50 @@ export default function Dashboard() {
           onSearchChange={setSearchQuery}
           onUpload={() => setShowUploadModal(true)}
           showUploadButton={true}
-          pageTitle={isRegularUser ? "Mon espace" : "Tableau de bord"}
+          pageTitle={isAdmin ? "Tableau de bord" : "Mon espace"}
           breadcrumb="/ Accueil"
         />
         
-        {/* Show filters only for admins */}
-        {!isRegularUser && (
-          <FiltersBar
-            filters={filters}
-            onFiltersChange={setFilters}
-          />
+        {/* Show full filters for admins and superusers */}
+        {isAdmin && (
+          <div className="bg-white border-b border-slate-200 p-4">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center space-x-4">
+                <h2 className="text-xl font-bold text-slate-800">Filtres avancés</h2>
+                <select 
+                  value={filters.type} 
+                  onChange={(e) => setFilters({...filters, type: e.target.value})}
+                  className="px-3 py-1 border border-slate-300 rounded-md text-sm"
+                >
+                  <option value="all">Tous les types</option>
+                  <option value="pdf">PDF</option>
+                  <option value="docx">Word</option>
+                  <option value="xlsx">Excel</option>
+                  <option value="png">Images</option>
+                </select>
+                <select 
+                  value={filters.department} 
+                  onChange={(e) => setFilters({...filters, department: e.target.value})}
+                  className="px-3 py-1 border border-slate-300 rounded-md text-sm"
+                >
+                  <option value="all">Tous les départements</option>
+                  <option value="Administration">Administration</option>
+                  <option value="IT">IT</option>
+                  <option value="RH">RH</option>
+                </select>
+                <select 
+                  value={filters.date} 
+                  onChange={(e) => setFilters({...filters, date: e.target.value})}
+                  className="px-3 py-1 border border-slate-300 rounded-md text-sm"
+                >
+                  <option value="7days">7 derniers jours</option>
+                  <option value="30days">30 derniers jours</option>
+                  <option value="90days">90 derniers jours</option>
+                  <option value="all">Toutes les dates</option>
+                </select>
+              </div>
+            </div>
+          </div>
         )}
         
         {/* Simplified filter for regular users */}

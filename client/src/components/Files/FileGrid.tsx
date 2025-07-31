@@ -30,8 +30,9 @@ export default function FileGrid({ searchQuery, filters }: FileGridProps) {
   
   // Adjust grid size based on user role - regular users get smaller grid for more activity space
   const isRegularUser = user?.role?.toUpperCase() === "USER";
+  const isAdmin = user?.role?.toUpperCase() === "ADMIN" || user?.role?.toUpperCase() === "SUPERUSER";
   const limit = isRegularUser ? 9 : 12; // 9 files (3x3 grid) for regular users, 12 for admins
-  
+
   // Reset page when filters change
   useEffect(() => {
     setCurrentPage(1);

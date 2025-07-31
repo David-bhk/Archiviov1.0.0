@@ -1,5 +1,4 @@
 import { useAuth } from "../../contexts/AuthContext";
-import { useRole } from "../../contexts/RoleContext";
 import { useQuery } from "@tanstack/react-query";
 import { useLocation } from "wouter";
 import { Button } from "@/components/ui/button";
@@ -14,7 +13,7 @@ import {
   Gauge,
   Users,
 } from "lucide-react";
-import { Stats, Activity, User, File } from "../../types";
+import { Stats, User, File } from "../../types";
 import { apiRequest } from "../../lib/queryClient";
 
 import React from "react";
@@ -25,8 +24,15 @@ interface SidebarProps {
 
 export default function Sidebar({ onUserManagement }: SidebarProps) {
   const { user, logout } = useAuth();
-  const { hasAccess } = useRole();
   const [location, navigate] = useLocation();
+
+  // Create local hasAccess function to avoid RoleProvider dependency
+  const hasAccess = (allowedRoles: string[]): boolean => {
+    if (!user) return false;
+    const userRole = user.role?.toUpperCase();
+    const allowedRolesUpper = allowedRoles.map(role => role.toUpperCase());
+    return allowedRolesUpper.includes(userRole);
+  };
 
   // ...existing code...
 
@@ -46,7 +52,7 @@ export default function Sidebar({ onUserManagement }: SidebarProps) {
       const res = await apiRequest("GET", "/users");
       return res.json();
     },
-    enabled: !!user && (user.role === "admin" || user.role === "superuser"),
+    enabled: !!user && (user.role?.toUpperCase() === "ADMIN" || user.role?.toUpperCase() === "SUPERUSER"),
   });
 
   function getInitials(firstName: string, lastName: string) {

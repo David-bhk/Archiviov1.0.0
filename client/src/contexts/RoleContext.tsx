@@ -9,7 +9,9 @@ export function RoleProvider({ children }: { children: React.ReactNode }) {
 
   const hasAccess = (allowedRoles: string[]): boolean => {
     if (!user) return false;
-    return allowedRoles.includes(user.role?.toUpperCase());
+    const userRole = user.role?.toUpperCase();
+    const allowedRolesUpper = allowedRoles.map(role => role.toUpperCase());
+    return allowedRolesUpper.includes(userRole);
   };
 
   const canManageUsers = (): boolean => {

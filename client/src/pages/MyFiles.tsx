@@ -22,6 +22,7 @@ export default function MyFiles() {
   });
 
   const isRegularUser = user?.role?.toUpperCase() === "USER";
+  const isAdmin = user?.role?.toUpperCase() === "ADMIN" || user?.role?.toUpperCase() === "SUPERUSER";
 
   if (!user) {
     return null;
@@ -37,24 +38,24 @@ export default function MyFiles() {
           onSearchChange={setSearchQuery}
           onUpload={() => setShowUploadModal(true)}
           showUploadButton={true}
-          pageTitle={isRegularUser ? "Mes fichiers" : "Gestion des fichiers"}
-          breadcrumb={isRegularUser ? "/ Mes documents" : "/ Tous les fichiers"}
+          pageTitle={isAdmin ? "Gestion des fichiers" : "Mes fichiers"}
+          breadcrumb={isAdmin ? "/ Tous les fichiers" : "/ Mes documents"}
         />
         
         <div className="bg-white border-b border-slate-200 p-4">
           <h2 className="text-2xl font-bold text-slate-800">
-            {isRegularUser ? "Mes fichiers" : "Gestion des fichiers"}
+            {isAdmin ? "Gestion des fichiers" : "Mes fichiers"}
           </h2>
           <p className="text-slate-600">
-            {isRegularUser 
-              ? "Vos fichiers personnels et ceux de votre département" 
-              : "Gérez tous les fichiers de l'organisation"
+            {isAdmin 
+              ? "Gérez tous les fichiers de l'organisation" 
+              : "Vos fichiers personnels et ceux de votre département"
             }
           </p>
         </div>
         
-        {/* Show filters bar only for admins or simplified version for regular users */}
-        {!isRegularUser && (
+        {/* Show full filters for admins and superusers */}
+        {isAdmin && (
           <FiltersBar
             filters={filters}
             onFiltersChange={setFilters}
