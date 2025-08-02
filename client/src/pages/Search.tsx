@@ -61,8 +61,8 @@ export default function Search() {
       
       <div className="flex-1 flex flex-col">
         <TopBar
-          searchQuery={globalSearchQuery}
-          onSearchChange={setGlobalSearchQuery}
+          searchQuery={searchQuery}
+          onSearchChange={setSearchQuery}
           onUpload={() => setShowUploadModal(true)}
           showUploadButton={false}
           pageTitle="Recherche"
