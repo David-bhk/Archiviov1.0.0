@@ -329,7 +329,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       let files;
       
       // Filter files based on user role
-      if (currentUser.role === "SUPERUSER" || currentUser.role === "ADMIN") {
+      if (currentUser.role.toUpperCase() === "SUPERUSER" || currentUser.role.toUpperCase() === "ADMIN") {
         // Superuser and Admin can see all files
         result = await storage.getFilesWithFilters(filters, paginationOptions);
         files = result.data;
