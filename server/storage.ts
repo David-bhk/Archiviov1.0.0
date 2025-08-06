@@ -391,8 +391,9 @@ export class PrismaStorage implements IStorage {
 
     if (filters.search) {
       where.OR = [
-        { originalName: { contains: filters.search } },
-        { description: { contains: filters.search } },
+        { originalName: { contains: filters.search, mode: 'insensitive' } },
+        { description: { contains: filters.search, mode: 'insensitive' } },
+        { fileType: { contains: filters.search, mode: 'insensitive' } },
       ];
     }
 
