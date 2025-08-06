@@ -12,6 +12,7 @@ import FileCard from "../components/Files/FileCard";
 import UploadModal from "../components/Files/UploadModal";
 import UserManagementModal from "../components/Users/UserManagementModal";
 import { File } from "../types";
+import { apiRequest } from "../lib/queryClient";
 
 export default function Search() {
   const { user } = useAuth();
@@ -25,7 +26,25 @@ export default function Search() {
   });
 
   const { data: files, isLoading, isError, error } = useQuery<File[]>({
-    queryKey: ["/api/files", { search: activeQuery, userId: user?.id }],
+    queryKey: ["/api/files", "search", activeQuery, user?.id],
+    queryFn: async () => {
+      if (!user || !activeQuery) return [];
+      
+      const params = new URLSearchParams();
+      params.append('search', activeQuery);
+      
+      console.log("🔍 Search Debug:");
+      console.log("- activeQuery:", activeQuery);
+      console.log("- API URL:", `/api/files?${params.toString()}`);
+      
+      const response = await apiRequest("GET", `/api/files?${params.toString()}`);
+      const result = await response.json();
+      
+      console.log("- API Response:", result);
+      console.log("- Files found:", result.data?.length || result.length);
+      
+      return result.data || result; // Handle both paginated and direct array responses
+    },
     enabled: !!user && activeQuery.length > 0,
   });
 
