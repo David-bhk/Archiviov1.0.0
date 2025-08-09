@@ -29,6 +29,8 @@ export default defineConfig({
     emptyOutDir: true,
   },
   server: {
+    host: "0.0.0.0", // Écouter sur toutes les interfaces
+    port: 5173, // Port par défaut de Vite
     fs: {
       strict: true,
       deny: ["**/.*"],

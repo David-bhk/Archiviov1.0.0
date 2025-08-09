@@ -9,6 +9,7 @@ import bcrypt from "bcryptjs";
 import multer from "multer";
 import path from "path";
 import fs from "fs";
+import cors from "cors";
 
 const loginSchema = z.object({
   username: z.string().min(1),
@@ -50,6 +51,20 @@ const upload = multer({
 });
 
 export async function registerRoutes(app: Express): Promise<Server> {
+  // Configuration CORS pour le réseau local
+  app.use(cors({
+    origin: [
+      'http://localhost:5000',
+      'http://127.0.0.1:5000',
+      'http://192.168.1.75:5000',
+      'http://localhost:5173', // Vite dev server
+      'http://192.168.1.75:5173'
+    ],
+    credentials: true,
+    methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+    allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With']
+  }));
+
   // Route pour récupérer les activités récentes
   app.get("/api/activities", requireAuth, async (req: AuthRequest, res) => {
     try {
