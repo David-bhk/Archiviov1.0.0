@@ -15,9 +15,12 @@ interface FileCardProps {
 }
 
 export default function FileCard({ file }: FileCardProps) {
+  const { canAccessFile, canDeleteFile } = useRole();
   const { user } = useAuth();
-  const { canDeleteFile, canAccessFile } = useRole();
   const { toast } = useToast();
+  
+  // Récupérer le token depuis localStorage
+  const getAuthToken = () => localStorage.getItem('archivio_token');
   const queryClient = useQueryClient();
 
   // If user cannot access this file, don't render the card
@@ -190,8 +193,26 @@ export default function FileCard({ file }: FileCardProps) {
               onClick={async (e) => {
                 e.preventDefault();
                 try {
-                  const response = await fetch(`/api/files/${file.id}/download`);
-                  if (!response.ok) throw new Error("Erreur lors du téléchargement");
+                  const token = getAuthToken();
+                  if (!token) {
+                    toast({
+                      title: "Erreur",
+                      description: "Vous devez être connecté pour télécharger",
+                      variant: "destructive",
+                    });
+                    return;
+                  }
+
+                  const response = await fetch(`/api/files/${file.id}/download`, {
+                    headers: {
+                      'Authorization': `Bearer ${token}`,
+                    },
+                  });
+                  
+                  if (!response.ok) {
+                    throw new Error(`Erreur ${response.status}: ${response.statusText}`);
+                  }
+                  
                   const blob = await response.blob();
                   const url = window.URL.createObjectURL(blob);
                   const a = document.createElement("a");
@@ -201,8 +222,18 @@ export default function FileCard({ file }: FileCardProps) {
                   a.click();
                   a.remove();
                   window.URL.revokeObjectURL(url);
+                  
+                  toast({
+                    title: "Succès",
+                    description: "Fichier téléchargé avec succès",
+                  });
                 } catch (err) {
-                  alert("Erreur lors du téléchargement du fichier");
+                  console.error("Erreur téléchargement:", err);
+                  toast({
+                    title: "Erreur",
+                    description: `Erreur lors du téléchargement: ${err instanceof Error ? err.message : 'Erreur inconnue'}`,
+                    variant: "destructive",
+                  });
                 }
               }}
             >

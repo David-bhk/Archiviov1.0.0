@@ -66,7 +66,7 @@ app.use((req, res, next) => {
   server.listen(port, host, () => {
     log(`serving on http://${host}:${port}`);
     log(`Local access: http://localhost:${port}`);
-    log(`Network access: http://192.168.1.75:${port}`);
+    log(`Network access: http://192.168.0.103:${port}`);
   });
 
 })();
