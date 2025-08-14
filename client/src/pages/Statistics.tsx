@@ -17,6 +17,7 @@ export default function Statistics() {
   const { user } = useAuth();
   const [showUploadModal, setShowUploadModal] = useState(false);
   const [showUserModal, setShowUserModal] = useState(false);
+  const [showMobileMenu, setShowMobileMenu] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
 
   const { data: stats, isLoading, isError, error } = useQuery<Stats>({
@@ -51,42 +52,52 @@ export default function Statistics() {
 
   return (
     <div className="min-h-screen flex bg-slate-50">
-      <Sidebar onUserManagement={() => setShowUserModal(true)} />
+      <Sidebar onUserManagement={() => setShowUserModal(true)} onClose={() => setShowMobileMenu(false)} />
+      
+      {/* Mobile menu overlay */}
+      {showMobileMenu && (
+        <div className="lg:hidden fixed inset-0 z-50 bg-black bg-opacity-50" onClick={() => setShowMobileMenu(false)}>
+          <div className="w-64 h-full bg-white" onClick={(e) => e.stopPropagation()}>
+            <Sidebar onUserManagement={() => setShowUserModal(true)} onClose={() => setShowMobileMenu(false)} />
+          </div>
+        </div>
+      )}
       
       <div className="flex-1 flex flex-col">
         <TopBar
           searchQuery={searchQuery}
           onSearchChange={setSearchQuery}
           onUpload={() => setShowUploadModal(true)}
+          onMenuToggle={() => setShowMobileMenu(true)}
           showUploadButton={false}
           pageTitle="Statistiques"
           breadcrumb="/ Analyse des données"
         />
         
-        <div className="bg-white border-b border-slate-200 p-4">
+        <div className="bg-white border-b border-slate-200 p-3 lg:p-4">
           <div className="flex items-center space-x-2">
-            <BarChart3 className="w-6 h-6 text-primary" />
-            <h2 className="text-2xl font-bold text-slate-800">Statistiques</h2>
+            <BarChart3 className="w-5 h-5 lg:w-6 lg:h-6 text-primary" />
+            <h2 className="text-xl lg:text-2xl font-bold text-slate-800">Statistiques</h2>
           </div>
-          <p className="text-slate-600">Analysez les données de votre système</p>
+          <p className="text-sm lg:text-base text-slate-600">Analysez les données de votre système</p>
         </div>
         
-        <div className="flex-1 p-6 overflow-y-auto">
+        <div className="flex-1 p-3 lg:p-6 overflow-y-auto">
           {isLoading ? (
             <div className="flex items-center justify-center h-64">
               <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
             </div>
           ) : (
-            <div className="space-y-6">
+            <div className="space-y-4 lg:space-y-6">
               {/* Overview Cards */}
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 lg:gap-6">
                 <Card>
                   <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                     <CardTitle className="text-sm font-medium">Total des fichiers</CardTitle>
                     <FileText className="h-4 w-4 text-muted-foreground" />
                   </CardHeader>
                   <CardContent>
-                    <div className="text-2xl font-bold">{stats?.totalFiles || 0}</div>
+                    <div className="text-xl lg:text-2xl font-bold">{stats?.totalFiles || 0}</div>
                     <p className="text-xs text-muted-foreground">
                       {stats?.totalSize ? formatFileSize(stats.totalSize) : "0 B"}
                     </p>
@@ -99,7 +110,7 @@ export default function Statistics() {
                     <Users className="h-4 w-4 text-muted-foreground" />
                   </CardHeader>
                   <CardContent>
-                    <div className="text-2xl font-bold">{stats?.activeUsers || 0}</div>
+                    <div className="text-xl lg:text-2xl font-bold">{stats?.activeUsers || 0}</div>
                     <p className="text-xs text-muted-foreground">
                       Total: {stats?.totalUsers || 0}
                     </p>
@@ -112,7 +123,7 @@ export default function Statistics() {
                     <Calendar className="h-4 w-4 text-muted-foreground" />
                   </CardHeader>
                   <CardContent>
-                    <div className="text-2xl font-bold">{stats?.userFiles || 0}</div>
+                    <div className="text-xl lg:text-2xl font-bold">{stats?.userFiles || 0}</div>
                     <p className="text-xs text-muted-foreground">
                       Vos téléchargements
                     </p>
@@ -125,7 +136,7 @@ export default function Statistics() {
                     <HardDrive className="h-4 w-4 text-muted-foreground" />
                   </CardHeader>
                   <CardContent>
-                    <div className="text-2xl font-bold">{stats?.totalDepartments || 0}</div>
+                    <div className="text-xl lg:text-2xl font-bold">{stats?.totalDepartments || 0}</div>
                     <p className="text-xs text-muted-foreground">
                       Organisés
                     </p>
@@ -136,25 +147,25 @@ export default function Statistics() {
               {/* File Types Distribution */}
               <Card>
                 <CardHeader>
-                  <CardTitle>Répartition par type de fichier</CardTitle>
+                  <CardTitle className="text-base lg:text-lg">Répartition par type de fichier</CardTitle>
                 </CardHeader>
                 <CardContent>
-                  <div className="space-y-4">
+                  <div className="space-y-3 lg:space-y-4">
                     {stats?.fileTypes && Object.entries(stats.fileTypes).map(([type, count]) => {
                       const total = Object.values(stats.fileTypes).reduce((sum, c) => sum + c, 0);
                       const percentage = total > 0 ? Math.round((count / total) * 100) : 0;
                       
                       return (
-                        <div key={type} className="flex items-center space-x-3">
+                        <div key={type} className="flex items-center space-x-2 lg:space-x-3">
                           <div className={`w-3 h-3 rounded-full ${getFileTypeColor(type)}`}></div>
-                          <div className="flex-1 flex items-center justify-between">
+                          <div className="flex-1 flex flex-col sm:flex-row sm:items-center sm:justify-between space-y-1 sm:space-y-0">
                             <span className="text-sm font-medium uppercase">{type}</span>
                             <div className="flex items-center space-x-2">
-                              <span className="text-sm text-slate-600">{count} fichiers</span>
-                              <Badge variant="outline">{percentage}%</Badge>
+                              <span className="text-xs lg:text-sm text-slate-600">{count} fichiers</span>
+                              <Badge variant="outline" className="text-xs">{percentage}%</Badge>
                             </div>
                           </div>
-                          <div className="w-24">
+                          <div className="w-16 lg:w-24">
                             <Progress value={percentage} className="h-2" />
                           </div>
                         </div>
@@ -167,13 +178,13 @@ export default function Statistics() {
               {/* Storage Usage */}
               <Card>
                 <CardHeader>
-                  <CardTitle>Utilisation du stockage</CardTitle>
+                  <CardTitle className="text-base lg:text-lg">Utilisation du stockage</CardTitle>
                 </CardHeader>
                 <CardContent>
-                  <div className="space-y-4">
+                  <div className="space-y-3 lg:space-y-4">
                     <div className="flex items-center justify-between">
                       <span className="text-sm font-medium">Espace utilisé</span>
-                      <span className="text-sm text-slate-600">
+                      <span className="text-xs lg:text-sm text-slate-600">
                         {stats?.totalSize ? formatFileSize(stats.totalSize) : "0 B"}
                       </span>
                     </div>

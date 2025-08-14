@@ -27,6 +27,7 @@ export default function Departments() {
   const queryClient = useQueryClient();
   const [showUploadModal, setShowUploadModal] = useState(false);
   const [showUserModal, setShowUserModal] = useState(false);
+  const [showMobileMenu, setShowMobileMenu] = useState(false);
   const [showAddModal, setShowAddModal] = useState(false);
   const [editingDepartment, setEditingDepartment] = useState<Department | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
@@ -114,26 +115,36 @@ export default function Departments() {
 
   return (
     <div className="min-h-screen flex bg-slate-50">
-      <Sidebar onUserManagement={() => setShowUserModal(true)} />
+      <Sidebar onUserManagement={() => setShowUserModal(true)} onClose={() => setShowMobileMenu(false)} />
+      
+      {/* Mobile menu overlay */}
+      {showMobileMenu && (
+        <div className="lg:hidden fixed inset-0 z-50 bg-black bg-opacity-50" onClick={() => setShowMobileMenu(false)}>
+          <div className="w-64 h-full bg-white" onClick={(e) => e.stopPropagation()}>
+            <Sidebar onUserManagement={() => setShowUserModal(true)} onClose={() => setShowMobileMenu(false)} />
+          </div>
+        </div>
+      )}
       
       <div className="flex-1 flex flex-col">
         <TopBar
           searchQuery={searchQuery}
           onSearchChange={setSearchQuery}
           onUpload={() => setShowUploadModal(true)}
+          onMenuToggle={() => setShowMobileMenu(true)}
           showUploadButton={false}
           pageTitle="Départements"
           breadcrumb="/ Gestion des départements"
         />
         
-        <div className="bg-white border-b border-slate-200 p-4">
-          <div className="flex items-center justify-between">
+        <div className="bg-white border-b border-slate-200 p-3 lg:p-4">
+          <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between space-y-3 sm:space-y-0">
             <div>
-              <h2 className="text-2xl font-bold text-slate-800">Départements</h2>
-              <p className="text-slate-600">Gérez les départements de votre organisation</p>
+              <h2 className="text-xl lg:text-2xl font-bold text-slate-800">Départements</h2>
+              <p className="text-sm lg:text-base text-slate-600">Gérez les départements de votre organisation</p>
             </div>
             {canManageDepartments() && (
-              <Button onClick={() => setShowAddModal(true)}>
+              <Button onClick={() => setShowAddModal(true)} className="w-full sm:w-auto">
                 <Plus className="w-4 h-4 mr-2" />
                 Nouveau département
               </Button>
@@ -141,18 +152,18 @@ export default function Departments() {
           </div>
         </div>
         
-        <div className="flex-1 p-6 overflow-y-auto">
+        <div className="flex-1 p-3 lg:p-6 overflow-y-auto">
           {isLoading ? (
             <div className="flex items-center justify-center h-64">
               <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
             </div>
           ) : isError ? (
-            <div className="text-center py-12">
+            <div className="text-center py-8 lg:py-12">
               <p className="text-red-600 font-semibold">Erreur lors du chargement des départements.</p>
               <p className="text-slate-500 text-sm mt-2">{error instanceof Error ? error.message : "Veuillez réessayer plus tard."}</p>
             </div>
           ) : (
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3 lg:gap-6">
               {departments?.map((department) => (
                 <ResponsiveCard
                   key={department.id}

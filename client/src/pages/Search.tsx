@@ -18,6 +18,7 @@ export default function Search() {
   const { user } = useAuth();
   const [showUploadModal, setShowUploadModal] = useState(false);
   const [showUserModal, setShowUserModal] = useState(false);
+  const [showMobileMenu, setShowMobileMenu] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
   const [activeQuery, setActiveQuery] = useState("");
   const [filters, setFilters] = useState({
@@ -76,23 +77,33 @@ export default function Search() {
 
   return (
     <div className="min-h-screen flex bg-slate-50">
-      <Sidebar onUserManagement={() => setShowUserModal(true)} />
+      <Sidebar onUserManagement={() => setShowUserModal(true)} onClose={() => setShowMobileMenu(false)} />
+      
+      {/* Mobile menu overlay */}
+      {showMobileMenu && (
+        <div className="lg:hidden fixed inset-0 z-50 bg-black bg-opacity-50" onClick={() => setShowMobileMenu(false)}>
+          <div className="w-64 h-full bg-white" onClick={(e) => e.stopPropagation()}>
+            <Sidebar onUserManagement={() => setShowUserModal(true)} onClose={() => setShowMobileMenu(false)} />
+          </div>
+        </div>
+      )}
       
       <div className="flex-1 flex flex-col">
         <TopBar
           searchQuery={searchQuery}
           onSearchChange={setSearchQuery}
           onUpload={() => setShowUploadModal(true)}
+          onMenuToggle={() => setShowMobileMenu(true)}
           showUploadButton={false}
           pageTitle="Recherche"
           breadcrumb="/ Recherche globale"
-        />        <div className="bg-white border-b border-slate-200 p-4">
-          <div className="flex items-center space-x-2 mb-4">
-            <SearchIcon className="w-6 h-6 text-primary" />
-            <h2 className="text-2xl font-bold text-slate-800">Recherche avancée</h2>
+        />        <div className="bg-white border-b border-slate-200 p-3 lg:p-4">
+          <div className="flex items-center space-x-2 mb-3 lg:mb-4">
+            <SearchIcon className="w-5 h-5 lg:w-6 lg:h-6 text-primary" />
+            <h2 className="text-xl lg:text-2xl font-bold text-slate-800">Recherche avancée</h2>
           </div>
           
-          <form onSubmit={handleSearch} className="flex items-center space-x-4">
+          <form onSubmit={handleSearch} className="flex flex-col sm:flex-row items-stretch sm:items-center space-y-2 sm:space-y-0 sm:space-x-4">
             <div className="flex-1 relative">
               <SearchIcon className="absolute left-3 top-3 h-4 w-4 text-slate-400" />
               <Input
@@ -103,58 +114,60 @@ export default function Search() {
                 className="pl-10"
               />
             </div>
-            <Button type="submit" disabled={!searchQuery.trim()}>
+            <Button type="submit" disabled={!searchQuery.trim()} className="w-full sm:w-auto">
               Rechercher
             </Button>
           </form>
         </div>
         
         {/* Filters */}
-        <div className="bg-white border-b border-slate-200 p-4">
-          <div className="flex items-center space-x-4">
+        <div className="bg-white border-b border-slate-200 p-3 lg:p-4">
+          <div className="flex flex-col sm:flex-row items-start sm:items-center space-y-3 sm:space-y-0 sm:space-x-4">
             <div className="flex items-center space-x-2">
               <Filter className="w-4 h-4 text-slate-500" />
               <span className="text-sm font-medium text-slate-700">Filtres:</span>
             </div>
             
-            <select
-              value={filters.department}
-              onChange={(e) => setFilters({ ...filters, department: e.target.value })}
-              className="px-3 py-1 border border-slate-300 rounded-md text-sm"
-            >
-              <option value="">Tous les départements</option>
-              {departments?.map((dept) => (
-                <option key={dept.id} value={dept.name}>
-                  {dept.name}
-                </option>
-              ))}
-            </select>
-            
-            <select
-              value={filters.fileType}
-              onChange={(e) => setFilters({ ...filters, fileType: e.target.value })}
-              className="px-3 py-1 border border-slate-300 rounded-md text-sm"
-            >
-              <option value="">Tous les types</option>
-              {fileTypes.map((type) => (
-                <option key={type} value={type}>
-                  {type.toUpperCase()}
-                </option>
-              ))}
-            </select>
-            
-            {(filters.department || filters.fileType) && (
-              <Button variant="ghost" size="sm" onClick={clearFilters}>
-                <X className="w-4 h-4 mr-1" />
-                Effacer
-              </Button>
-            )}
+            <div className="flex flex-col sm:flex-row space-y-2 sm:space-y-0 sm:space-x-4 w-full sm:w-auto">
+              <select
+                value={filters.department}
+                onChange={(e) => setFilters({ ...filters, department: e.target.value })}
+                className="px-3 py-1 border border-slate-300 rounded-md text-sm w-full sm:w-auto"
+              >
+                <option value="">Tous les départements</option>
+                {departments?.map((dept) => (
+                  <option key={dept.id} value={dept.name}>
+                    {dept.name}
+                  </option>
+                ))}
+              </select>
+              
+              <select
+                value={filters.fileType}
+                onChange={(e) => setFilters({ ...filters, fileType: e.target.value })}
+                className="px-3 py-1 border border-slate-300 rounded-md text-sm w-full sm:w-auto"
+              >
+                <option value="">Tous les types</option>
+                {fileTypes.map((type) => (
+                  <option key={type} value={type}>
+                    {type.toUpperCase()}
+                  </option>
+                ))}
+              </select>
+              
+              {(filters.department || filters.fileType) && (
+                <Button variant="ghost" size="sm" onClick={clearFilters} className="w-full sm:w-auto">
+                  <X className="w-4 h-4 mr-1" />
+                  Effacer
+                </Button>
+              )}
+            </div>
           </div>
           
           {/* Active filters */}
-          <div className="mt-2 flex items-center space-x-2">
+          <div className="mt-2 flex flex-wrap items-center gap-2">
             {activeQuery && (
-              <Badge variant="outline">
+              <Badge variant="outline" className="text-xs">
                 Recherche: "{activeQuery}"
                 <button
                   onClick={() => setActiveQuery("")}
@@ -165,51 +178,51 @@ export default function Search() {
               </Badge>
             )}
             {filters.department && (
-              <Badge variant="outline">
+              <Badge variant="outline" className="text-xs">
                 Département: {filters.department}
               </Badge>
             )}
             {filters.fileType && (
-              <Badge variant="outline">
+              <Badge variant="outline" className="text-xs">
                 Type: {filters.fileType.toUpperCase()}
               </Badge>
             )}
           </div>
         </div>
         
-        <div className="flex-1 p-6 overflow-y-auto">
+        <div className="flex-1 p-3 lg:p-6 overflow-y-auto">
           {!activeQuery ? (
-            <div className="text-center py-12">
-              <SearchIcon className="w-16 h-16 text-slate-300 mx-auto mb-4" />
-              <p className="text-xl text-slate-600 mb-2">Recherchez dans vos fichiers</p>
-              <p className="text-slate-500">Tapez un mot-clé pour commencer votre recherche</p>
+            <div className="text-center py-8 lg:py-12">
+              <SearchIcon className="w-12 h-12 lg:w-16 lg:h-16 text-slate-300 mx-auto mb-4" />
+              <p className="text-lg lg:text-xl text-slate-600 mb-2">Recherchez dans vos fichiers</p>
+              <p className="text-sm lg:text-base text-slate-500">Tapez un mot-clé pour commencer votre recherche</p>
             </div>
           ) : isLoading ? (
             <div className="flex items-center justify-center h-64">
               <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
             </div>
           ) : isError ? (
-            <div className="text-center py-12">
+            <div className="text-center py-8 lg:py-12">
               <p className="text-red-600 font-semibold">Erreur lors du chargement des fichiers.</p>
               <p className="text-slate-500 text-sm mt-2">{error instanceof Error ? error.message : "Veuillez réessayer plus tard."}</p>
             </div>
           ) : filteredFiles.length === 0 ? (
-            <div className="text-center py-12">
-              <p className="text-xl text-slate-600 mb-2">Aucun résultat trouvé</p>
-              <p className="text-slate-500">
+            <div className="text-center py-8 lg:py-12">
+              <p className="text-lg lg:text-xl text-slate-600 mb-2">Aucun résultat trouvé</p>
+              <p className="text-sm lg:text-base text-slate-500">
                 Aucun fichier ne correspond à votre recherche "{activeQuery}"
               </p>
             </div>
           ) : (
             <div>
-              <div className="mb-4 flex items-center justify-between">
-                <p className="text-slate-600">
+              <div className="mb-3 lg:mb-4 flex items-center justify-between">
+                <p className="text-sm lg:text-base text-slate-600">
                   {filteredFiles.length} résultat{filteredFiles.length > 1 ? 's' : ''} 
-                  {activeQuery && ` pour "{activeQuery}"`}
+                  {activeQuery && ` pour "${activeQuery}"`}
                 </p>
               </div>
               
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5 gap-3 lg:gap-6">
                 {filteredFiles.map((file) => (
                   <FileCard key={file.id} file={file} />
                 ))}

@@ -14,6 +14,7 @@ export default function Dashboard() {
   const { canAccessUserManagement } = useRole();
   const [showUploadModal, setShowUploadModal] = useState(false);
   const [showUserModal, setShowUserModal] = useState(false);
+  const [showMobileMenu, setShowMobileMenu] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
   const [filters, setFilters] = useState({
     type: "all",
@@ -34,14 +35,34 @@ export default function Dashboard() {
   const isAdmin = userRoleUpper === "ADMIN" || userRoleUpper === "SUPERUSER";
 
   return (
-    <div className="min-h-screen flex bg-slate-50">
-      <Sidebar onUserManagement={() => setShowUserModal(true)} />
+    <div className="min-h-screen flex flex-col lg:flex-row bg-slate-50">
+      {/* Mobile sidebar overlay */}
+      {showMobileMenu && (
+        <div className="fixed inset-0 z-50 lg:hidden">
+          <div className="absolute inset-0 bg-black/50" onClick={() => setShowMobileMenu(false)} />
+          <div className="absolute left-0 top-0 h-full w-64 bg-white">
+            <Sidebar 
+              onUserManagement={() => {
+                setShowUserModal(true);
+                setShowMobileMenu(false);
+              }} 
+              onClose={() => setShowMobileMenu(false)}
+            />
+          </div>
+        </div>
+      )}
+
+      {/* Desktop sidebar */}
+      <div className="hidden lg:block">
+        <Sidebar onUserManagement={() => setShowUserModal(true)} />
+      </div>
       
-      <div className="flex-1 flex flex-col">
+      <div className="flex-1 flex flex-col min-w-0">
         <TopBar
           searchQuery={searchQuery}
           onSearchChange={setSearchQuery}
           onUpload={() => setShowUploadModal(true)}
+          onMenuToggle={() => setShowMobileMenu(true)}
           showUploadButton={true}
           pageTitle={isAdmin ? "Tableau de bord" : "Mon espace"}
           breadcrumb="/ Accueil"
@@ -49,14 +70,14 @@ export default function Dashboard() {
         
         {/* Show full filters for admins and superusers */}
         {isAdmin && (
-          <div className="bg-white border-b border-slate-200 p-4">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center space-x-4">
-                <h2 className="text-xl font-bold text-slate-800">Filtres avancés</h2>
+          <div className="bg-white border-b border-slate-200 p-3 lg:p-4">
+            <div className="flex flex-col space-y-3 lg:flex-row lg:items-center lg:justify-between lg:space-y-0">
+              <h2 className="text-lg lg:text-xl font-bold text-slate-800">Filtres avancés</h2>
+              <div className="flex flex-col space-y-2 sm:flex-row sm:items-center sm:space-y-0 sm:space-x-3">
                 <select 
                   value={filters.type} 
                   onChange={(e) => setFilters({...filters, type: e.target.value})}
-                  className="px-3 py-1 border border-slate-300 rounded-md text-sm"
+                  className="w-full sm:w-auto px-3 py-2 border border-slate-300 rounded-md text-sm"
                 >
                   <option value="all">Tous les types</option>
                   <option value="pdf">PDF</option>
@@ -67,7 +88,7 @@ export default function Dashboard() {
                 <select 
                   value={filters.department} 
                   onChange={(e) => setFilters({...filters, department: e.target.value})}
-                  className="px-3 py-1 border border-slate-300 rounded-md text-sm"
+                  className="w-full sm:w-auto px-3 py-2 border border-slate-300 rounded-md text-sm"
                 >
                   <option value="all">Tous les départements</option>
                   <option value="Administration">Administration</option>
@@ -77,7 +98,7 @@ export default function Dashboard() {
                 <select 
                   value={filters.date} 
                   onChange={(e) => setFilters({...filters, date: e.target.value})}
-                  className="px-3 py-1 border border-slate-300 rounded-md text-sm"
+                  className="w-full sm:w-auto px-3 py-2 border border-slate-300 rounded-md text-sm"
                 >
                   <option value="7days">7 derniers jours</option>
                   <option value="30days">30 derniers jours</option>
@@ -91,13 +112,13 @@ export default function Dashboard() {
         
         {/* Simplified filter for regular users */}
         {isRegularUser && (
-          <div className="bg-white border-b border-slate-200 p-4">
-            <div className="flex items-center justify-between">
+          <div className="bg-white border-b border-slate-200 p-3 lg:p-4">
+            <div className="flex flex-col space-y-3 lg:flex-row lg:items-center lg:justify-between lg:space-y-0">
               <div>
-                <h2 className="text-xl font-bold text-slate-800">Mes fichiers récents</h2>
+                <h2 className="text-lg lg:text-xl font-bold text-slate-800">Mes fichiers récents</h2>
                 <p className="text-sm text-slate-600">Fichiers de votre département et vos uploads</p>
               </div>
-              <div className="flex items-center space-x-2">
+              <div className="flex flex-col space-y-2 sm:flex-row sm:items-center sm:space-y-0 sm:space-x-2">
                 <label className="text-sm font-medium text-slate-700">Filtrer par type:</label>
                 <select 
                   value={filters.type} 

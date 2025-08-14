@@ -73,7 +73,7 @@ export default function RightPanel() {
   };
 
   return (
-    <div className="w-72 xl:w-80 bg-white border-l border-slate-200 flex-shrink-0">
+    <div className="hidden xl:block w-72 xl:w-80 bg-white border-l border-slate-200 flex-shrink-0">
       <div className="p-4 xl:p-6">
         <h3 className="text-base xl:text-lg font-semibold text-slate-800 mb-3 xl:mb-4">Activité récente</h3>
         <div className="space-y-3 xl:space-y-4">

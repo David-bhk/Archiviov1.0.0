@@ -12,6 +12,15 @@ export interface User {
   lastLogin?: Date;
 }
 
+export interface Department {
+  id: number;
+  name: string;
+  description?: string;
+  userCount?: number;
+  fileCount?: number;
+  createdAt?: Date;
+}
+
 export interface File {
   id: number;
   filename: string;

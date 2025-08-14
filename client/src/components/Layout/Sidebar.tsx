@@ -20,9 +20,10 @@ import React from "react";
 
 interface SidebarProps {
   onUserManagement: () => void;
+  onClose?: () => void;
 }
 
-export default function Sidebar({ onUserManagement }: SidebarProps) {
+export default function Sidebar({ onUserManagement, onClose }: SidebarProps) {
   const { user, logout } = useAuth();
   const [location, navigate] = useLocation();
 
@@ -82,14 +83,27 @@ export default function Sidebar({ onUserManagement }: SidebarProps) {
   return (
     <div className="w-56 xl:w-64 bg-white border-r border-slate-200 flex flex-col flex-shrink-0">
       <div className="p-4 xl:p-6 border-b border-slate-200">
-        <div className="flex items-center space-x-2 xl:space-x-3">
-          <div className="w-8 xl:w-10 h-8 xl:h-10 bg-primary rounded-lg flex items-center justify-center">
-            <Archive className="text-white" size={16} />
+        <div className="flex items-center justify-between">
+          <div className="flex items-center space-x-2 xl:space-x-3">
+            <div className="w-8 xl:w-10 h-8 xl:h-10 bg-primary rounded-lg flex items-center justify-center">
+              <Archive className="text-white" size={16} />
+            </div>
+            <div>
+              <h1 className="text-lg xl:text-xl font-bold text-slate-800">Archivio</h1>
+              <p className="text-xs xl:text-sm text-slate-500">v1.0.0</p>
+            </div>
           </div>
-          <div>
-            <h1 className="text-lg xl:text-xl font-bold text-slate-800">Archivio</h1>
-            <p className="text-xs xl:text-sm text-slate-500">v1.0.0</p>
-          </div>
+          {/* Bouton fermeture mobile */}
+          {onClose && (
+            <Button 
+              variant="ghost" 
+              size="sm" 
+              onClick={onClose}
+              className="lg:hidden"
+            >
+              ✕
+            </Button>
+          )}
         </div>
       </div>
       <nav className="flex-1 p-3 xl:p-4 space-y-1 xl:space-y-2">
