@@ -38,6 +38,36 @@ export interface File {
   isDeleted?: boolean;
 }
 
+// Types pour l'optimisation des performances
+export interface PaginatedResponse<T> {
+  data: T[];
+  total: number;
+  page: number;
+  limit: number;
+  totalPages: number;
+  hasNextPage: boolean;
+  hasPrevPage: boolean;
+}
+
+export interface SearchFilters {
+  type: string;
+  department: string;
+  date: string;
+  status?: string;
+  size?: { min: number; max: number };
+}
+
+export interface FileSearchParams {
+  search?: string;
+  filters: SearchFilters;
+  page: number;
+  limit: number;
+  sortBy?: 'name' | 'size' | 'date' | 'type';
+  sortOrder?: 'asc' | 'desc';
+}
+
+export type ViewMode = 'cards' | 'compact' | 'table';
+
 export interface Stats {
   totalFiles: number;
   totalSize: number;

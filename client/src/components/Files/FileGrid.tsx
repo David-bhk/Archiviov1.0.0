@@ -1,14 +1,15 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
-import { ChevronLeft, ChevronRight, FileText, Grid, List } from "lucide-react";
+import { ChevronLeft, ChevronRight, FileText } from "lucide-react";
 import FileCard from "./FileCard";
 import CompactFileCard from "./CompactFileCard";
 import FileTable from "./FileTable";
-import { File } from "../../types";
+import FileToolbar from "./FileToolbar";
+import { File, PaginatedResponse, ViewMode } from "../../types";
 import { useAuth } from "../../contexts/AuthContext";
 import { useRole } from "../../contexts/RoleContext";
 import { apiRequest } from "../../lib/queryClient";
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect, useMemo, useCallback } from "react";
 import { useDebounce } from "../../hooks/useDebounce";
 import { useToast } from "@/hooks/use-toast";
 import { downloadFile } from "../../utils/fileUtils";
@@ -22,14 +23,6 @@ interface FileGridProps {
   };
 }
 
-interface PaginatedResponse {
-  data: File[];
-  total: number;
-  page: number;
-  limit: number;
-  totalPages: number;
-}
-
 export default function FileGrid({ searchQuery, filters }: FileGridProps) {
   const { user } = useAuth();
   const { canDeleteFile } = useRole();
@@ -37,7 +30,11 @@ export default function FileGrid({ searchQuery, filters }: FileGridProps) {
   const queryClient = useQueryClient();
   
   // View mode for adaptive display
-  const [viewMode, setViewMode] = useState<'cards' | 'compact' | 'table'>('cards');
+  const [viewMode, setViewMode] = useState<ViewMode>('cards');
+  
+  // Sorting state
+  const [sortBy, setSortBy] = useState<'name' | 'size' | 'date' | 'type'>('date');
+  const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('desc');
   
   // Intelligent pagination based on total file count
   const getOptimalLimit = (totalFiles: number): number => {
@@ -73,31 +70,42 @@ export default function FileGrid({ searchQuery, filters }: FileGridProps) {
     },
   });
 
-  // Reset page when filters change
+  // Reset page when filters or sort change
   useEffect(() => {
     setCurrentPage(1);
-  }, [debouncedSearchQuery, filters.department, filters.date, filters.type]);
+  }, [debouncedSearchQuery, filters.department, filters.date, filters.type, sortBy, sortOrder]);
   
-  const { data: response, isLoading, error } = useQuery<PaginatedResponse>({
-    queryKey: ["/api/files", { search: debouncedSearchQuery, department: filters.department, date: filters.date, type: filters.type, page: currentPage, limit: adaptiveLimit }],
+  const { data: response, isLoading, error } = useQuery<PaginatedResponse<File>>({
+    queryKey: ["/api/files", { 
+      search: debouncedSearchQuery, 
+      department: filters.department, 
+      date: filters.date, 
+      type: filters.type, 
+      page: currentPage, 
+      limit: adaptiveLimit,
+      sortBy,
+      sortOrder
+    }],
     queryFn: async () => {
       const params = new URLSearchParams();
       if (debouncedSearchQuery) params.append("search", debouncedSearchQuery);
       if (filters.department && filters.department !== "all") params.append("department", filters.department);
       if (filters.date && filters.date !== "all") {
-        // On suppose que filters.date est du type "30days", "7days", etc.
         const match = filters.date.match(/(\d+)/);
         if (match) params.append("date", match[1]);
       }
       if (filters.type && filters.type !== "all") params.append("type", filters.type);
       params.append("page", currentPage.toString());
       params.append("limit", adaptiveLimit.toString());
+      params.append("sortBy", sortBy);
+      params.append("sortOrder", sortOrder);
       
       const url = `/api/files?${params.toString()}`;
       const res = await apiRequest("GET", url);
       const data = await res.json();
       return data;
     },
+    staleTime: 2 * 60 * 1000, // 2 minutes pour les listes de fichiers
   });
 
   const files = response?.data || [];
@@ -123,10 +131,10 @@ export default function FileGrid({ searchQuery, filters }: FileGridProps) {
     }
   }, [totalFiles, adaptiveLimit, viewMode, toast]);
 
-  // Download handler
-  const handleDownload = async (file: File) => {
+  // Download handler (optimized with useCallback)
+  const handleDownload = useCallback(async (file: File) => {
     try {
-      const token = localStorage.getItem('archivio_token'); // Corrigé pour utiliser la bonne clé
+      const token = localStorage.getItem('archivio_token');
       if (!token) {
         toast({
           title: "Erreur",
@@ -168,10 +176,10 @@ export default function FileGrid({ searchQuery, filters }: FileGridProps) {
         variant: "destructive",
       });
     }
-  };
+  }, [toast]);
 
-  // Delete handler
-  const handleDelete = (file: File) => {
+  // Delete handler (optimized with useCallback)
+  const handleDelete = useCallback((file: File) => {
     if (!canDeleteFile(file)) {
       toast({
         title: "Action non autorisée",
@@ -184,7 +192,17 @@ export default function FileGrid({ searchQuery, filters }: FileGridProps) {
     if (window.confirm("Êtes-vous sûr de vouloir supprimer ce fichier ?")) {
       deleteMutation.mutate(file.id);
     }
-  };
+  }, [canDeleteFile, toast, deleteMutation]);
+
+  // Sort handlers
+  const handleSort = useCallback((field: 'name' | 'size' | 'date' | 'type') => {
+    if (sortBy === field) {
+      setSortOrder(prev => prev === 'asc' ? 'desc' : 'asc');
+    } else {
+      setSortBy(field);
+      setSortOrder('desc');
+    }
+  }, [sortBy]);
 
   if (error) {
     console.error("FileGrid error:", error);
@@ -345,60 +363,32 @@ export default function FileGrid({ searchQuery, filters }: FileGridProps) {
   };
 
   return (
-    <div className="flex-1 p-3 lg:p-6 flex flex-col">
-      {/* View controls and pagination */}
-      <div className="flex items-center justify-between mb-4">
-        {/* View mode selector */}
-        <div className="flex items-center space-x-1 bg-slate-100 rounded-lg p-1">
-          <Button
-            variant={viewMode === 'cards' ? 'default' : 'ghost'}
-            size="sm"
-            onClick={() => setViewMode('cards')}
-            className="h-8"
-          >
-            <Grid className="w-4 h-4 mr-1" />
-            Cards
-          </Button>
-          <Button
-            variant={viewMode === 'compact' ? 'default' : 'ghost'}
-            size="sm"
-            onClick={() => setViewMode('compact')}
-            className="h-8"
-          >
-            <Grid className="w-4 h-4 mr-1" />
-            Compact
-          </Button>
-          <Button
-            variant={viewMode === 'table' ? 'default' : 'ghost'}
-            size="sm"
-            onClick={() => setViewMode('table')}
-            className="h-8"
-          >
-            <List className="w-4 h-4 mr-1" />
-            Table
-          </Button>
-        </div>
-
-        {/* Performance indicator */}
-        {totalFiles > 1000 && (
-          <div className="text-xs text-amber-600 bg-amber-50 border border-amber-200 rounded-lg px-3 py-1">
-            ⚡ Mode optimisé pour {totalFiles.toLocaleString()} fichiers
-          </div>
-        )}
-      </div>
-
+    <div className="flex-1 flex flex-col h-full">
+      {/* Toolbar optimisée */}
+      <FileToolbar
+        viewMode={viewMode}
+        onViewModeChange={setViewMode}
+        sortBy={sortBy}
+        sortOrder={sortOrder}
+        onSort={handleSort}
+        totalFiles={totalFiles}
+        currentPage={currentPage}
+        totalPages={totalPages}
+        isLoading={isLoading}
+      />
+      
       {/* Top pagination - Hidden on mobile */}
-      <div className="hidden sm:block mb-4">
+      <div className="hidden sm:block p-4 border-b border-slate-100">
         {renderPagination()}
       </div>
       
       {/* File content */}
-      <div className="flex-1">
+      <div className="flex-1 p-3 lg:p-6">
         {renderFileContent()}
       </div>
       
       {/* Bottom pagination */}
-      <div className="mt-4 lg:mt-6">
+      <div className="p-4 border-t border-slate-100">
         {renderPagination()}
       </div>
     </div>

@@ -5,7 +5,6 @@ import Sidebar from "../components/Layout/Sidebar";
 import TopBar from "../components/Layout/TopBar";
 import RightPanel from "../components/Layout/RightPanel";
 import FileGrid from "../components/Files/FileGrid";
-import FiltersBar from "../components/Files/FiltersBar";
 import UploadModal from "../components/Files/UploadModal";
 import UserManagementModal from "../components/Users/UserManagementModal";
 

@@ -57,6 +57,8 @@ export default function MyFiles() {
         {/* Show full filters for admins and superusers */}
         {isAdmin && (
           <FiltersBar
+            searchQuery={searchQuery}
+            onSearchChange={setSearchQuery}
             filters={filters}
             onFiltersChange={setFilters}
           />
