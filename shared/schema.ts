@@ -60,6 +60,17 @@ export interface File {
   isDeleted: boolean;
 }
 
+export interface ActivitySummary {
+  id: number;
+  type: string;
+  userId: number | null;
+  fileId: number | null;
+  description: string | null;
+  createdAt: Date;
+  user: Pick<User, "id" | "firstName" | "lastName" | "role" | "department"> | null;
+  file: Pick<File, "id" | "originalName" | "department"> | null;
+}
+
 // Zod schemas for validation
 export const insertUserSchema = z.object({
   username: z.string().min(1),

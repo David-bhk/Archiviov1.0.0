@@ -75,6 +75,7 @@ Mettre ce fichier à jour après chaque modification significative de l'impléme
 - Remplacement des justifications saisies directement dans chaque carte par des confirmations accessibles et distinctes pour l'archivage et le refus, sans modifier les routes ni les règles de décision.
 - Ajout des états chargement, vide et erreur, de la pagination serveur réelle, des notifications de résultat et de l'invalidation cohérente des données documentaires, statistiques et d'audit.
 - Baseline de la file de validation validée : TypeScript, 31 tests et build réussis.
+- Sécurisation du contrat de l'historique : projection publique explicite des acteurs et documents, sans mot de passe ni chemin physique, avec limite de requête bornée.
 
 ## En cours
 

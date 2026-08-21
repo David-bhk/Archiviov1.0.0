@@ -105,7 +105,7 @@ La première priorité n'est pas d'ajouter l'interface des demandes d'accès. Il
 
 ### A06 — Secrets et mots de passe potentiellement journalisés
 
-**État : résolu.** Les corps de création ne sont plus journalisés et le middleware HTTP ne capture plus les réponses JSON. Les logs conservent uniquement méthode, chemin, statut et durée.
+**État : résolu.** Les corps de création ne sont plus journalisés et le middleware HTTP ne capture plus les réponses JSON. Les logs conservent uniquement méthode, chemin, statut et durée. La réponse de l'historique projette désormais explicitement les seuls champs publics de l'utilisateur et du document ; aucun hash de mot de passe ni chemin physique n'est renvoyé.
 
 **Cible :** supprimer les logs de corps sensibles, appliquer une journalisation structurée avec redaction et ne jamais journaliser jetons ou mots de passe.
 

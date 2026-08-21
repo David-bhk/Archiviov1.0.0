@@ -78,9 +78,31 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Route pour récupérer les activités récentes
   app.get("/api/activities", requireAuth, requireRole("ADMIN", "SUPERUSER"), async (req: AuthRequest, res) => {
     try {
-      const limit = parseInt(req.query.limit as string) || 10;
+      const requestedLimit = Number(req.query.limit);
+      const limit = Number.isInteger(requestedLimit)
+        ? Math.min(100, Math.max(1, requestedLimit))
+        : 10;
       const activities = await storage.getRecentActivities(limit);
-      res.json(activities);
+      res.json(activities.map((activity) => ({
+        id: activity.id,
+        type: activity.type,
+        userId: activity.userId,
+        fileId: activity.fileId,
+        description: activity.description,
+        createdAt: activity.createdAt,
+        user: activity.user ? {
+          id: activity.user.id,
+          firstName: activity.user.firstName,
+          lastName: activity.user.lastName,
+          role: activity.user.role,
+          department: activity.user.department,
+        } : null,
+        file: activity.file ? {
+          id: activity.file.id,
+          originalName: activity.file.originalName,
+          department: activity.file.department,
+        } : null,
+      })));
     } catch (error) {
       res.status(500).json({ message: "Erreur serveur" });
     }

@@ -1,5 +1,5 @@
-import { PrismaClient } from '@prisma/client'
-import { type User, type InsertUser, type Department, type InsertDepartment, type File, type InsertFile, type Role, type DocumentStatus } from "@shared/schema";
+import { PrismaClient, type Activity as PrismaActivity } from '@prisma/client'
+import { type User, type InsertUser, type Department, type InsertDepartment, type File, type InsertFile, type Role, type DocumentStatus, type ActivitySummary } from "@shared/schema";
 
 export interface PaginationOptions {
   page?: number;
@@ -55,8 +55,8 @@ export interface IStorage {
   getFilesWithFilters(filters: FileFilters, options?: PaginationOptions): Promise<PaginatedResult<File>>;
 
   // Activity management
-  createActivity(activity: { type: string; userId?: number; fileId?: number; description?: string }): Promise<any>;
-  getRecentActivities(limit?: number): Promise<any[]>;
+  createActivity(activity: { type: string; userId?: number; fileId?: number; description?: string }): Promise<PrismaActivity>;
+  getRecentActivities(limit?: number): Promise<ActivitySummary[]>;
 }
 
 export class PrismaStorage implements IStorage {
@@ -502,7 +502,7 @@ export class PrismaStorage implements IStorage {
     createdAt: prismaFile.createdAt,
   });
   // Activity methods
-  async createActivity(activity: { type: string; userId?: number; fileId?: number; description?: string }): Promise<any> {
+  async createActivity(activity: { type: string; userId?: number; fileId?: number; description?: string }): Promise<PrismaActivity> {
     return await this.prisma.activity.create({
       data: {
         type: activity.type,
@@ -513,13 +513,33 @@ export class PrismaStorage implements IStorage {
     });
   }
 
-  async getRecentActivities(limit: number = 10): Promise<any[]> {
+  async getRecentActivities(limit: number = 10): Promise<ActivitySummary[]> {
     return await this.prisma.activity.findMany({
       orderBy: { createdAt: 'desc' },
       take: limit,
-      include: {
-        user: true,
-        file: true,
+      select: {
+        id: true,
+        type: true,
+        userId: true,
+        fileId: true,
+        description: true,
+        createdAt: true,
+        user: {
+          select: {
+            id: true,
+            firstName: true,
+            lastName: true,
+            role: true,
+            department: true,
+          },
+        },
+        file: {
+          select: {
+            id: true,
+            originalName: true,
+            department: true,
+          },
+        },
       },
     });
   }

@@ -16,6 +16,7 @@ const storageMocks = vi.hoisted(() => ({
   createUser: vi.fn(),
   reviewFile: vi.fn(),
   getFilesWithFilters: vi.fn(),
+  getRecentActivities: vi.fn(),
 }));
 
 vi.mock("./storage", () => ({ storage: storageMocks }));
@@ -270,5 +271,54 @@ describe("critical route protections", () => {
       { status: "pending", department: "IT" },
       { page: 1, limit: 20 },
     );
+  });
+
+  it("returns an activity history without exposing user credentials", async () => {
+    storageMocks.getRecentActivities.mockResolvedValue([{
+      id: 1,
+      type: "document_uploaded",
+      userId: 20,
+      fileId: 93,
+      description: "Document téléversé",
+      createdAt: new Date("2026-08-21T10:00:00.000Z"),
+      user: {
+        id: 20,
+        firstName: "Admin",
+        lastName: "Test",
+        role: "ADMIN",
+        department: "IT",
+        username: "admin-test",
+        email: "admin@example.test",
+        password: "hash-qui-ne-doit-pas-sortir",
+      },
+      file: {
+        id: 93,
+        originalName: "rapport.pdf",
+        department: "IT",
+        filePath: "chemin-interne.pdf",
+      },
+    }]);
+
+    const response = await fetch(`${baseUrl}/api/activities?limit=500`, {
+      headers: { Authorization: `Bearer ${adminToken()}` },
+    });
+    const body = await response.json();
+
+    expect(response.status).toBe(200);
+    expect(storageMocks.getRecentActivities).toHaveBeenCalledWith(100);
+    expect(body[0].user).toEqual({
+      id: 20,
+      firstName: "Admin",
+      lastName: "Test",
+      role: "ADMIN",
+      department: "IT",
+    });
+    expect(body[0].file).toEqual({
+      id: 93,
+      originalName: "rapport.pdf",
+      department: "IT",
+    });
+    expect(JSON.stringify(body)).not.toContain("hash-qui-ne-doit-pas-sortir");
+    expect(JSON.stringify(body)).not.toContain("chemin-interne.pdf");
   });
 });
