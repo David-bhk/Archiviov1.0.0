@@ -1,294 +1,488 @@
 import { useState } from "react";
-import { useAuth } from "../contexts/AuthContext";
-import { useRole } from "../contexts/RoleContext";
-import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import {
+  Building2,
+  Edit3,
+  FileText,
+  Plus,
+  RefreshCw,
+  Trash2,
+  Users,
+} from "lucide-react";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Sheet, SheetContent, SheetDescription, SheetTitle } from "@/components/ui/sheet";
+import { Skeleton } from "@/components/ui/skeleton";
 import { Textarea } from "@/components/ui/textarea";
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { ResponsiveCard, ResponsiveCardActions } from "@/components/ui/responsive-card";
-import { Building, Users, FileText, Plus, Edit, Trash2 } from "lucide-react";
+import { useToast } from "@/hooks/use-toast";
+import UploadModal from "../components/Files/UploadModal";
 import Sidebar from "../components/Layout/Sidebar";
 import TopBar from "../components/Layout/TopBar";
-import RightPanel from "../components/Layout/RightPanel";
-import UploadModal from "../components/Files/UploadModal";
 import UserManagementModal from "../components/Users/UserManagementModal";
-import { useToast } from "@/hooks/use-toast";
+import { useAuth } from "../contexts/AuthContext";
+import { useRole } from "../contexts/RoleContext";
 import { apiRequest } from "../lib/queryClient";
-import { Department } from "../types";
+import type { Department } from "../types";
+
+interface DepartmentForm {
+  name: string;
+  description: string;
+}
+
+const emptyDepartmentForm: DepartmentForm = {
+  name: "",
+  description: "",
+};
+
+function formatNumber(value: number) {
+  return new Intl.NumberFormat("fr-FR").format(value);
+}
 
 export default function Departments() {
   const { user } = useAuth();
-  const { canManageDepartments } = useRole();
+  const { canAccessUserManagement, canManageDepartments } = useRole();
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const [showUploadModal, setShowUploadModal] = useState(false);
   const [showUserModal, setShowUserModal] = useState(false);
   const [showMobileMenu, setShowMobileMenu] = useState(false);
-  const [showAddModal, setShowAddModal] = useState(false);
+  const [showDepartmentDialog, setShowDepartmentDialog] = useState(false);
   const [editingDepartment, setEditingDepartment] = useState<Department | null>(null);
-  const [searchQuery, setSearchQuery] = useState("");
-  const [departmentForm, setDepartmentForm] = useState({
-    name: "",
-    description: "",
+  const [departmentToDelete, setDepartmentToDelete] = useState<Department | null>(null);
+  const [departmentForm, setDepartmentForm] = useState<DepartmentForm>(emptyDepartmentForm);
+
+  const departmentsQuery = useQuery<Department[]>({
+    queryKey: ["/api/departments"],
+    enabled: Boolean(user),
   });
 
-  const { data: departments, isLoading, isError, error } = useQuery<Department[]>({
-    queryKey: ["/api/departments"],
-  });
+  const closeDepartmentDialog = () => {
+    setShowDepartmentDialog(false);
+    setEditingDepartment(null);
+    setDepartmentForm(emptyDepartmentForm);
+  };
 
   const createDepartmentMutation = useMutation({
-    mutationFn: (data: any) => apiRequest("POST", "/api/departments", data),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/departments"] });
+    mutationFn: (values: DepartmentForm) => apiRequest("POST", "/api/departments", values),
+    retry: false,
+    onSuccess: async () => {
+      await queryClient.invalidateQueries({ queryKey: ["/api/departments"] });
       toast({
         title: "Département créé",
-        description: "Le département a été créé avec succès",
+        description: "Le département est maintenant disponible dans le référentiel.",
       });
-      setShowAddModal(false);
-      setEditingDepartment(null);
-      setDepartmentForm({ name: "", description: "" });
+      closeDepartmentDialog();
     },
     onError: () => {
       toast({
-        title: "Erreur",
-        description: "Impossible de créer le département",
+        title: "Création impossible",
+        description: "Vérifiez le nom du département puis réessayez.",
         variant: "destructive",
       });
     },
   });
 
   const updateDepartmentMutation = useMutation({
-    mutationFn: (data: { id: number; values: any }) =>
-      apiRequest("PUT", `/api/departments/${data.id}`, data.values),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/departments"] });
+    mutationFn: ({ id, values }: { id: number; values: DepartmentForm }) =>
+      apiRequest("PUT", `/api/departments/${id}`, values),
+    retry: false,
+    onSuccess: async () => {
+      await queryClient.invalidateQueries({ queryKey: ["/api/departments"] });
       toast({
         title: "Département modifié",
-        description: "Le département a été modifié avec succès",
+        description: "Les informations du département ont été mises à jour.",
       });
-      setShowAddModal(false);
-      setEditingDepartment(null);
-      setDepartmentForm({ name: "", description: "" });
+      closeDepartmentDialog();
     },
     onError: () => {
       toast({
-        title: "Erreur",
-        description: "Impossible de modifier le département",
+        title: "Modification impossible",
+        description: "Vérifiez les informations puis réessayez.",
         variant: "destructive",
       });
     },
   });
+
   const deleteDepartmentMutation = useMutation({
     mutationFn: (id: number) => apiRequest("DELETE", `/api/departments/${id}`),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/departments"] });
+    retry: false,
+    onSuccess: async () => {
+      await queryClient.invalidateQueries({ queryKey: ["/api/departments"] });
       toast({
         title: "Département supprimé",
-        description: "Le département a été supprimé avec succès",
+        description: "Le département a été retiré du référentiel.",
       });
+      setDepartmentToDelete(null);
     },
     onError: () => {
       toast({
-        title: "Erreur",
-        description: "Impossible de supprimer le département",
+        title: "Suppression impossible",
+        description: "Ce département est peut-être encore lié à des utilisateurs ou à des documents.",
         variant: "destructive",
       });
     },
   });
-
-
-  const handleDepartmentForm = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!departmentForm.name.trim()) return;
-    if (editingDepartment) {
-      updateDepartmentMutation.mutate({ id: editingDepartment.id, values: departmentForm });
-    } else {
-      createDepartmentMutation.mutate(departmentForm);
-    }
-  };
 
   if (!user) return null;
 
+  const canManage = canManageDepartments();
+  const departments = departmentsQuery.data ?? [];
+  const totalUsers = departments.reduce((sum, department) => sum + (department.userCount ?? 0), 0);
+  const totalFiles = departments.reduce((sum, department) => sum + (department.fileCount ?? 0), 0);
+  const isSaving = createDepartmentMutation.isPending || updateDepartmentMutation.isPending;
+
+  const openCreateDialog = () => {
+    setEditingDepartment(null);
+    setDepartmentForm(emptyDepartmentForm);
+    setShowDepartmentDialog(true);
+  };
+
+  const openEditDialog = (department: Department) => {
+    setEditingDepartment(department);
+    setDepartmentForm({
+      name: department.name,
+      description: department.description ?? "",
+    });
+    setShowDepartmentDialog(true);
+  };
+
+  const openUserManagement = () => {
+    if (canAccessUserManagement()) setShowUserModal(true);
+  };
+
+  const submitDepartment = (event: React.FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    const values = {
+      name: departmentForm.name.trim(),
+      description: departmentForm.description.trim(),
+    };
+    if (!values.name) return;
+
+    if (editingDepartment) {
+      updateDepartmentMutation.mutate({ id: editingDepartment.id, values });
+      return;
+    }
+    createDepartmentMutation.mutate(values);
+  };
+
   return (
-    <div className="min-h-screen flex bg-slate-50">
-      <Sidebar onUserManagement={() => setShowUserModal(true)} onClose={() => setShowMobileMenu(false)} />
-      
-      {/* Mobile menu overlay */}
-      {showMobileMenu && (
-        <div className="lg:hidden fixed inset-0 z-50 bg-black bg-opacity-50" onClick={() => setShowMobileMenu(false)}>
-          <div className="w-64 h-full bg-white" onClick={(e) => e.stopPropagation()}>
-            <Sidebar onUserManagement={() => setShowUserModal(true)} onClose={() => setShowMobileMenu(false)} />
-          </div>
-        </div>
-      )}
-      
-      <div className="flex-1 flex flex-col">
+    <div className="min-h-screen bg-background text-foreground">
+      <aside className="fixed inset-y-0 left-0 z-40 hidden w-[280px] lg:block">
+        <Sidebar
+          onUpload={() => setShowUploadModal(true)}
+          onUserManagement={openUserManagement}
+        />
+      </aside>
+
+      <Sheet open={showMobileMenu} onOpenChange={setShowMobileMenu}>
+        <SheetContent side="left" className="w-[280px] p-0 [&>button]:hidden">
+          <SheetTitle className="sr-only">Navigation principale</SheetTitle>
+          <SheetDescription className="sr-only">
+            Accédez aux différentes sections d'Archivio.
+          </SheetDescription>
+          <Sidebar
+            onClose={() => setShowMobileMenu(false)}
+            onUpload={() => {
+              setShowMobileMenu(false);
+              setShowUploadModal(true);
+            }}
+            onUserManagement={() => {
+              setShowMobileMenu(false);
+              openUserManagement();
+            }}
+          />
+        </SheetContent>
+      </Sheet>
+
+      <div className="min-h-screen lg:ml-[280px]">
         <TopBar
-          searchQuery={searchQuery}
-          onSearchChange={setSearchQuery}
+          searchQuery=""
+          onSearchChange={() => undefined}
           onUpload={() => setShowUploadModal(true)}
           onMenuToggle={() => setShowMobileMenu(true)}
-          showUploadButton={false}
+          showSearch={false}
           pageTitle="Départements"
-          breadcrumb="/ Gestion des départements"
+          breadcrumb="Structure de l'organisation"
         />
-        
-        <div className="bg-white border-b border-slate-200 p-3 lg:p-4">
-          <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between space-y-3 sm:space-y-0">
+
+        <main className="mx-auto w-full max-w-[1440px] px-4 py-6 sm:px-6 lg:px-8 lg:py-8">
+          <section className="mb-7 flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
             <div>
-              <h2 className="text-xl lg:text-2xl font-bold text-slate-800">Départements</h2>
-              <p className="text-sm lg:text-base text-slate-600">Gérez les départements de votre organisation</p>
+              <p className="text-sm font-medium text-primary">Référentiel institutionnel</p>
+              <h1 className="mt-1 text-2xl font-bold tracking-tight sm:text-3xl">Départements</h1>
+              <p className="mt-2 max-w-2xl text-sm leading-6 text-muted-foreground">
+                Consultez la structure de l'organisation et les volumes associés à chaque département.
+              </p>
             </div>
-            {canManageDepartments() && (
-              <Button onClick={() => setShowAddModal(true)} className="w-full sm:w-auto">
-                <Plus className="w-4 h-4 mr-2" />
+            {canManage && (
+              <Button onClick={openCreateDialog} className="w-full sm:w-auto">
+                <Plus className="mr-2 h-4 w-4" aria-hidden="true" />
                 Nouveau département
               </Button>
             )}
-          </div>
-        </div>
-        
-        <div className="flex-1 p-3 lg:p-6 overflow-y-auto">
-          {isLoading ? (
-            <div className="flex items-center justify-center h-64">
-              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+          </section>
+
+          {departmentsQuery.isLoading ? (
+            <div aria-label="Chargement des départements" className="space-y-6">
+              <div className="grid gap-4 sm:grid-cols-3">
+                {[0, 1, 2].map((item) => (
+                  <Skeleton key={item} className="h-28 rounded-lg" />
+                ))}
+              </div>
+              <div className="grid gap-5 md:grid-cols-2 xl:grid-cols-3">
+                {[0, 1, 2, 3, 4, 5].map((item) => (
+                  <Skeleton key={item} className="h-60 rounded-lg" />
+                ))}
+              </div>
             </div>
-          ) : isError ? (
-            <div className="text-center py-8 lg:py-12">
-              <p className="text-red-600 font-semibold">Erreur lors du chargement des départements.</p>
-              <p className="text-slate-500 text-sm mt-2">{error instanceof Error ? error.message : "Veuillez réessayer plus tard."}</p>
-            </div>
+          ) : departmentsQuery.isError ? (
+            <section className="rounded-lg border border-destructive/30 bg-card p-8 text-center">
+              <Building2 className="mx-auto h-9 w-9 text-destructive" aria-hidden="true" />
+              <h2 className="mt-4 font-semibold text-destructive">Impossible de charger les départements</h2>
+              <p className="mt-2 text-sm text-muted-foreground">
+                Vérifiez la connexion au serveur puis réessayez.
+              </p>
+              <Button variant="outline" className="mt-4" onClick={() => void departmentsQuery.refetch()}>
+                <RefreshCw className="mr-2 h-4 w-4" aria-hidden="true" />
+                Réessayer
+              </Button>
+            </section>
           ) : (
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3 lg:gap-6">
-              {departments?.map((department) => (
-                <ResponsiveCard
-                  key={department.id}
-                  title={department.name}
-                  icon={<Building className="w-5 h-5 text-primary" />}
-                  description={department.description}
-                  footer={
-                    <div className="space-y-4">
-                      <div className="flex items-center justify-between text-sm text-slate-500">
-                        <div className="flex items-center space-x-1">
-                          <Users className="w-4 h-4 flex-shrink-0" />
-                          <span>{department.userCount || 0} utilisateurs</span>
-                        </div>
-                        <div className="flex items-center space-x-1">
-                          <FileText className="w-4 h-4 flex-shrink-0" />
-                          <span>{department.fileCount || 0} fichiers</span>
-                        </div>
-                      </div>
-                      {canManageDepartments() && (
-                        <ResponsiveCardActions>
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            className="flex-1 min-w-0"
-                            onClick={() => {
-                              setEditingDepartment(department);
-                              setDepartmentForm({
-                                name: department.name,
-                                description: department.description || "",
-                              });
-                              setShowAddModal(true);
-                            }}
-                          >
-                            <Edit className="w-4 h-4 mr-1 flex-shrink-0" />
-                            <span className="truncate">Modifier</span>
-                          </Button>
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            className="flex-1 min-w-0 text-red-600 hover:text-red-700 hover:bg-red-50"
-                            onClick={() => deleteDepartmentMutation.mutate(department.id)}
-                            disabled={deleteDepartmentMutation.isPending}
-                          >
-                            <Trash2 className="w-4 h-4 mr-1 flex-shrink-0" />
-                            <span className="truncate">
-                              {deleteDepartmentMutation.isPending ? "Suppression..." : "Supprimer"}
-                            </span>
-                          </Button>
-                        </ResponsiveCardActions>
-                      )}
+            <>
+              <section aria-label="Synthèse des départements" className="grid gap-4 sm:grid-cols-3">
+                <article className="rounded-lg border bg-card p-5">
+                  <div className="flex items-center gap-3">
+                    <span className="flex h-10 w-10 items-center justify-center rounded-md bg-accent text-primary">
+                      <Building2 className="h-5 w-5" aria-hidden="true" />
+                    </span>
+                    <div>
+                      <p className="text-sm text-muted-foreground">Départements</p>
+                      <p className="text-2xl font-bold">{formatNumber(departments.length)}</p>
                     </div>
-                  }
-                />
-              ))}
-            </div>
+                  </div>
+                </article>
+                <article className="rounded-lg border bg-card p-5">
+                  <div className="flex items-center gap-3">
+                    <span className="flex h-10 w-10 items-center justify-center rounded-md bg-muted text-foreground">
+                      <Users className="h-5 w-5" aria-hidden="true" />
+                    </span>
+                    <div>
+                      <p className="text-sm text-muted-foreground">Utilisateurs rattachés</p>
+                      <p className="text-2xl font-bold">{formatNumber(totalUsers)}</p>
+                    </div>
+                  </div>
+                </article>
+                <article className="rounded-lg border bg-card p-5">
+                  <div className="flex items-center gap-3">
+                    <span className="flex h-10 w-10 items-center justify-center rounded-md bg-muted text-foreground">
+                      <FileText className="h-5 w-5" aria-hidden="true" />
+                    </span>
+                    <div>
+                      <p className="text-sm text-muted-foreground">Documents rattachés</p>
+                      <p className="text-2xl font-bold">{formatNumber(totalFiles)}</p>
+                    </div>
+                  </div>
+                </article>
+              </section>
+
+              <section className="mt-7" aria-labelledby="departments-list-title">
+                <div className="mb-4 flex items-center justify-between gap-4">
+                  <div>
+                    <h2 id="departments-list-title" className="text-lg font-semibold">Structure enregistrée</h2>
+                    <p className="mt-1 text-sm text-muted-foreground">
+                      Les rattachements affichés proviennent des données actuellement enregistrées.
+                    </p>
+                  </div>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => void departmentsQuery.refetch()}
+                    disabled={departmentsQuery.isFetching}
+                    aria-label="Actualiser les départements"
+                  >
+                    <RefreshCw className={`h-4 w-4 ${departmentsQuery.isFetching ? "animate-spin" : ""}`} />
+                  </Button>
+                </div>
+
+                {departments.length === 0 ? (
+                  <div className="rounded-lg border border-dashed bg-card px-6 py-12 text-center">
+                    <Building2 className="mx-auto h-9 w-9 text-muted-foreground" aria-hidden="true" />
+                    <h3 className="mt-4 font-semibold">Aucun département enregistré</h3>
+                    <p className="mx-auto mt-2 max-w-md text-sm text-muted-foreground">
+                      La structure apparaîtra ici dès qu'un département aura été créé.
+                    </p>
+                    {canManage && (
+                      <Button className="mt-5" onClick={openCreateDialog}>
+                        <Plus className="mr-2 h-4 w-4" aria-hidden="true" />
+                        Créer le premier département
+                      </Button>
+                    )}
+                  </div>
+                ) : (
+                  <div className="grid gap-5 md:grid-cols-2 xl:grid-cols-3">
+                    {departments.map((department) => (
+                      <article key={department.id} className="flex min-h-56 flex-col rounded-lg border bg-card p-5">
+                        <div className="flex items-start justify-between gap-4">
+                          <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-md bg-accent text-primary">
+                            <Building2 className="h-5 w-5" aria-hidden="true" />
+                          </span>
+                          {canManage && (
+                            <div className="flex items-center gap-1">
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                onClick={() => openEditDialog(department)}
+                                aria-label={`Modifier le département ${department.name}`}
+                              >
+                                <Edit3 className="h-4 w-4" aria-hidden="true" />
+                              </Button>
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                className="text-destructive hover:text-destructive"
+                                onClick={() => setDepartmentToDelete(department)}
+                                aria-label={`Supprimer le département ${department.name}`}
+                              >
+                                <Trash2 className="h-4 w-4" aria-hidden="true" />
+                              </Button>
+                            </div>
+                          )}
+                        </div>
+
+                        <div className="mt-4 flex-1">
+                          <h3 className="text-lg font-semibold leading-6">{department.name}</h3>
+                          <p className="mt-2 line-clamp-3 text-sm leading-6 text-muted-foreground">
+                            {department.description || "Aucune description renseignée pour ce département."}
+                          </p>
+                        </div>
+
+                        <dl className="mt-5 grid grid-cols-2 gap-3 border-t pt-4">
+                          <div>
+                            <dt className="flex items-center gap-1.5 text-xs text-muted-foreground">
+                              <Users className="h-3.5 w-3.5" aria-hidden="true" />
+                              Utilisateurs
+                            </dt>
+                            <dd className="mt-1 text-sm font-semibold">{formatNumber(department.userCount ?? 0)}</dd>
+                          </div>
+                          <div>
+                            <dt className="flex items-center gap-1.5 text-xs text-muted-foreground">
+                              <FileText className="h-3.5 w-3.5" aria-hidden="true" />
+                              Documents
+                            </dt>
+                            <dd className="mt-1 text-sm font-semibold">{formatNumber(department.fileCount ?? 0)}</dd>
+                          </div>
+                        </dl>
+                      </article>
+                    ))}
+                  </div>
+                )}
+              </section>
+            </>
           )}
-        </div>
+        </main>
       </div>
-      
-      <RightPanel />
-      
-      {showUploadModal && (
-        <UploadModal onClose={() => setShowUploadModal(false)} />
-      )}
-      
-      {showUserModal && (
+
+      {showUploadModal && <UploadModal onClose={() => setShowUploadModal(false)} />}
+      {showUserModal && canAccessUserManagement() && (
         <UserManagementModal onClose={() => setShowUserModal(false)} />
       )}
 
-      {showAddModal && (
-        <Dialog open={showAddModal} onOpenChange={(open) => {
-          setShowAddModal(open);
-          if (!open) {
-            setEditingDepartment(null);
-            setDepartmentForm({ name: "", description: "" });
-          }
-        }}>
-          <DialogContent>
-            <DialogHeader>
-              <DialogTitle>{editingDepartment ? "Modifier le département" : "Nouveau département"}</DialogTitle>
-            </DialogHeader>
-            <form onSubmit={handleDepartmentForm} className="space-y-4">
-              <div>
-                <Label htmlFor="name">Nom du département *</Label>
-                <Input
-                  id="name"
-                  value={departmentForm.name}
-                  onChange={(e) => setDepartmentForm({ ...departmentForm, name: e.target.value })}
-                  required
-                />
-              </div>
-              <div>
-                <Label htmlFor="description">Description</Label>
-                <Textarea
-                  id="description"
-                  value={departmentForm.description}
-                  onChange={(e) => setDepartmentForm({ ...departmentForm, description: e.target.value })}
-                  rows={3}
-                />
-              </div>
-              <div className="flex justify-end space-x-2">
-                <Button type="button" variant="outline" onClick={() => {
-                  setShowAddModal(false);
-                  setEditingDepartment(null);
-                  setDepartmentForm({ name: "", description: "" });
-                }}>
-                  Annuler
-                </Button>
-                <Button
-                  type="submit"
-                  disabled={createDepartmentMutation.isPending || updateDepartmentMutation.isPending}
-                >
-                  {editingDepartment
-                    ? updateDepartmentMutation.isPending
-                      ? "Modification..."
-                      : "Modifier"
-                    : createDepartmentMutation.isPending
-                      ? "Création..."
-                      : "Créer"}
-                </Button>
-              </div>
-            </form>
-          </DialogContent>
-        </Dialog>
-      )}
+      <Dialog
+        open={showDepartmentDialog}
+        onOpenChange={(open) => {
+          if (!open) closeDepartmentDialog();
+          else setShowDepartmentDialog(true);
+        }}
+      >
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>{editingDepartment ? "Modifier le département" : "Nouveau département"}</DialogTitle>
+            <DialogDescription>
+              {editingDepartment
+                ? "Mettez à jour le nom ou la description du département."
+                : "Ajoutez une unité au référentiel institutionnel."}
+            </DialogDescription>
+          </DialogHeader>
+          <form onSubmit={submitDepartment} className="space-y-4">
+            <div className="space-y-2">
+              <Label htmlFor="department-name">Nom du département</Label>
+              <Input
+                id="department-name"
+                value={departmentForm.name}
+                onChange={(event) => setDepartmentForm((current) => ({ ...current, name: event.target.value }))}
+                maxLength={120}
+                autoFocus
+                required
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="department-description">Description</Label>
+              <Textarea
+                id="department-description"
+                value={departmentForm.description}
+                onChange={(event) => setDepartmentForm((current) => ({ ...current, description: event.target.value }))}
+                placeholder="Mission ou périmètre du département"
+                rows={4}
+                maxLength={500}
+              />
+              <p className="text-xs text-muted-foreground">Facultatif · 500 caractères maximum</p>
+            </div>
+            <DialogFooter>
+              <Button type="button" variant="outline" onClick={closeDepartmentDialog} disabled={isSaving}>
+                Annuler
+              </Button>
+              <Button type="submit" disabled={isSaving || !departmentForm.name.trim()}>
+                {isSaving ? "Enregistrement..." : editingDepartment ? "Enregistrer" : "Créer le département"}
+              </Button>
+            </DialogFooter>
+          </form>
+        </DialogContent>
+      </Dialog>
+
+      <AlertDialog open={Boolean(departmentToDelete)} onOpenChange={(open) => !open && setDepartmentToDelete(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Supprimer ce département ?</AlertDialogTitle>
+            <AlertDialogDescription>
+              {departmentToDelete
+                ? `Le département « ${departmentToDelete.name} » sera supprimé. L'opération échouera s'il est encore lié à des utilisateurs ou à des documents.`
+                : "Cette opération est irréversible."}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={deleteDepartmentMutation.isPending}>Annuler</AlertDialogCancel>
+            <AlertDialogAction
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              disabled={deleteDepartmentMutation.isPending}
+              onClick={(event) => {
+                event.preventDefault();
+                if (departmentToDelete) deleteDepartmentMutation.mutate(departmentToDelete.id);
+              }}
+            >
+              {deleteDepartmentMutation.isPending ? "Suppression..." : "Supprimer"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }
