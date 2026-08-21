@@ -76,6 +76,9 @@ Mettre ce fichier à jour après chaque modification significative de l'impléme
 - Ajout des états chargement, vide et erreur, de la pagination serveur réelle, des notifications de résultat et de l'invalidation cohérente des données documentaires, statistiques et d'audit.
 - Baseline de la file de validation validée : TypeScript, 31 tests et build réussis.
 - Sécurisation du contrat de l'historique : projection publique explicite des acteurs et documents, sans mot de passe ni chemin physique, avec limite de requête bornée.
+- Migration de l'historique des activités vers le shell institutionnel responsive, avec tableau sur ordinateur, cartes mobiles et états chargement, vide, erreur et interdit.
+- Présentation explicite des téléversements, archivages, refus et créations historiques d'utilisateurs, tout en conservant un repli lisible pour les types d'événements inconnus.
+- Baseline de l'historique validée : TypeScript, 32 tests et build réussis.
 
 ## En cours
 
@@ -90,7 +93,7 @@ Mettre ce fichier à jour après chaque modification significative de l'impléme
 - Étendre le service d'autorisation avec la hiérarchie validée.
 - Ajouter les tests de matrice rôle, département et niveau.
 - Vérifier visuellement l'écran de validation dès qu'un navigateur contrôlable est disponible.
-- Migrer ensuite l'historique des activités vers le même shell et les mêmes jetons, sans inventer de catégories ou d'actions absentes de l'API.
+- Migrer ensuite l'écran des statistiques vers le même shell et les mêmes jetons, sans ajouter d'indicateurs absents de l'API.
 - Décider ultérieurement du traitement d'un document refusé avant d'ajouter correction ou resoumission.
 - Auditer séparément les 24 vulnérabilités signalées dans les dépendances.
 
