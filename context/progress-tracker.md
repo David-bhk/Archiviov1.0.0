@@ -82,6 +82,10 @@ Mettre ce fichier à jour après chaque modification significative de l'impléme
 - Migration des statistiques vers le shell institutionnel responsive, avec indicateurs de périmètre, répartition par type de fichier et états chargement, vide et erreur.
 - Suppression du faux quota de stockage à 25 %, de la recherche sans effet et du panneau droit historique ; seuls les sept indicateurs de l'API et leurs ratios dérivés sont affichés.
 - Baseline des statistiques validée : TypeScript, 32 tests et build réussis.
+- Remplacement de la fausse page de réglages par un centre de configuration superutilisateur en lecture seule, aligné sur le shell institutionnel.
+- Retrait des champs non persistés de taille, formats, sauvegardes, notifications, maintenance, sessions et quotas, ainsi que du bouton d'enregistrement sans API.
+- Ajout d'accès directs aux parcours réellement opérationnels de gestion des utilisateurs, départements et historique.
+- Baseline du centre de configuration validée : TypeScript, 32 tests et build réussis.
 
 ## En cours
 
@@ -96,7 +100,7 @@ Mettre ce fichier à jour après chaque modification significative de l'impléme
 - Étendre le service d'autorisation avec la hiérarchie validée.
 - Ajouter les tests de matrice rôle, département et niveau.
 - Vérifier visuellement l'écran de validation dès qu'un navigateur contrôlable est disponible.
-- Auditer ensuite l'écran Configuration et retirer les commandes sans comportement serveur avant toute migration visuelle.
+- Auditer ensuite l'écran Départements et migrer son affichage sans élargir les permissions tant que le périmètre administrateur reste indécis.
 - Décider ultérieurement du traitement d'un document refusé avant d'ajouter correction ou resoumission.
 - Auditer séparément les 24 vulnérabilités signalées dans les dépendances.
 
