@@ -86,6 +86,10 @@ Mettre ce fichier à jour après chaque modification significative de l'impléme
 - Retrait des champs non persistés de taille, formats, sauvegardes, notifications, maintenance, sessions et quotas, ainsi que du bouton d'enregistrement sans API.
 - Ajout d'accès directs aux parcours réellement opérationnels de gestion des utilisateurs, départements et historique.
 - Baseline du centre de configuration validée : TypeScript, 32 tests et build réussis.
+- Migration de l'écran Départements vers le shell institutionnel responsive, avec synthèse des rattachements, cartes de structure et états chargement, vide et erreur.
+- Conservation stricte du contrat d'autorisation actuel : lecture pour tout utilisateur authentifié et actions de création, modification ou suppression uniquement pour `ADMIN` et `SUPERUSER`, sans exposer les niveaux encore indécis.
+- Ajout d'un formulaire ciblé et d'une confirmation accessible signalant qu'un département encore rattaché peut ne pas être supprimable, sans modifier les contraintes serveur.
+- Baseline de l'écran Départements validée : TypeScript, 32 tests et build réussis.
 
 ## En cours
 
@@ -100,7 +104,7 @@ Mettre ce fichier à jour après chaque modification significative de l'impléme
 - Étendre le service d'autorisation avec la hiérarchie validée.
 - Ajouter les tests de matrice rôle, département et niveau.
 - Vérifier visuellement l'écran de validation dès qu'un navigateur contrôlable est disponible.
-- Auditer ensuite l'écran Départements et migrer son affichage sans élargir les permissions tant que le périmètre administrateur reste indécis.
+- Auditer ensuite l'interface de gestion des utilisateurs et harmoniser son affichage sans modifier la matrice d'autorisation existante.
 - Décider ultérieurement du traitement d'un document refusé avant d'ajouter correction ou resoumission.
 - Auditer séparément les 24 vulnérabilités signalées dans les dépendances.
 
