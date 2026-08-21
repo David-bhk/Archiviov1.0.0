@@ -1,396 +1,312 @@
-import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { useEffect, useState } from "react";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { ChevronLeft, ChevronRight, FileText, Plus, RefreshCw, Search } from "lucide-react";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { Button } from "@/components/ui/button";
-import { ChevronLeft, ChevronRight, FileText } from "lucide-react";
-import FileCard from "./FileCard";
-import CompactFileCard from "./CompactFileCard";
-import FileTable from "./FileTable";
-import FileToolbar from "./FileToolbar";
-import { File, PaginatedResponse, ViewMode } from "../../types";
+import { Skeleton } from "@/components/ui/skeleton";
 import { useAuth } from "../../contexts/AuthContext";
 import { useRole } from "../../contexts/RoleContext";
-import { apiRequest } from "../../lib/queryClient";
-import { useState, useEffect, useMemo, useCallback } from "react";
 import { useDebounce } from "../../hooks/useDebounce";
+import { apiRequest } from "../../lib/queryClient";
+import type { File, PaginatedResponse } from "../../types";
 import { useToast } from "@/hooks/use-toast";
-import { downloadFile } from "../../utils/fileUtils";
+import FileTable from "./FileTable";
+import FiltersBar, { type DocumentFilters } from "./FiltersBar";
 
 interface FileGridProps {
   searchQuery: string;
-  filters: {
-    type: string;
-    department: string;
-    date: string;
-  };
+  onSearchChange: (query: string) => void;
+  onUpload?: () => void;
+  variant?: "library" | "search";
 }
 
-export default function FileGrid({ searchQuery, filters }: FileGridProps) {
+const PAGE_SIZE = 15;
+const DEFAULT_FILTERS: DocumentFilters = {
+  type: "all",
+  department: "all",
+  date: "all",
+};
+
+export default function FileGrid({ searchQuery, onSearchChange, onUpload, variant = "library" }: FileGridProps) {
   const { user } = useAuth();
-  const { canDeleteFile } = useRole();
+  const { canDeleteFile, canDownloadFile, canUploadFiles } = useRole();
   const { toast } = useToast();
   const queryClient = useQueryClient();
-  
-  // View mode for adaptive display
-  const [viewMode, setViewMode] = useState<ViewMode>('cards');
-  
-  // Sorting state
-  const [sortBy, setSortBy] = useState<'name' | 'size' | 'date' | 'type'>('date');
-  const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('desc');
-  
-  // Intelligent pagination based on total file count
-  const getOptimalLimit = (totalFiles: number): number => {
-    if (totalFiles > 5000) return 50;  // 50 per page for massive datasets
-    if (totalFiles > 1000) return 25;  // 25 per page for large datasets  
-    if (totalFiles > 200) return 15;   // 15 per page for medium datasets
-    return 12;                         // 12 per page for small datasets
-  };
-
+  const debouncedSearchQuery = useDebounce(searchQuery.trim(), 300);
+  const [filters, setFilters] = useState<DocumentFilters>(DEFAULT_FILTERS);
   const [currentPage, setCurrentPage] = useState(1);
-  const [adaptiveLimit, setAdaptiveLimit] = useState(12);
-  
-  // Debounced search for better performance
-  const debouncedSearchQuery = useDebounce(searchQuery, 300);
+  const [documentToDelete, setDocumentToDelete] = useState<File | null>(null);
+  const [downloadingId, setDownloadingId] = useState<number | null>(null);
+  const isSearchMode = variant === "search";
+  const hasActiveCriteria = Boolean(
+    debouncedSearchQuery ||
+    filters.type !== "all" ||
+    filters.date !== "all" ||
+    (user?.role === "SUPERUSER" && filters.department !== "all"),
+  );
 
-  // Delete mutation
-  const deleteMutation = useMutation({
-    mutationFn: (fileId: number) => apiRequest("DELETE", `/api/files/${fileId}`),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/files"] });
-      toast({
-        title: "Fichier supprimé",
-        description: "Le fichier a été supprimé avec succès",
-      });
-    },
-    onError: (error) => {
-      console.error("Erreur lors de la suppression:", error);
-      toast({
-        title: "Erreur",
-        description: "Impossible de supprimer le fichier",
-        variant: "destructive",
-      });
-    },
-  });
-
-  // Reset page when filters or sort change
   useEffect(() => {
     setCurrentPage(1);
-  }, [debouncedSearchQuery, filters.department, filters.date, filters.type, sortBy, sortOrder]);
-  
-  const { data: response, isLoading, error } = useQuery<PaginatedResponse<File>>({
-    queryKey: ["/api/files", { 
-      search: debouncedSearchQuery, 
-      department: filters.department, 
-      date: filters.date, 
-      type: filters.type, 
-      page: currentPage, 
-      limit: adaptiveLimit,
-      sortBy,
-      sortOrder
-    }],
+  }, [debouncedSearchQuery, filters.type, filters.department, filters.date]);
+
+  const documentsQuery = useQuery<PaginatedResponse<File>>({
+    queryKey: ["/api/files", variant, debouncedSearchQuery, filters, currentPage],
     queryFn: async () => {
-      const params = new URLSearchParams();
-      if (debouncedSearchQuery) params.append("search", debouncedSearchQuery);
-      if (filters.department && filters.department !== "all") params.append("department", filters.department);
-      if (filters.date && filters.date !== "all") {
-        const match = filters.date.match(/(\d+)/);
-        if (match) params.append("date", match[1]);
+      const params = new URLSearchParams({
+        page: String(currentPage),
+        limit: String(PAGE_SIZE),
+      });
+      if (debouncedSearchQuery) params.set("search", debouncedSearchQuery);
+      if (filters.type !== "all") params.set("type", filters.type);
+      if (filters.date !== "all") params.set("date", filters.date);
+      if (user?.role === "SUPERUSER" && filters.department !== "all") {
+        params.set("department", filters.department);
       }
-      if (filters.type && filters.type !== "all") params.append("type", filters.type);
-      params.append("page", currentPage.toString());
-      params.append("limit", adaptiveLimit.toString());
-      params.append("sortBy", sortBy);
-      params.append("sortOrder", sortOrder);
-      
-      const url = `/api/files?${params.toString()}`;
-      const res = await apiRequest("GET", url);
-      const data = await res.json();
-      return data;
+
+      const response = await apiRequest("GET", `/api/files?${params.toString()}`);
+      return response.json();
     },
-    staleTime: 2 * 60 * 1000, // 2 minutes pour les listes de fichiers
+    enabled: Boolean(user) && (!isSearchMode || hasActiveCriteria),
+    staleTime: 2 * 60 * 1000,
   });
 
-  const files = response?.data || [];
-  const totalFiles = response?.total || 0;
-
-  // Auto-adjust pagination limit based on total files
-  useEffect(() => {
-    if (totalFiles > 0) {
-      const optimalLimit = getOptimalLimit(totalFiles);
-      if (optimalLimit !== adaptiveLimit) {
-        setAdaptiveLimit(optimalLimit);
-        setCurrentPage(1); // Reset to first page when limit changes
+  const deleteMutation = useMutation({
+    mutationFn: (documentId: number) => apiRequest("DELETE", `/api/files/${documentId}`),
+    onSuccess: async () => {
+      setDocumentToDelete(null);
+      if ((documentsQuery.data?.data.length ?? 0) === 1 && currentPage > 1) {
+        setCurrentPage((page) => page - 1);
       }
-      
-      // Auto-switch to table view for large datasets
-      if (totalFiles > 1000 && viewMode === 'cards') {
-        setViewMode('compact');
-        toast({
-          title: "Vue compacte activée",
-          description: "Basculement automatique vers une vue plus efficace pour de grandes quantités de fichiers",
-        });
-      }
-    }
-  }, [totalFiles, adaptiveLimit, viewMode, toast]);
-
-  // Download handler (optimized with useCallback)
-  const handleDownload = useCallback(async (file: File) => {
-    try {
-      const token = localStorage.getItem('archivio_token');
-      if (!token) {
-        toast({
-          title: "Erreur",
-          description: "Vous devez être connecté pour télécharger",
-          variant: "destructive",
-        });
-        return;
-      }
-
-      const response = await fetch(`/api/files/${file.id}/download`, {
-        headers: {
-          'Authorization': `Bearer ${token}`,
-        },
-      });
-      
-      if (!response.ok) {
-        throw new Error(`Erreur ${response.status}: ${response.statusText}`);
-      }
-      
-      const blob = await response.blob();
-      const url = window.URL.createObjectURL(blob);
-      const a = document.createElement("a");
-      a.href = url;
-      a.download = file.originalName || file.filename;
-      document.body.appendChild(a);
-      a.click();
-      a.remove();
-      window.URL.revokeObjectURL(url);
-
+      await queryClient.invalidateQueries({ queryKey: ["/api/files"] });
       toast({
-        title: "Téléchargement réussi",
-        description: `${file.originalName} a été téléchargé`,
+        title: "Document retiré",
+        description: "Le document n'est plus visible dans la bibliothèque.",
       });
-    } catch (error) {
-      console.error("Erreur de téléchargement:", error);
+    },
+    onError: () => {
       toast({
-        title: "Erreur de téléchargement",
-        description: error instanceof Error ? error.message : "Impossible de télécharger le fichier",
+        title: "Suppression impossible",
+        description: "Le document n'a pas pu être retiré. Vérifiez vos autorisations puis réessayez.",
         variant: "destructive",
       });
-    }
-  }, [toast]);
+    },
+  });
 
-  // Delete handler (optimized with useCallback)
-  const handleDelete = useCallback((file: File) => {
-    if (!canDeleteFile(file)) {
+  const handleDownload = async (file: File) => {
+    const token = localStorage.getItem("archivio_token");
+    if (!token) {
       toast({
-        title: "Action non autorisée",
-        description: "Vous n'avez pas les permissions pour supprimer ce fichier",
+        title: "Session requise",
+        description: "Reconnectez-vous avant de télécharger un document.",
         variant: "destructive",
       });
       return;
     }
-    
-    if (window.confirm("Êtes-vous sûr de vouloir supprimer ce fichier ?")) {
-      deleteMutation.mutate(file.id);
-    }
-  }, [canDeleteFile, toast, deleteMutation]);
 
-  // Sort handlers
-  const handleSort = useCallback((field: 'name' | 'size' | 'date' | 'type') => {
-    if (sortBy === field) {
-      setSortOrder(prev => prev === 'asc' ? 'desc' : 'asc');
-    } else {
-      setSortBy(field);
-      setSortOrder('desc');
-    }
-  }, [sortBy]);
+    setDownloadingId(file.id);
+    try {
+      const response = await fetch(`/api/files/${file.id}/download`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      if (!response.ok) throw new Error("download_failed");
 
-  if (error) {
-    console.error("FileGrid error:", error);
-    return (
-      <div className="flex-1 p-6 flex items-center justify-center">
-        <div className="text-center">
-          <p className="text-red-600">Erreur lors du chargement des fichiers</p>
-          <p className="text-sm text-slate-500 mt-2">{error.message}</p>
-        </div>
-      </div>
-    );
-  }
+      const blob = await response.blob();
+      const objectUrl = window.URL.createObjectURL(blob);
+      const link = document.createElement("a");
+      link.href = objectUrl;
+      link.download = file.originalName || file.filename;
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      window.URL.revokeObjectURL(objectUrl);
 
-  if (isLoading) {
-    return (
-      <div className="flex-1 p-6 flex items-center justify-center">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto"></div>
-          <p className="mt-4 text-slate-600">Chargement des fichiers...</p>
-        </div>
-      </div>
-    );
-  }
-
-  if (files.length === 0) {
-    return (
-      <div className="flex-1 p-6 flex items-center justify-center">
-        <div className="text-center">
-          <p className="text-slate-600">Aucun fichier trouvé</p>
-          {searchQuery && (
-            <p className="text-sm text-slate-500 mt-2">
-              Essayez de modifier votre recherche ou vos filtres
-            </p>
-          )}
-        </div>
-      </div>
-    );
-  }
-
-  const totalPages = response?.totalPages || 1;
-  const total = response?.total || 0;
-  const startItem = (currentPage - 1) * adaptiveLimit + 1;
-  const endItem = Math.min(currentPage * adaptiveLimit, total);
-
-  const handlePageChange = (page: number) => {
-    if (page >= 1 && page <= totalPages) {
-      setCurrentPage(page);
+      toast({
+        title: "Téléchargement prêt",
+        description: `${file.originalName} a été téléchargé.`,
+      });
+    } catch {
+      toast({
+        title: "Téléchargement impossible",
+        description: "Le document est indisponible ou votre compte ne peut pas le télécharger.",
+        variant: "destructive",
+      });
+    } finally {
+      setDownloadingId(null);
     }
   };
 
-  const getPageNumbers = () => {
-    const pages = [];
-    const maxVisiblePages = 5;
-    
-    if (totalPages <= maxVisiblePages) {
-      for (let i = 1; i <= totalPages; i++) {
-        pages.push(i);
-      }
-    } else {
-      const start = Math.max(1, currentPage - 2);
-      const end = Math.min(totalPages, start + maxVisiblePages - 1);
-      
-      for (let i = start; i <= end; i++) {
-        pages.push(i);
-      }
-    }
-    
-    return pages;
-  };
+  if (!user) return null;
 
-  const renderPagination = () => {
-    if (totalPages <= 1) return null;
-    
-    return (
-      <div className="flex items-center justify-between">
-        <div className="text-sm text-slate-600">
-          Affichage de {startItem} à {endItem} sur {total} fichiers
-          <span className="text-xs text-slate-500 block">
-            ({adaptiveLimit} par page - ajusté automatiquement)
-          </span>
-        </div>
-        <div className="flex items-center space-x-2">
-          <Button 
-            variant="outline" 
-            size="sm" 
-            disabled={currentPage === 1}
-            onClick={() => handlePageChange(currentPage - 1)}
-          >
-            <ChevronLeft className="w-4 h-4" />
-          </Button>
-          
-          {getPageNumbers().map((pageNum) => (
-            <Button 
-              key={pageNum}
-              variant={currentPage === pageNum ? "default" : "outline"} 
-              size="sm"
-              onClick={() => handlePageChange(pageNum)}
-            >
-              {pageNum}
-            </Button>
-          ))}
-          
-          <Button 
-            variant="outline" 
-            size="sm" 
-            disabled={currentPage === totalPages}
-            onClick={() => handlePageChange(currentPage + 1)}
-          >
-            <ChevronRight className="w-4 h-4" />
-          </Button>
-        </div>
-      </div>
-    );
-  };
-
-  // Render files based on view mode
-  const renderFileContent = () => {
-    if (files.length === 0 && !isLoading) {
-      return (
-        <div className="flex flex-col items-center justify-center py-12 lg:py-16">
-          <FileText className="w-12 h-12 lg:w-16 lg:h-16 text-slate-300 mb-4" />
-          <p className="text-slate-500 text-center">
-            Aucun fichier trouvé avec les filtres actuels
-          </p>
-        </div>
-      );
-    }
-
-    switch (viewMode) {
-      case 'table':
-        return (
-          <FileTable 
-            files={files} 
-            onDownload={handleDownload}
-            onDelete={handleDelete}
-          />
-        );
-      
-      case 'compact':
-        return (
-          <div className="grid gap-3 lg:gap-4 grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 xl:grid-cols-5 2xl:grid-cols-6">
-            {files.map((file) => (
-              <CompactFileCard key={file.id} file={file} />
-            ))}
-          </div>
-        );
-      
-      case 'cards':
-      default:
-        return (
-          <div className="grid gap-3 lg:gap-4 xl:gap-6 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-3">
-            {files.map((file) => (
-              <FileCard key={file.id} file={file} />
-            ))}
-          </div>
-        );
-    }
-  };
+  const files = documentsQuery.data?.data ?? [];
+  const totalFiles = documentsQuery.data?.total ?? 0;
+  const totalPages = Math.max(documentsQuery.data?.totalPages ?? 1, 1);
+  const scopeDescription = isSearchMode
+    ? "Recherchez dans les noms et descriptions des documents accessibles à votre compte."
+    : user.role === "SUPERUSER"
+      ? "Consultez les documents de l'ensemble de l'organisation."
+      : user.role === "ADMIN"
+        ? `Consultez les documents du département ${user.department || "non attribué"}.`
+        : "Retrouvez vos documents et les archives accessibles dans votre département.";
 
   return (
-    <div className="flex-1 flex flex-col h-full">
-      {/* Toolbar optimisée */}
-      <FileToolbar
-        viewMode={viewMode}
-        onViewModeChange={setViewMode}
-        sortBy={sortBy}
-        sortOrder={sortOrder}
-        onSort={handleSort}
-        totalFiles={totalFiles}
-        currentPage={currentPage}
-        totalPages={totalPages}
-        isLoading={isLoading}
+    <main className="mx-auto w-full max-w-[1440px] p-4 sm:p-6 lg:p-8">
+      <section className="mb-6 flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
+        <div>
+          <p className="text-sm font-medium text-primary">{isSearchMode ? "Recherche" : "Espace documentaire"}</p>
+          <h1 className="mt-1 text-2xl font-bold tracking-tight sm:text-3xl">
+            {isSearchMode
+              ? "Recherche documentaire"
+              : user.role === "USER"
+                ? "Mes documents"
+                : "Bibliothèque documentaire"}
+          </h1>
+          <p className="mt-2 max-w-2xl text-sm text-muted-foreground sm:text-base">{scopeDescription}</p>
+        </div>
+        {!isSearchMode && canUploadFiles() && onUpload && (
+          <Button onClick={onUpload} className="min-h-10 shrink-0">
+            <Plus className="mr-2 h-4 w-4" />
+            Nouveau document
+          </Button>
+        )}
+      </section>
+
+      <FiltersBar
+        filters={filters}
+        onFiltersChange={setFilters}
+        totalFiles={isSearchMode && !hasActiveCriteria ? undefined : totalFiles}
+        isLoading={documentsQuery.isFetching}
+        showDepartmentFilter={user.role === "SUPERUSER"}
       />
-      
-      {/* Top pagination - Hidden on mobile */}
-      <div className="hidden sm:block p-4 border-b border-slate-100">
-        {renderPagination()}
-      </div>
-      
-      {/* File content */}
-      <div className="flex-1 p-3 lg:p-6">
-        {renderFileContent()}
-      </div>
-      
-      {/* Bottom pagination */}
-      <div className="p-4 border-t border-slate-100">
-        {renderPagination()}
-      </div>
-    </div>
+
+      <section className="mt-5" aria-label="Liste des documents">
+        {isSearchMode && !hasActiveCriteria ? (
+          <div className="rounded-lg border bg-card px-6 py-12 text-center">
+            <Search className="mx-auto h-8 w-8 text-muted-foreground" aria-hidden="true" />
+            <h2 className="mt-4 text-lg font-semibold">Commencez votre recherche</h2>
+            <p className="mx-auto mt-2 max-w-md text-sm text-muted-foreground">
+              Saisissez un mot dans la barre de recherche ou choisissez au moins un filtre.
+            </p>
+          </div>
+        ) : documentsQuery.isLoading ? (
+          <div className="space-y-3" aria-label="Chargement des documents">
+            {[1, 2, 3, 4, 5].map((item) => <Skeleton key={item} className="h-20 rounded-lg" />)}
+          </div>
+        ) : documentsQuery.isError ? (
+          <div className="rounded-lg border border-destructive bg-card p-6">
+            <h2 className="text-lg font-semibold">
+              {isSearchMode ? "La recherche n'a pas pu être effectuée" : "La bibliothèque n'a pas pu être chargée"}
+            </h2>
+            <p className="mt-2 text-sm text-muted-foreground">
+              Vérifiez la connexion au serveur, puis réessayez.
+            </p>
+            <Button variant="outline" className="mt-5 min-h-10" onClick={() => void documentsQuery.refetch()}>
+              <RefreshCw className="mr-2 h-4 w-4" />
+              Réessayer
+            </Button>
+          </div>
+        ) : files.length === 0 ? (
+          <div className="rounded-lg border bg-card px-6 py-12 text-center">
+            <FileText className="mx-auto h-8 w-8 text-muted-foreground" aria-hidden="true" />
+            <h2 className="mt-4 text-lg font-semibold">{isSearchMode ? "Aucun résultat" : "Aucun document trouvé"}</h2>
+            <p className="mx-auto mt-2 max-w-md text-sm text-muted-foreground">
+              {isSearchMode
+                ? "Aucun document accessible ne correspond à ces critères."
+                : hasActiveCriteria
+                ? "Modifiez la recherche ou effacez les filtres pour afficher d'autres documents."
+                : "Ajoutez un premier document pour commencer son circuit de validation."}
+            </p>
+            {hasActiveCriteria ? (
+              <Button
+                variant="outline"
+                className="mt-5 min-h-10"
+                onClick={() => {
+                  setFilters(DEFAULT_FILTERS);
+                  onSearchChange("");
+                }}
+              >
+                Effacer la recherche et les filtres
+              </Button>
+            ) : canUploadFiles() && onUpload ? (
+              <Button className="mt-5 min-h-10" onClick={onUpload}>
+                <Plus className="mr-2 h-4 w-4" />
+                Ajouter un document
+              </Button>
+            ) : null}
+          </div>
+        ) : (
+          <FileTable
+            files={files}
+            downloadingId={downloadingId}
+            canDownload={canDownloadFile}
+            canDelete={canDeleteFile}
+            onDownload={(file) => void handleDownload(file)}
+            onRequestDelete={setDocumentToDelete}
+          />
+        )}
+      </section>
+
+      {totalPages > 1 && (
+        <nav className="mt-5 flex flex-col gap-3 rounded-lg border bg-card p-3 sm:flex-row sm:items-center sm:justify-between" aria-label="Pagination des documents">
+          <p className="text-center text-sm text-muted-foreground sm:text-left">
+            Page {currentPage} sur {totalPages} · {new Intl.NumberFormat("fr-FR").format(totalFiles)} documents
+          </p>
+          <div className="flex items-center justify-center gap-2">
+            <Button
+              variant="outline"
+              className="min-h-10"
+              disabled={currentPage <= 1 || documentsQuery.isFetching}
+              onClick={() => setCurrentPage((page) => Math.max(1, page - 1))}
+            >
+              <ChevronLeft className="mr-2 h-4 w-4" />
+              Précédent
+            </Button>
+            <Button
+              variant="outline"
+              className="min-h-10"
+              disabled={currentPage >= totalPages || documentsQuery.isFetching}
+              onClick={() => setCurrentPage((page) => Math.min(totalPages, page + 1))}
+            >
+              Suivant
+              <ChevronRight className="ml-2 h-4 w-4" />
+            </Button>
+          </div>
+        </nav>
+      )}
+
+      <AlertDialog open={Boolean(documentToDelete)} onOpenChange={(open) => !open && setDocumentToDelete(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Retirer ce document de la bibliothèque&nbsp;?</AlertDialogTitle>
+            <AlertDialogDescription>
+              {documentToDelete
+                ? `« ${documentToDelete.originalName} » ne sera plus visible dans les listes documentaires. Son contenu n'est pas détruit immédiatement.`
+                : "Le document ne sera plus visible dans les listes documentaires."}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={deleteMutation.isPending}>Annuler</AlertDialogCancel>
+            <AlertDialogAction
+              className="bg-destructive text-destructive-foreground hover:bg-destructive"
+              disabled={deleteMutation.isPending || !documentToDelete}
+              onClick={(event) => {
+                event.preventDefault();
+                if (documentToDelete) deleteMutation.mutate(documentToDelete.id);
+              }}
+            >
+              {deleteMutation.isPending ? "Suppression…" : "Retirer le document"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+    </main>
   );
 }

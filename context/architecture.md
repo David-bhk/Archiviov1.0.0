@@ -46,7 +46,7 @@ Ce document décrit à la fois l'architecture actuellement observée et l'archit
 
 ### Base de données
 
-Le schéma actuel contient les entités `User`, `Department`, `File` et `Activity`. Il stocke les comptes, rôles, métadonnées documentaires et événements. Il ne modélise pas encore correctement les niveaux de classification, les demandes d'accès, les décisions d'approbation ni les autorisations temporaires.
+Le schéma actuel contient les entités `User`, `Department`, `File` et `Activity`. Il stocke les comptes, rôles, métadonnées documentaires et événements. Une migration de transition ajoute `departmentId` aux utilisateurs et documents, `accessLevel` aux départements et `classificationLevel` aux documents. Les identifiants sont rétromigrés depuis les noms existants sans supprimer les colonnes textuelles historiques. Les niveaux restent nullable tant que leur attribution initiale n'a pas été décidée ; ils ne participent donc pas encore aux autorisations. Les demandes d'accès et autorisations temporaires ne sont pas encore modélisées.
 
 ### Système de fichiers
 
@@ -72,7 +72,7 @@ Les noms exacts pourront évoluer lors de la modification du schéma, mais les c
 - `AccessRequest` — demande d'accès à un document restreint, demandeur, décision, décideur, justification et portée de l'autorisation.
 - `Activity` — journal d'audit des opérations sensibles.
 
-Les relations doivent utiliser des identifiants stables. Le modèle actuel reliant certains objets par le nom textuel du département doit être migré vers une clé étrangère `departmentId` avant de considérer la gestion des départements comme fiable.
+Les relations durables utilisent les clés étrangères `departmentId`. Les colonnes textuelles historiques sont conservées temporairement pour la compatibilité des contrats existants ; elles ne doivent plus devenir la source d'une nouvelle relation et seront retirées uniquement après migration des consommateurs et vérification des données.
 
 ## États d'un document
 
@@ -174,8 +174,8 @@ Le client peut masquer une action interdite pour améliorer l'expérience, mais 
 
 ## Écarts connus entre l'existant et la cible
 
-- `Department` ne contient actuellement aucun niveau d'accès.
-- `File` utilise un nom de département plutôt qu'une relation stable par identifiant.
+- `Department.accessLevel` et `File.classificationLevel` existent comme champs de transition nullable, mais les niveaux initiaux ne sont pas encore attribués et la hiérarchie n'est pas appliquée aux autorisations.
+- `User` et `File` possèdent une relation stable `departmentId` rétromigrée depuis le nom historique ; les contrats et règles d'exécution utilisent encore temporairement le nom et doivent être migrés avant le retrait des anciennes colonnes.
 - Les demandes d'accès et leurs décisions ne sont pas modélisées.
 - Le statut actuel utilise `approved`, tandis que la cible produit emploie `archived`.
 - Les preuves d'approbation ou de refus ne sont pas modélisées de manière complète.

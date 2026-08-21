@@ -4,11 +4,11 @@ Mettre ce fichier à jour après chaque modification significative de l'impléme
 
 ## Phase actuelle
 
-- Stockage et cycle documentaire stabilisés ; hiérarchie des départements à préparer.
+- Fondation de la hiérarchie départementale migrée et migration progressive des parcours documentaires vers l'interface institutionnelle.
 
 ## Objectif actuel
 
-- Migrer les départements vers des identifiants stables et introduire les niveaux 1 à 4.
+- Poursuivre l'harmonisation des parcours documentaires sans simuler de fonctions absentes, pendant que les décisions de niveaux restent ouvertes.
 
 ## Terminé
 
@@ -48,23 +48,55 @@ Mettre ce fichier à jour après chaque modification significative de l'impléme
 - File de validation limitée au département pour un admin et globale pour le superutilisateur.
 - Écrans de validation et d'historique raccordés au client API authentifié.
 - Baseline documentaire validée : TypeScript, 24 tests, Prisma et build réussis.
+- Ajout non destructif de `departmentId` aux utilisateurs et documents, avec rétromigration exacte depuis les noms historiques, clés étrangères et index.
+- Introduction transitoire de `Department.accessLevel` et `File.classificationLevel`, nullable tant que les niveaux initiaux ne sont pas décidés et contraints à l'intervalle 1 à 4 lorsqu'ils sont renseignés.
+- Conservation temporaire des colonnes textuelles de département pour préserver les contrats existants pendant leur migration.
+- Validation de la migration sur une copie isolée : 6 départements, 9 utilisateurs et 35 documents conservés, tous les identifiants correspondants rétromigrés et aucune erreur de clé étrangère.
+- Vérification que l'historique complet des migrations reconstruit exactement le schéma Prisma cible.
+- Baseline de la fondation hiérarchique validée : TypeScript, 31 tests, schéma Prisma et build réussis.
+- Analyse des huit références visuelles du dossier `UI` par rapport à `ui-context.md`, en retenant uniquement les motifs compatibles avec les fonctionnalités réellement implémentées.
+- Refonte du shell authentifié principal : navigation institutionnelle, barre supérieure de recherche, action de téléversement et panneau mobile accessible.
+- Remplacement du contenu générique du tableau de bord par des statistiques réelles, le nombre de validations pour les rôles autorisés et une liste responsive des documents récents.
+- Ajout des états de chargement, vide et erreur du tableau de bord, sans simuler les rapports, versions, partages, rétentions ou classifications encore absents.
+- Alignement des jetons globaux de couleur et de classification sur `ui-context.md` pour les composants nouvellement migrés.
+- Baseline de l'interface principale validée : TypeScript, 31 tests et build réussis.
+- Migration de la bibliothèque documentaire vers le shell principal responsive, sans panneau droit ni duplication de la recherche.
+- Limitation des filtres de bibliothèque aux paramètres réellement acceptés par l'API : type, période et département pour le superutilisateur.
+- Ajout d'un tableau documentaire sur ordinateur et de cartes mobiles avec référence, statut, département, auteur, date et taille.
+- Alignement des actions visibles de téléchargement et de suppression logique avec le rôle et le département, confirmation accessible de la suppression et conservation de l'autorité serveur.
+- Retrait de l'aperçu sans comportement, du tri ignoré par l'API et des composants de vues documentaires devenus inutilisés.
+- Baseline de la bibliothèque validée : TypeScript, 31 tests et build réussis.
+- Migration de la recherche avancée vers le shell principal et le navigateur documentaire partagé, avec recherche différée, filtres serveur et pagination cohérente.
+- Suppression du filtrage secondaire en mémoire, des réponses API ambiguës, du typage `any` et des traces de débogage de l'ancienne page de recherche.
+- Ajout d'un état initial qui n'interroge pas l'API avant la saisie d'un mot ou d'un filtre, ainsi que des états sans résultat et erreur cohérents.
+- Retrait des anciennes cartes documentaires et de l'utilitaire de téléchargement devenus sans consommateur après la mutualisation.
+- Baseline de la recherche validée : TypeScript, 31 tests, build et recherches HTTP authentifiées réussis.
+- Migration de la file de validation vers le shell institutionnel responsive, avec tableau sur ordinateur, cartes sur mobile et périmètre explicite selon le rôle.
+- Remplacement des justifications saisies directement dans chaque carte par des confirmations accessibles et distinctes pour l'archivage et le refus, sans modifier les routes ni les règles de décision.
+- Ajout des états chargement, vide et erreur, de la pagination serveur réelle, des notifications de résultat et de l'invalidation cohérente des données documentaires, statistiques et d'audit.
+- Baseline de la file de validation validée : TypeScript, 31 tests et build réussis.
 
 ## En cours
 
-- Préparation de la migration des départements et niveaux d'accès.
+- Validation visuelle interactive du shell principal dès qu'un navigateur contrôlable est disponible ; les décisions de hiérarchie départementale restent ouvertes en parallèle.
 
 ## Prochaines étapes
 
-- Définir la migration `departmentId` sans perdre les associations textuelles existantes.
-- Ajouter le niveau 1 à 4 aux départements et documents.
+- Décider les niveaux initiaux des départements existants avant toute application de la hiérarchie.
+- Clarifier les opérations qu'un administrateur peut effectuer sur son propre département avant de modifier les routes de gestion.
+- Migrer les contrats, filtres et décisions serveur de département vers `departmentId` en conservant une compatibilité contrôlée.
+- Attribuer le niveau documentaire initial côté serveur à partir du département authentifié.
 - Étendre le service d'autorisation avec la hiérarchie validée.
 - Ajouter les tests de matrice rôle, département et niveau.
 - Vérifier visuellement l'écran de validation dès qu'un navigateur contrôlable est disponible.
+- Migrer ensuite l'historique des activités vers le même shell et les mêmes jetons, sans inventer de catégories ou d'actions absentes de l'API.
 - Décider ultérieurement du traitement d'un document refusé avant d'ajouter correction ou resoumission.
 - Auditer séparément les 24 vulnérabilités signalées dans les dépendances.
 
 ## Questions ouvertes
 
+- Quels niveaux 1 à 4 faut-il attribuer aux six départements existants : Administration, IT, Marketing, Ressources Humaines, Comptabilité et Test Department ?
+- Un administrateur peut-il uniquement modifier les informations de son département, ou peut-il aussi créer, renommer et supprimer des départements ?
 - Tous les documents d'un même département sont-ils visibles par ses membres autorisés ?
 - Que devient un document refusé ?
 - Quelle politique de suppression, restauration et conservation faut-il appliquer ?
@@ -96,6 +128,10 @@ Mettre ce fichier à jour après chaque modification significative de l'impléme
 - Baseline après fermeture P0 : TypeScript réussit, 18 tests réussissent et le build réussit.
 - Le statut historique `approved` a été retiré ; seuls `pending`, `archived` et `rejected` sont canoniques.
 - Les 31 documents existants étaient tous `pending` et le sont restés après migration ; aucune promotion automatique n'a été effectuée.
+- La copie de validation du 21 août 2026 contenait 6 départements, 9 utilisateurs et 35 documents ; la migration `departmentId` a conservé toutes les lignes et rétromigré toutes les associations connues.
+- La migration hiérarchique a d'abord été validée sur une copie isolée sans toucher `prisma/dev.db`, puis a été appliquée à la base locale lors de la reprise de l'application afin de rétablir la connexion avec le client Prisma courant.
+- Le dossier `UI` sert uniquement de référence : les éléments sans comportement produit validé ne sont pas copiés dans l'application.
+- La validation navigateur du nouveau tableau de bord n'a pas pu être exécutée le 21 août 2026, car aucune instance de navigateur contrôlable n'était disponible ; TypeScript, tests et build ont néanmoins réussi.
 - Plusieurs métadonnées existantes pointent vers des fichiers absents ; aucune suppression ou fabrication de fichier n'a été effectuée.
 - La vérification visuelle de l'écran de validation n'a pas pu être exécutée car aucun navigateur contrôlable n'était disponible.
 - L'installation des outils de test signale 24 vulnérabilités de dépendances à auditer séparément ; ne pas appliquer de correction forcée sans analyse.

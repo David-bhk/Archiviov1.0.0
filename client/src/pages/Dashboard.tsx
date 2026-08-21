@@ -1,12 +1,12 @@
 import { useState } from "react";
-import { useAuth } from "../contexts/AuthContext";
-import { useRole } from "../contexts/RoleContext";
+import { Sheet, SheetContent, SheetDescription, SheetTitle } from "@/components/ui/sheet";
+import DashboardOverview from "../components/Dashboard/DashboardOverview";
 import Sidebar from "../components/Layout/Sidebar";
 import TopBar from "../components/Layout/TopBar";
-import RightPanel from "../components/Layout/RightPanel";
-import FileGrid from "../components/Files/FileGrid";
 import UploadModal from "../components/Files/UploadModal";
 import UserManagementModal from "../components/Users/UserManagementModal";
+import { useAuth } from "../contexts/AuthContext";
+import { useRole } from "../contexts/RoleContext";
 
 export default function Dashboard() {
   const { user } = useAuth();
@@ -15,137 +15,59 @@ export default function Dashboard() {
   const [showUserModal, setShowUserModal] = useState(false);
   const [showMobileMenu, setShowMobileMenu] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
-  const [filters, setFilters] = useState({
-    type: "all",
-    department: "all",
-    date: "30days",
-  });
 
-  if (!user) {
-    return null;
-  }
-  
-  if (!user.role) {
-    return <div>Erreur: Utilisateur sans rôle défini</div>;
-  }
+  if (!user) return null;
 
-  const isRegularUser = user.role === "USER";
-  const isAdmin = user.role === "ADMIN" || user.role === "SUPERUSER";
+  const openUserManagement = () => {
+    if (canAccessUserManagement()) setShowUserModal(true);
+  };
 
   return (
-    <div className="min-h-screen flex flex-col lg:flex-row bg-slate-50">
-      {/* Mobile sidebar overlay */}
-      {showMobileMenu && (
-        <div className="fixed inset-0 z-50 lg:hidden">
-          <div className="absolute inset-0 bg-black/50" onClick={() => setShowMobileMenu(false)} />
-          <div className="absolute left-0 top-0 h-full w-64 bg-white">
-            <Sidebar 
-              onUserManagement={() => {
-                setShowUserModal(true);
-                setShowMobileMenu(false);
-              }} 
-              onClose={() => setShowMobileMenu(false)}
-            />
-          </div>
-        </div>
-      )}
+    <div className="min-h-screen bg-background text-foreground">
+      <aside className="fixed inset-y-0 left-0 z-40 hidden w-[280px] lg:block">
+        <Sidebar
+          onUpload={() => setShowUploadModal(true)}
+          onUserManagement={openUserManagement}
+        />
+      </aside>
 
-      {/* Desktop sidebar */}
-      <div className="hidden lg:block">
-        <Sidebar onUserManagement={() => setShowUserModal(true)} />
-      </div>
-      
-      <div className="flex-1 flex flex-col min-w-0">
+      <Sheet open={showMobileMenu} onOpenChange={setShowMobileMenu}>
+        <SheetContent side="left" className="w-[280px] p-0 [&>button]:hidden">
+          <SheetTitle className="sr-only">Navigation principale</SheetTitle>
+          <SheetDescription className="sr-only">
+            Accédez aux différentes sections d'Archivio.
+          </SheetDescription>
+          <Sidebar
+            onClose={() => setShowMobileMenu(false)}
+            onUpload={() => {
+              setShowMobileMenu(false);
+              setShowUploadModal(true);
+            }}
+            onUserManagement={() => {
+              setShowMobileMenu(false);
+              openUserManagement();
+            }}
+          />
+        </SheetContent>
+      </Sheet>
+
+      <div className="min-h-screen lg:ml-[280px]">
         <TopBar
           searchQuery={searchQuery}
           onSearchChange={setSearchQuery}
           onUpload={() => setShowUploadModal(true)}
           onMenuToggle={() => setShowMobileMenu(true)}
-          showUploadButton={true}
-          pageTitle={isAdmin ? "Tableau de bord" : "Mon espace"}
-          breadcrumb="/ Accueil"
+          showUploadButton
+          pageTitle={user.role === "USER" ? "Mon espace" : "Tableau de bord"}
+          breadcrumb={user.department || "Sans département"}
         />
-        
-        {/* Show full filters for admins and superusers */}
-        {isAdmin && (
-          <div className="bg-white border-b border-slate-200 p-3 lg:p-4">
-            <div className="flex flex-col space-y-3 lg:flex-row lg:items-center lg:justify-between lg:space-y-0">
-              <h2 className="text-lg lg:text-xl font-bold text-slate-800">Filtres avancés</h2>
-              <div className="flex flex-col space-y-2 sm:flex-row sm:items-center sm:space-y-0 sm:space-x-3">
-                <select 
-                  value={filters.type} 
-                  onChange={(e) => setFilters({...filters, type: e.target.value})}
-                  className="w-full sm:w-auto px-3 py-2 border border-slate-300 rounded-md text-sm"
-                >
-                  <option value="all">Tous les types</option>
-                  <option value="pdf">PDF</option>
-                  <option value="docx">Word</option>
-                  <option value="xlsx">Excel</option>
-                  <option value="png">Images</option>
-                </select>
-                <select 
-                  value={filters.department} 
-                  onChange={(e) => setFilters({...filters, department: e.target.value})}
-                  className="w-full sm:w-auto px-3 py-2 border border-slate-300 rounded-md text-sm"
-                >
-                  <option value="all">Tous les départements</option>
-                  <option value="Administration">Administration</option>
-                  <option value="IT">IT</option>
-                  <option value="RH">RH</option>
-                </select>
-                <select 
-                  value={filters.date} 
-                  onChange={(e) => setFilters({...filters, date: e.target.value})}
-                  className="w-full sm:w-auto px-3 py-2 border border-slate-300 rounded-md text-sm"
-                >
-                  <option value="7days">7 derniers jours</option>
-                  <option value="30days">30 derniers jours</option>
-                  <option value="90days">90 derniers jours</option>
-                  <option value="all">Toutes les dates</option>
-                </select>
-              </div>
-            </div>
-          </div>
-        )}
-        
-        {/* Simplified filter for regular users */}
-        {isRegularUser && (
-          <div className="bg-white border-b border-slate-200 p-3 lg:p-4">
-            <div className="flex flex-col space-y-3 lg:flex-row lg:items-center lg:justify-between lg:space-y-0">
-              <div>
-                <h2 className="text-lg lg:text-xl font-bold text-slate-800">Mes fichiers récents</h2>
-                <p className="text-sm text-slate-600">Fichiers de votre département et vos uploads</p>
-              </div>
-              <div className="flex flex-col space-y-2 sm:flex-row sm:items-center sm:space-y-0 sm:space-x-2">
-                <label className="text-sm font-medium text-slate-700">Filtrer par type:</label>
-                <select 
-                  value={filters.type} 
-                  onChange={(e) => setFilters({...filters, type: e.target.value})}
-                  className="px-3 py-1 border border-slate-300 rounded-md text-sm"
-                >
-                  <option value="all">Tous</option>
-                  <option value="pdf">PDF</option>
-                  <option value="docx">Word</option>
-                  <option value="xlsx">Excel</option>
-                  <option value="png">Images</option>
-                </select>
-              </div>
-            </div>
-          </div>
-        )}
-        
-        <FileGrid
+        <DashboardOverview
           searchQuery={searchQuery}
-          filters={filters}
+          onUpload={() => setShowUploadModal(true)}
         />
       </div>
-      
-      <RightPanel />
-      
-      {showUploadModal && (
-        <UploadModal onClose={() => setShowUploadModal(false)} />
-      )}
-      
+
+      {showUploadModal && <UploadModal onClose={() => setShowUploadModal(false)} />}
       {showUserModal && canAccessUserManagement() && (
         <UserManagementModal onClose={() => setShowUserModal(false)} />
       )}

@@ -94,6 +94,7 @@ export interface RoleContextType {
   hasAccess: (allowedRoles: Role[]) => boolean;
   canManageUsers: () => boolean;
   canDeleteFile: (file: File) => boolean;
+  canDownloadFile: (file: File) => boolean;
   canAccessUserManagement: () => boolean;
   canAccessFile: (file: File) => boolean;
   canManageDepartments: () => boolean;

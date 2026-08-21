@@ -11,74 +11,82 @@ datasource db {
 }
 
 model User {
-  id          Int       @id @default(autoincrement())
-  username    String    @unique
-  email       String    @unique
-  password    String
-  role        Role      @default(USER)
-  department  String?
-  firstName   String
-  lastName    String
-  isActive    Boolean   @default(true)
-  createdAt   DateTime  @default(now())
-  lastLogin   DateTime?
-  
+  id           Int       @id @default(autoincrement())
+  username     String    @unique
+  email        String    @unique
+  password     String
+  role         Role      @default(USER)
+  department   String?
+  departmentId Int?
+  firstName    String
+  lastName     String
+  isActive     Boolean   @default(true)
+  createdAt    DateTime  @default(now())
+  lastLogin    DateTime?
+
   // Relations
-  uploadedFiles File[]     @relation("UploadedFiles")
-  reviewedFiles File[]     @relation("ReviewedFiles")
-  activities Activity[]
-  
+  uploadedFiles File[]      @relation("UploadedFiles")
+  reviewedFiles File[]      @relation("ReviewedFiles")
+  activities    Activity[]
+  departmentRef Department? @relation(fields: [departmentId], references: [id], onDelete: SetNull)
+
+  @@index([departmentId])
   @@map("users")
 }
 
 model Department {
-  id          Int       @id @default(autoincrement())
-  name        String    @unique
+  id          Int      @id @default(autoincrement())
+  name        String   @unique
   description String?
-  createdAt   DateTime  @default(now())
-  
+  accessLevel Int?
+  createdAt   DateTime @default(now())
+
   // Relations
-  files       File[]
-  
+  users User[]
+  files File[]
+
   @@map("departments")
 }
 
 model File {
-  id           Int         @id @default(autoincrement())
-  filename     String
-  originalName String
-  fileType     String
-  fileSize     Int
-  filePath     String
-  department   String?
-  category     String?
-  description  String?
-  isDeleted    Boolean     @default(false)
-  createdAt    DateTime    @default(now())
-  status       String      @default("pending")
-  reviewedBy   Int?
-  reviewedAt   DateTime?
-  reviewComment String?
-  
+  id                  Int       @id @default(autoincrement())
+  filename            String
+  originalName        String
+  fileType            String
+  fileSize            Int
+  filePath            String
+  department          String?
+  departmentId        Int?
+  classificationLevel Int?
+  category            String?
+  description         String?
+  isDeleted           Boolean   @default(false)
+  createdAt           DateTime  @default(now())
+  status              String    @default("pending")
+  reviewedBy          Int?
+  reviewedAt          DateTime?
+  reviewComment       String?
+
   // Relations
-  uploadedBy   Int?
-  user         User?       @relation("UploadedFiles", fields: [uploadedBy], references: [id], onDelete: SetNull)
-  reviewer     User?       @relation("ReviewedFiles", fields: [reviewedBy], references: [id], onDelete: SetNull)
-  departmentRef Department? @relation(fields: [department], references: [name])
-  activities Activity[]
-  
+  uploadedBy    Int?
+  user          User?       @relation("UploadedFiles", fields: [uploadedBy], references: [id], onDelete: SetNull)
+  reviewer      User?       @relation("ReviewedFiles", fields: [reviewedBy], references: [id], onDelete: SetNull)
+  departmentRef Department? @relation(fields: [departmentId], references: [id], onDelete: SetNull)
+  activities    Activity[]
+
+  @@index([departmentId])
   @@map("files")
 }
 
 model Activity {
-  id         Int      @id @default(autoincrement())
-  type       String
-  userId     Int?
-  user       User?    @relation(fields: [userId], references: [id], onDelete: SetNull)
-  fileId     Int?
-  file       File?    @relation(fields: [fileId], references: [id], onDelete: SetNull)
+  id          Int      @id @default(autoincrement())
+  type        String
+  userId      Int?
+  user        User?    @relation(fields: [userId], references: [id], onDelete: SetNull)
+  fileId      Int?
+  file        File?    @relation(fields: [fileId], references: [id], onDelete: SetNull)
   description String?
-  createdAt  DateTime @default(now())
+  createdAt   DateTime @default(now())
 }
 
 enum Role {

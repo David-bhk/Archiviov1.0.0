@@ -127,13 +127,13 @@ La première priorité n'est pas d'ajouter l'interface des demandes d'accès. Il
 
 ### A09 — Page d'approbation non raccordée et appels sans JWT
 
-**État : résolu fonctionnellement, vérification visuelle restante.** Les routes frontend existent, la file pending utilise le client API authentifié et le contrat paginé, et l'écran impose une justification pour archiver ou refuser. Aucun navigateur contrôlable n'était disponible pour la vérification visuelle de cette unité.
+**État : résolu fonctionnellement et migré visuellement, vérification interactive restante.** Les routes frontend existent, la file pending utilise le client API authentifié et le contrat paginé. L'écran reprend le shell institutionnel responsive, affiche le périmètre réel du rôle, gère chargement, vide, erreur et pagination, puis isole l'archivage et le refus dans des confirmations accessibles. Chaque décision impose une justification de 3 à 1 000 caractères et invalide les données documentaires, statistiques et d'audit concernées. Aucun navigateur contrôlable n'était disponible pour la vérification interactive de cette unité.
 
 **Cible :** routes frontend accessibles seulement aux rôles autorisés, client API commun et contrat paginé cohérent.
 
-### A10 — Niveaux de département absents
+### A10 — Hiérarchie de niveaux non activée
 
-**État : absent.** `Department` ne possède pas de niveau. Les utilisateurs et documents référencent le département par son nom. Les listes accordent actuellement à tous les admins l'accès à tous les fichiers, sans hiérarchie.
+**État : fondation de données introduite, comportement absent.** `Department.accessLevel` et `File.classificationLevel` acceptent uniquement les niveaux 1 à 4 lorsqu'ils sont renseignés. Ils restent nullable pendant la transition afin de ne pas inventer la classification des départements existants. Aucun contrôle d'autorisation ne s'appuie encore sur ces champs.
 
 **Cible :** `departmentId` stable, niveau 1 à 4, niveau documentaire et service d'autorisation centralisé.
 
@@ -163,7 +163,7 @@ La première priorité n'est pas d'ajouter l'interface des demandes d'accès. Il
 
 ### A15 — Relations départementales instables
 
-**État : fragile.** `User.department` est une chaîne sans relation Prisma ; `File.department` référence `Department.name`. Renommer ou supprimer un département peut casser ou effacer sémantiquement des associations. Le département envoyé au téléversement peut provenir du client pour les rôles privilégiés.
+**État : fondation migrée, contrats historiques encore actifs.** Une migration non destructive ajoute et rétromigre `User.departmentId` et `File.departmentId` vers `Department.id`, avec clés étrangères et index. Les colonnes textuelles sont conservées pendant la migration des contrats, routes et filtres ; le département envoyé au téléversement peut encore provenir du client pour les rôles privilégiés.
 
 **Cible :** clés étrangères `departmentId` et attribution serveur selon les règles métier.
 
@@ -211,7 +211,7 @@ Tous les comptes de démonstration utilisent `password123`. Les fichiers sont re
 
 ### A26 — UI partiellement factice ou inaccessible
 
-Des données mock subsistent, un fichier `FileCard_backup.tsx` reste dans le code source et plusieurs actions utilisent des appels `fetch` distincts. La sobriété visuelle cible n'est pas encore appliquée : couleurs directes, icônes et variantes répétées restent nombreuses.
+**État : migration visuelle engagée.** Le shell authentifié, le tableau de bord principal, la bibliothèque, la recherche documentaire et la file de validation utilisent désormais les jetons sémantiques, une navigation institutionnelle responsive, des données API réelles et des états chargement, vide et erreur. La bibliothèque et la recherche partagent le même navigateur paginé, n'affichent que les filtres acceptés par l'API, privilégient le tableau sur ordinateur et fournissent une présentation en cartes sur mobile. La validation reprend cette présentation responsive, n'affiche pas de recherche que son API ne saurait honorer et sépare clairement les décisions justifiées. Les actions visibles suivent les capacités du rôle affiché, tandis que le serveur reste l'autorité. L'aperçu sans comportement, le tri ignoré par le serveur, le filtrage secondaire en mémoire, les traces de débogage et les anciennes variantes de cartes ont été retirés. Les autres pages conservent encore des couleurs directes, des dispositions dupliquées et des composants historiques.
 
 ## Constats P3 — Faibles
 

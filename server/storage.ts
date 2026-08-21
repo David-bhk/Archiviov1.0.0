@@ -465,6 +465,7 @@ export class PrismaStorage implements IStorage {
     password: prismaUser.password,
     role: prismaUser.role as Role,
     department: prismaUser.department,
+    departmentId: prismaUser.departmentId,
     firstName: prismaUser.firstName,
     lastName: prismaUser.lastName,
     isActive: prismaUser.isActive === undefined ? true : prismaUser.isActive,
@@ -476,6 +477,7 @@ export class PrismaStorage implements IStorage {
     id: prismaDepartment.id,
     name: prismaDepartment.name,
     description: prismaDepartment.description,
+    accessLevel: prismaDepartment.accessLevel,
     createdAt: prismaDepartment.createdAt,
   });
 
@@ -488,6 +490,8 @@ export class PrismaStorage implements IStorage {
     filePath: prismaFile.filePath,
     uploadedBy: prismaFile.uploadedBy,
     department: prismaFile.department,
+    departmentId: prismaFile.departmentId,
+    classificationLevel: prismaFile.classificationLevel,
     category: prismaFile.category,
     description: prismaFile.description,
     status: prismaFile.status,

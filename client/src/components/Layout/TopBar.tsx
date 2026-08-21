@@ -1,110 +1,102 @@
+import { Menu, Plus, Search } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Bell, CloudUpload, Search, Menu } from "lucide-react";
-import { useRole } from "../../contexts/RoleContext";
+import { useAuth } from "../../contexts/AuthContext";
 
 interface TopBarProps {
   searchQuery: string;
   onSearchChange: (query: string) => void;
   onUpload: () => void;
   onMenuToggle?: () => void;
+  showSearch?: boolean;
   showUploadButton?: boolean;
   pageTitle?: string;
   breadcrumb?: string;
 }
 
-export default function TopBar({ 
-  searchQuery, 
-  onSearchChange, 
-  onUpload, 
+export default function TopBar({
+  searchQuery,
+  onSearchChange,
+  onUpload,
   onMenuToggle,
+  showSearch = true,
   showUploadButton = false,
-  pageTitle = "Gestion des fichiers",
-  breadcrumb = "/ Tous les fichiers"
+  pageTitle = "Gestion documentaire",
+  breadcrumb = "Archivio",
 }: TopBarProps) {
+  const { user } = useAuth();
+  const initials = user
+    ? `${user.firstName.slice(0, 1)}${user.lastName.slice(0, 1)}`.toUpperCase()
+    : "";
+
   return (
-    <div className="bg-white border-b border-slate-200 p-3 lg:p-4">
-      {/* Mobile layout - stacked */}
-      <div className="flex flex-col space-y-3 lg:hidden">
-        <div className="flex items-center justify-between">
-          <div className="flex items-center space-x-3 min-w-0 flex-1">
-            {/* Menu hamburger */}
-            {onMenuToggle && (
-              <Button 
-                variant="ghost" 
-                size="sm" 
-                onClick={onMenuToggle}
-                className="flex-shrink-0"
-              >
-                <Menu className="w-5 h-5" />
-              </Button>
-            )}
-            <div className="min-w-0 flex-1">
-              <h2 className="text-lg font-bold text-slate-800 truncate">{pageTitle}</h2>
-              <div className="text-xs text-slate-500 truncate">
-                <span>{breadcrumb}</span>
+    <header className="sticky top-0 z-30 border-b bg-background px-4 py-3 sm:px-6 lg:px-8">
+      <div className="mx-auto flex w-full max-w-[1440px] items-center gap-3">
+        {onMenuToggle && (
+          <Button
+            variant="ghost"
+            size="icon"
+            onClick={onMenuToggle}
+            className="shrink-0 lg:hidden"
+            aria-label="Ouvrir la navigation"
+          >
+            <Menu className="h-5 w-5" />
+          </Button>
+        )}
+
+        <div className={showSearch ? "min-w-0 lg:hidden" : "min-w-0"}>
+          <p className="truncate text-sm font-semibold">{pageTitle}</p>
+          <p className="truncate text-xs text-muted-foreground">{breadcrumb}</p>
+        </div>
+
+        {showSearch && (
+          <div className="relative ml-auto hidden w-full max-w-md lg:block lg:ml-0">
+            <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" aria-hidden="true" />
+            <Input
+              type="search"
+              aria-label="Rechercher un document"
+              placeholder="Rechercher un document..."
+              value={searchQuery}
+              onChange={(event) => onSearchChange(event.target.value)}
+              className="min-h-10 bg-muted pl-10"
+            />
+          </div>
+        )}
+
+        <div className="ml-auto flex items-center gap-2">
+          {showUploadButton && (
+            <Button onClick={onUpload} className="min-h-10" aria-label="Ajouter un nouveau document">
+              <Plus className="h-4 w-4 sm:mr-2" />
+              <span className="hidden sm:inline">Nouveau document</span>
+            </Button>
+          )}
+          {user && (
+            <div className="hidden items-center gap-3 border-l pl-4 sm:flex">
+              <div className="text-right">
+                <p className="max-w-40 truncate text-sm font-semibold">{user.firstName} {user.lastName}</p>
+                <p className="max-w-40 truncate text-xs text-muted-foreground">{user.department || "Sans département"}</p>
+              </div>
+              <div className="flex h-9 w-9 items-center justify-center rounded-full border bg-card text-xs font-semibold" aria-hidden="true">
+                {initials}
               </div>
             </div>
-          </div>
-          <div className="flex items-center space-x-2 flex-shrink-0">
-            {showUploadButton && (
-              <Button onClick={onUpload} size="sm" className="flex items-center space-x-1">
-                <CloudUpload className="w-4 h-4" />
-                <span className="hidden sm:inline">Upload</span>
-              </Button>
-            )}
-            <Button variant="ghost" size="sm" className="text-slate-600 hover:text-slate-800">
-              <Bell className="w-4 h-4" />
-            </Button>
-          </div>
-        </div>
-        
-        {/* Search bar on mobile */}
-        <div className="relative">
-          <Search className="absolute left-3 top-3 h-4 w-4 text-slate-400" />
-          <Input
-            type="text"
-            placeholder="Rechercher..."
-            value={searchQuery}
-            onChange={(e) => onSearchChange(e.target.value)}
-            className="w-full pl-10"
-          />
+          )}
         </div>
       </div>
 
-      {/* Desktop layout - horizontal */}
-      <div className="hidden lg:flex items-center justify-between">
-        <div className="flex items-center space-x-4 min-w-0 flex-1">
-          <h2 className="text-xl xl:text-2xl font-bold text-slate-800">{pageTitle}</h2>
-          <div className="text-sm text-slate-500">
-            <span>{breadcrumb}</span>
-          </div>
+      {showSearch && (
+        <div className="relative mt-3 lg:hidden">
+          <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" aria-hidden="true" />
+          <Input
+            type="search"
+            aria-label="Rechercher un document"
+            placeholder="Rechercher un document..."
+            value={searchQuery}
+            onChange={(event) => onSearchChange(event.target.value)}
+            className="min-h-10 bg-muted pl-10"
+          />
         </div>
-        
-        <div className="flex items-center space-x-4 flex-shrink-0">
-          <div className="relative">
-            <Search className="absolute left-3 top-3 h-4 w-4 text-slate-400" />
-            <Input
-              type="text"
-              placeholder="Rechercher des fichiers..."
-              value={searchQuery}
-              onChange={(e) => onSearchChange(e.target.value)}
-              className="w-64 xl:w-80 pl-10"
-            />
-          </div>
-          
-          {showUploadButton && (
-            <Button onClick={onUpload} className="flex items-center space-x-2">
-              <CloudUpload className="w-4 h-4" />
-              <span>Télécharger</span>
-            </Button>
-          )}
-          
-          <Button variant="ghost" size="icon" className="text-slate-600 hover:text-slate-800">
-            <Bell className="w-5 h-5" />
-          </Button>
-        </div>
-      </div>
-    </div>
+      )}
+    </header>
   );
 }

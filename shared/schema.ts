@@ -6,6 +6,14 @@ export type Role = z.infer<typeof roleSchema>;
 export const documentStatuses = ["pending", "archived", "rejected"] as const;
 export const documentStatusSchema = z.enum(documentStatuses);
 export type DocumentStatus = z.infer<typeof documentStatusSchema>;
+export const accessLevels = [1, 2, 3, 4] as const;
+export const accessLevelSchema = z.union([
+  z.literal(accessLevels[0]),
+  z.literal(accessLevels[1]),
+  z.literal(accessLevels[2]),
+  z.literal(accessLevels[3]),
+]);
+export type AccessLevel = z.infer<typeof accessLevelSchema>;
 
 // Prisma-based type definitions that match the Prisma schema
 export interface User {
@@ -15,6 +23,7 @@ export interface User {
   password: string;
   role: Role;
   department: string | null;
+  departmentId: number | null;
   firstName: string;
   lastName: string;
   isActive: boolean;
@@ -26,6 +35,7 @@ export interface Department {
   id: number;
   name: string;
   description: string | null;
+  accessLevel: AccessLevel | null;
   createdAt: Date;
 }
 
@@ -38,6 +48,8 @@ export interface File {
   filePath: string;
   uploadedBy: number | null;
   department: string | null;
+  departmentId: number | null;
+  classificationLevel: AccessLevel | null;
   category: string | null;
   description: string | null;
   status: DocumentStatus;
