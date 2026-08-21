@@ -1,212 +1,295 @@
 import { useState } from "react";
-import { useAuth } from "../contexts/AuthContext";
 import { useQuery } from "@tanstack/react-query";
-import { apiRequest } from "../lib/queryClient";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Progress } from "@/components/ui/progress";
+import { BarChart3, FileText, RefreshCw } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
-import { BarChart3, FileText, Users, HardDrive, TrendingUp, Calendar } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { Progress } from "@/components/ui/progress";
+import { Sheet, SheetContent, SheetDescription, SheetTitle } from "@/components/ui/sheet";
+import { Skeleton } from "@/components/ui/skeleton";
+import UploadModal from "../components/Files/UploadModal";
 import Sidebar from "../components/Layout/Sidebar";
 import TopBar from "../components/Layout/TopBar";
-import RightPanel from "../components/Layout/RightPanel";
-import UploadModal from "../components/Files/UploadModal";
 import UserManagementModal from "../components/Users/UserManagementModal";
-import { Stats } from "../types";
+import { useAuth } from "../contexts/AuthContext";
+import { useRole } from "../contexts/RoleContext";
+import { apiRequest } from "../lib/queryClient";
+import type { Stats } from "../types";
+
+function formatNumber(value: number) {
+  return new Intl.NumberFormat("fr-FR").format(value);
+}
+
+function formatFileSize(bytes: number) {
+  if (bytes <= 0) return "0 octet";
+  const units = ["octets", "Ko", "Mo", "Go", "To"];
+  const unitIndex = Math.min(Math.floor(Math.log(bytes) / Math.log(1024)), units.length - 1);
+  const value = bytes / 1024 ** unitIndex;
+  return `${new Intl.NumberFormat("fr-FR", { maximumFractionDigits: 1 }).format(value)} ${units[unitIndex]}`;
+}
+
+function formatFileType(type: string) {
+  const normalized = type.replace(/^\./, "").trim();
+  return normalized ? normalized.toUpperCase() : "AUTRE";
+}
 
 export default function Statistics() {
   const { user } = useAuth();
+  const { canAccessUserManagement } = useRole();
   const [showUploadModal, setShowUploadModal] = useState(false);
   const [showUserModal, setShowUserModal] = useState(false);
   const [showMobileMenu, setShowMobileMenu] = useState(false);
-  const [searchQuery, setSearchQuery] = useState("");
 
-  const { data: stats, isLoading, isError, error } = useQuery<Stats>({
-    queryKey: ["/api/stats", user?.id],
+  const statsQuery = useQuery<Stats>({
+    queryKey: ["/api/stats", "statistics"],
     queryFn: async () => {
-      if (!user?.id) return null;
-      const res = await apiRequest("GET", "/api/stats");
-      return res.json();
+      const response = await apiRequest("GET", "/api/stats");
+      return response.json();
     },
-    enabled: !!user?.id,
+    enabled: Boolean(user),
   });
-
-  const formatFileSize = (bytes: number) => {
-    if (bytes === 0) return "0 B";
-    const k = 1024;
-    const sizes = ["B", "KB", "MB", "GB"];
-    const i = Math.floor(Math.log(bytes) / Math.log(k));
-    return parseFloat((bytes / Math.pow(k, i)).toFixed(1)) + " " + sizes[i];
-  };
-
-  const getFileTypeColor = (type: string) => {
-    switch (type) {
-      case "pdf": return "bg-red-500";
-      case "docx": return "bg-blue-500";
-      case "xlsx": return "bg-green-500";
-      case "png": case "jpg": case "jpeg": return "bg-purple-500";
-      default: return "bg-slate-500";
-    }
-  };
 
   if (!user) return null;
 
+  const openUserManagement = () => {
+    if (canAccessUserManagement()) setShowUserModal(true);
+  };
+
+  const stats = statsQuery.data;
+  const totalFiles = stats?.totalFiles ?? 0;
+  const totalSize = stats?.totalSize ?? 0;
+  const activeUsers = stats?.activeUsers ?? 0;
+  const totalUsers = stats?.totalUsers ?? 0;
+  const userFiles = stats?.userFiles ?? 0;
+  const activeUserRate = totalUsers > 0 ? Math.round((activeUsers / totalUsers) * 100) : 0;
+  const personalFileRate = totalFiles > 0 ? Math.min(100, Math.round((userFiles / totalFiles) * 100)) : 0;
+  const averageFileSize = totalFiles > 0 ? totalSize / totalFiles : 0;
+  const fileTypes = Object.entries(stats?.fileTypes ?? {})
+    .sort(([, firstCount], [, secondCount]) => secondCount - firstCount);
+  const typedFileTotal = fileTypes.reduce((sum, [, count]) => sum + count, 0);
+  const scopeLabel = user.role === "SUPERUSER"
+    ? "Vue globale du système"
+    : user.department || "Votre périmètre documentaire";
+
+  const overviewCards = [
+    {
+      label: "Documents accessibles",
+      value: formatNumber(totalFiles),
+      detail: "Selon votre rôle et votre département",
+    },
+    {
+      label: "Volume accessible",
+      value: formatFileSize(totalSize),
+      detail: `Moyenne : ${formatFileSize(averageFileSize)} par document`,
+    },
+    {
+      label: "Mes documents",
+      value: formatNumber(userFiles),
+      detail: `${personalFileRate} % des documents accessibles`,
+    },
+    {
+      label: "Départements",
+      value: formatNumber(stats?.totalDepartments ?? 0),
+      detail: "Départements enregistrés dans Archivio",
+    },
+  ];
+
   return (
-    <div className="min-h-screen flex bg-slate-50">
-      <Sidebar onUserManagement={() => setShowUserModal(true)} onClose={() => setShowMobileMenu(false)} />
-      
-      {/* Mobile menu overlay */}
-      {showMobileMenu && (
-        <div className="lg:hidden fixed inset-0 z-50 bg-black bg-opacity-50" onClick={() => setShowMobileMenu(false)}>
-          <div className="w-64 h-full bg-white" onClick={(e) => e.stopPropagation()}>
-            <Sidebar onUserManagement={() => setShowUserModal(true)} onClose={() => setShowMobileMenu(false)} />
-          </div>
-        </div>
-      )}
-      
-      <div className="flex-1 flex flex-col">
+    <div className="min-h-screen bg-background text-foreground">
+      <aside className="fixed inset-y-0 left-0 z-40 hidden w-[280px] lg:block">
+        <Sidebar
+          onUpload={() => setShowUploadModal(true)}
+          onUserManagement={openUserManagement}
+        />
+      </aside>
+
+      <Sheet open={showMobileMenu} onOpenChange={setShowMobileMenu}>
+        <SheetContent side="left" className="w-[280px] p-0 [&>button]:hidden">
+          <SheetTitle className="sr-only">Navigation principale</SheetTitle>
+          <SheetDescription className="sr-only">
+            Accédez aux différentes sections d'Archivio.
+          </SheetDescription>
+          <Sidebar
+            onClose={() => setShowMobileMenu(false)}
+            onUpload={() => {
+              setShowMobileMenu(false);
+              setShowUploadModal(true);
+            }}
+            onUserManagement={() => {
+              setShowMobileMenu(false);
+              openUserManagement();
+            }}
+          />
+        </SheetContent>
+      </Sheet>
+
+      <div className="min-h-screen lg:ml-[280px]">
         <TopBar
-          searchQuery={searchQuery}
-          onSearchChange={setSearchQuery}
+          searchQuery=""
+          onSearchChange={() => undefined}
           onUpload={() => setShowUploadModal(true)}
           onMenuToggle={() => setShowMobileMenu(true)}
-          showUploadButton={false}
+          showSearch={false}
           pageTitle="Statistiques"
-          breadcrumb="/ Analyse des données"
+          breadcrumb={scopeLabel}
         />
-        
-        <div className="bg-white border-b border-slate-200 p-3 lg:p-4">
-          <div className="flex items-center space-x-2">
-            <BarChart3 className="w-5 h-5 lg:w-6 lg:h-6 text-primary" />
-            <h2 className="text-xl lg:text-2xl font-bold text-slate-800">Statistiques</h2>
-          </div>
-          <p className="text-sm lg:text-base text-slate-600">Analysez les données de votre système</p>
-        </div>
-        
-        <div className="flex-1 p-3 lg:p-6 overflow-y-auto">
-          {isLoading ? (
-            <div className="flex items-center justify-center h-64">
-              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+
+        <main className="mx-auto w-full max-w-[1440px] px-4 py-6 sm:px-6 lg:px-8 lg:py-8">
+          <section className="mb-7 flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
+            <div>
+              <p className="text-sm font-medium text-primary">Analyse documentaire</p>
+              <h1 className="mt-1 text-2xl font-bold tracking-tight sm:text-3xl">Indicateurs du système</h1>
+              <p className="mt-2 max-w-2xl text-sm leading-6 text-muted-foreground">
+                Mesurez le volume documentaire et sa répartition dans le périmètre autorisé par votre compte.
+              </p>
             </div>
-          ) : (
-            <div className="space-y-4 lg:space-y-6">
-              {/* Overview Cards */}
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 lg:gap-6">
-                <Card>
-                  <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                    <CardTitle className="text-sm font-medium">Total des fichiers</CardTitle>
-                    <FileText className="h-4 w-4 text-muted-foreground" />
-                  </CardHeader>
-                  <CardContent>
-                    <div className="text-xl lg:text-2xl font-bold">{stats?.totalFiles || 0}</div>
-                    <p className="text-xs text-muted-foreground">
-                      {stats?.totalSize ? formatFileSize(stats.totalSize) : "0 B"}
-                    </p>
-                  </CardContent>
-                </Card>
+            <Button
+              variant="outline"
+              onClick={() => void statsQuery.refetch()}
+              disabled={statsQuery.isFetching}
+            >
+              <RefreshCw className={`mr-2 h-4 w-4 ${statsQuery.isFetching ? "animate-spin" : ""}`} />
+              Actualiser
+            </Button>
+          </section>
 
-                <Card>
-                  <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                    <CardTitle className="text-sm font-medium">Utilisateurs actifs</CardTitle>
-                    <Users className="h-4 w-4 text-muted-foreground" />
-                  </CardHeader>
-                  <CardContent>
-                    <div className="text-xl lg:text-2xl font-bold">{stats?.activeUsers || 0}</div>
-                    <p className="text-xs text-muted-foreground">
-                      Total: {stats?.totalUsers || 0}
-                    </p>
-                  </CardContent>
-                </Card>
-
-                <Card>
-                  <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                    <CardTitle className="text-sm font-medium">Mes fichiers</CardTitle>
-                    <Calendar className="h-4 w-4 text-muted-foreground" />
-                  </CardHeader>
-                  <CardContent>
-                    <div className="text-xl lg:text-2xl font-bold">{stats?.userFiles || 0}</div>
-                    <p className="text-xs text-muted-foreground">
-                      Vos téléchargements
-                    </p>
-                  </CardContent>
-                </Card>
-
-                <Card>
-                  <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                    <CardTitle className="text-sm font-medium">Départements</CardTitle>
-                    <HardDrive className="h-4 w-4 text-muted-foreground" />
-                  </CardHeader>
-                  <CardContent>
-                    <div className="text-xl lg:text-2xl font-bold">{stats?.totalDepartments || 0}</div>
-                    <p className="text-xs text-muted-foreground">
-                      Organisés
-                    </p>
-                  </CardContent>
-                </Card>
+          {statsQuery.isLoading ? (
+            <div aria-label="Chargement des statistiques" className="space-y-6">
+              <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+                {[0, 1, 2, 3].map((item) => (
+                  <Skeleton key={item} className="h-32 rounded-lg" />
+                ))}
               </div>
+              <div className="grid gap-6 xl:grid-cols-[minmax(0,2fr)_minmax(280px,1fr)]">
+                <Skeleton className="h-80 rounded-lg" />
+                <Skeleton className="h-80 rounded-lg" />
+              </div>
+            </div>
+          ) : statsQuery.isError ? (
+            <section className="rounded-lg border border-destructive/30 bg-card p-8 text-center">
+              <h2 className="font-semibold text-destructive">Impossible de charger les statistiques</h2>
+              <p className="mt-2 text-sm text-muted-foreground">
+                Vérifiez la connexion au serveur puis réessayez.
+              </p>
+              <Button variant="outline" className="mt-4" onClick={() => void statsQuery.refetch()}>
+                <RefreshCw className="mr-2 h-4 w-4" />
+                Réessayer
+              </Button>
+            </section>
+          ) : (
+            <>
+              <section aria-label="Indicateurs principaux" className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+                {overviewCards.map((card) => (
+                  <article key={card.label} className="rounded-lg border bg-card p-5">
+                    <p className="text-sm font-medium text-muted-foreground">{card.label}</p>
+                    <p className="mt-3 text-3xl font-bold tracking-tight text-card-foreground">{card.value}</p>
+                    <p className="mt-2 text-sm leading-5 text-muted-foreground">{card.detail}</p>
+                  </article>
+                ))}
+              </section>
 
-              {/* File Types Distribution */}
-              <Card>
-                <CardHeader>
-                  <CardTitle className="text-base lg:text-lg">Répartition par type de fichier</CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <div className="space-y-3 lg:space-y-4">
-                    {stats?.fileTypes && Object.entries(stats.fileTypes).map(([type, count]) => {
-                      const total = Object.values(stats.fileTypes).reduce((sum, c) => sum + c, 0);
-                      const percentage = total > 0 ? Math.round((count / total) * 100) : 0;
-                      
-                      return (
-                        <div key={type} className="flex items-center space-x-2 lg:space-x-3">
-                          <div className={`w-3 h-3 rounded-full ${getFileTypeColor(type)}`}></div>
-                          <div className="flex-1 flex flex-col sm:flex-row sm:items-center sm:justify-between space-y-1 sm:space-y-0">
-                            <span className="text-sm font-medium uppercase">{type}</span>
-                            <div className="flex items-center space-x-2">
-                              <span className="text-xs lg:text-sm text-slate-600">{count} fichiers</span>
-                              <Badge variant="outline" className="text-xs">{percentage}%</Badge>
-                            </div>
-                          </div>
-                          <div className="w-16 lg:w-24">
-                            <Progress value={percentage} className="h-2" />
-                          </div>
-                        </div>
-                      );
-                    })}
-                  </div>
-                </CardContent>
-              </Card>
-
-              {/* Storage Usage */}
-              <Card>
-                <CardHeader>
-                  <CardTitle className="text-base lg:text-lg">Utilisation du stockage</CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <div className="space-y-3 lg:space-y-4">
-                    <div className="flex items-center justify-between">
-                      <span className="text-sm font-medium">Espace utilisé</span>
-                      <span className="text-xs lg:text-sm text-slate-600">
-                        {stats?.totalSize ? formatFileSize(stats.totalSize) : "0 B"}
-                      </span>
+              <div className="mt-7 grid gap-6 xl:grid-cols-[minmax(0,2fr)_minmax(280px,1fr)]">
+                <section className="rounded-lg border bg-card">
+                  <div className="border-b px-5 py-4 sm:px-6">
+                    <div className="flex items-center gap-2">
+                      <BarChart3 className="h-5 w-5 text-primary" aria-hidden="true" />
+                      <h2 className="text-lg font-semibold">Répartition par type de fichier</h2>
                     </div>
-                    <Progress value={25} className="h-2" />
-                    <p className="text-xs text-muted-foreground">
-                      25% de l'espace total utilisé
+                    <p className="mt-1 text-sm text-muted-foreground">
+                      Distribution des documents accessibles selon leur format enregistré.
                     </p>
                   </div>
-                </CardContent>
-              </Card>
-            </div>
+
+                  {fileTypes.length === 0 ? (
+                    <div className="px-6 py-12 text-center">
+                      <FileText className="mx-auto h-8 w-8 text-muted-foreground" aria-hidden="true" />
+                      <h3 className="mt-4 font-semibold">Aucun type de fichier disponible</h3>
+                      <p className="mt-2 text-sm text-muted-foreground">
+                        La répartition apparaîtra lorsqu'un document sera accessible dans ce périmètre.
+                      </p>
+                    </div>
+                  ) : (
+                    <div className="divide-y">
+                      {fileTypes.map(([type, count]) => {
+                        const percentage = typedFileTotal > 0 ? Math.round((count / typedFileTotal) * 100) : 0;
+                        return (
+                          <div key={type} className="px-5 py-4 sm:px-6">
+                            <div className="flex items-center justify-between gap-4">
+                              <div className="flex min-w-0 items-center gap-3">
+                                <Badge variant="outline" className="min-w-14 justify-center rounded-sm font-mono">
+                                  {formatFileType(type)}
+                                </Badge>
+                                <span className="text-sm text-muted-foreground">
+                                  {formatNumber(count)} {count > 1 ? "documents" : "document"}
+                                </span>
+                              </div>
+                              <span className="shrink-0 text-sm font-semibold">{percentage} %</span>
+                            </div>
+                            <Progress
+                              value={percentage}
+                              className="mt-3 h-2"
+                              aria-label={`${formatFileType(type)} : ${percentage} % des documents`}
+                            />
+                          </div>
+                        );
+                      })}
+                    </div>
+                  )}
+                </section>
+
+                <aside className="space-y-6">
+                  <section className="rounded-lg border bg-card p-5 sm:p-6">
+                    <h2 className="text-lg font-semibold">Comptes utilisateurs</h2>
+                    <p className="mt-1 text-sm text-muted-foreground">
+                      État des comptes enregistrés dans le système.
+                    </p>
+                    <div className="mt-6 flex items-end justify-between gap-4">
+                      <div>
+                        <p className="text-3xl font-bold tracking-tight">{formatNumber(activeUsers)}</p>
+                        <p className="mt-1 text-sm text-muted-foreground">utilisateurs actifs</p>
+                      </div>
+                      <Badge variant="outline" className="rounded-sm">
+                        {activeUserRate} % actifs
+                      </Badge>
+                    </div>
+                    <Progress
+                      value={activeUserRate}
+                      className="mt-4 h-2"
+                      aria-label={`${activeUserRate} % des utilisateurs sont actifs`}
+                    />
+                    <p className="mt-3 text-sm text-muted-foreground">
+                      {formatNumber(totalUsers)} {totalUsers > 1 ? "comptes enregistrés" : "compte enregistré"}
+                    </p>
+                  </section>
+
+                  <section className="rounded-lg border bg-card p-5 sm:p-6">
+                    <h2 className="text-lg font-semibold">Lecture du volume</h2>
+                    <dl className="mt-5 space-y-4 text-sm">
+                      <div className="flex items-center justify-between gap-4 border-b pb-4">
+                        <dt className="text-muted-foreground">Volume total accessible</dt>
+                        <dd className="font-semibold">{formatFileSize(totalSize)}</dd>
+                      </div>
+                      <div className="flex items-center justify-between gap-4 border-b pb-4">
+                        <dt className="text-muted-foreground">Taille moyenne</dt>
+                        <dd className="font-semibold">{formatFileSize(averageFileSize)}</dd>
+                      </div>
+                      <div className="flex items-center justify-between gap-4">
+                        <dt className="text-muted-foreground">Formats représentés</dt>
+                        <dd className="font-semibold">{formatNumber(fileTypes.length)}</dd>
+                      </div>
+                    </dl>
+                    <p className="mt-5 text-xs leading-5 text-muted-foreground">
+                      Aucun quota maximal n'est configuré ; seul le volume réellement enregistré est présenté.
+                    </p>
+                  </section>
+                </aside>
+              </div>
+            </>
           )}
-        </div>
+        </main>
       </div>
-      
-      <RightPanel />
-      
-      {showUploadModal && (
-        <UploadModal onClose={() => setShowUploadModal(false)} />
-      )}
-      
-      {showUserModal && (
+
+      {showUploadModal && <UploadModal onClose={() => setShowUploadModal(false)} />}
+      {showUserModal && canAccessUserManagement() && (
         <UserManagementModal onClose={() => setShowUserModal(false)} />
       )}
     </div>
