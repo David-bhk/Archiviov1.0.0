@@ -79,6 +79,9 @@ Mettre ce fichier à jour après chaque modification significative de l'impléme
 - Migration de l'historique des activités vers le shell institutionnel responsive, avec tableau sur ordinateur, cartes mobiles et états chargement, vide, erreur et interdit.
 - Présentation explicite des téléversements, archivages, refus et créations historiques d'utilisateurs, tout en conservant un repli lisible pour les types d'événements inconnus.
 - Baseline de l'historique validée : TypeScript, 32 tests et build réussis.
+- Migration des statistiques vers le shell institutionnel responsive, avec indicateurs de périmètre, répartition par type de fichier et états chargement, vide et erreur.
+- Suppression du faux quota de stockage à 25 %, de la recherche sans effet et du panneau droit historique ; seuls les sept indicateurs de l'API et leurs ratios dérivés sont affichés.
+- Baseline des statistiques validée : TypeScript, 32 tests et build réussis.
 
 ## En cours
 
@@ -93,7 +96,7 @@ Mettre ce fichier à jour après chaque modification significative de l'impléme
 - Étendre le service d'autorisation avec la hiérarchie validée.
 - Ajouter les tests de matrice rôle, département et niveau.
 - Vérifier visuellement l'écran de validation dès qu'un navigateur contrôlable est disponible.
-- Migrer ensuite l'écran des statistiques vers le même shell et les mêmes jetons, sans ajouter d'indicateurs absents de l'API.
+- Auditer ensuite l'écran Configuration et retirer les commandes sans comportement serveur avant toute migration visuelle.
 - Décider ultérieurement du traitement d'un document refusé avant d'ajouter correction ou resoumission.
 - Auditer séparément les 24 vulnérabilités signalées dans les dépendances.
 
