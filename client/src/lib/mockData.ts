@@ -12,6 +12,7 @@ export const mockFiles: File[] = [
     department: "Comptabilité",
     category: "Rapport",
     description: "Rapport trimestriel Q1 2024",
+    status: "archived",
     createdAt: new Date("2024-01-12"),
   },
   {
@@ -25,6 +26,7 @@ export const mockFiles: File[] = [
     department: "Ressources Humaines",
     category: "Manuel",
     description: "Manuel des procédures internes",
+    status: "archived",
     createdAt: new Date("2024-01-08"),
   },
   {
@@ -38,6 +40,7 @@ export const mockFiles: File[] = [
     department: "Comptabilité",
     category: "Budget",
     description: "Budget prévisionnel 2024",
+    status: "archived",
     createdAt: new Date("2024-01-15"),
   },
   {
@@ -51,6 +54,7 @@ export const mockFiles: File[] = [
     department: "Marketing",
     category: "Design",
     description: "Logo officiel de l'entreprise",
+    status: "archived",
     createdAt: new Date("2024-01-10"),
   },
 ];
@@ -60,7 +64,7 @@ export const mockUsers: User[] = [
     id: 1,
     username: "john.doe",
     email: "john.doe@archivio.com",
-    role: "superuser",
+    role: "SUPERUSER",
     department: "Administration",
     firstName: "John",
     lastName: "Doe",
@@ -71,7 +75,7 @@ export const mockUsers: User[] = [
     id: 2,
     username: "marie.dubois",
     email: "marie.dubois@archivio.com",
-    role: "admin",
+    role: "ADMIN",
     department: "Comptabilité",
     firstName: "Marie",
     lastName: "Dubois",
@@ -82,7 +86,7 @@ export const mockUsers: User[] = [
     id: 3,
     username: "pierre.martin",
     email: "pierre.martin@archivio.com",
-    role: "user",
+    role: "USER",
     department: "Ressources Humaines",
     firstName: "Pierre",
     lastName: "Martin",

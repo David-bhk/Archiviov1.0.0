@@ -3,13 +3,27 @@ import type { Express } from "express";
 import { generateToken, requireAuth, requireRole, requireSelfOrAdmin, AuthRequest } from "./middleware/auth";
 import { createServer, type Server } from "http";
 import { storage } from "./storage";
-import { insertUserSchema, insertFileSchema, insertDepartmentSchema } from "@shared/schema";
+import { insertUserSchema, insertDepartmentSchema, reviewDocumentSchema } from "@shared/schema";
 import { z } from "zod";
 import bcrypt from "bcryptjs";
 import multer from "multer";
 import path from "path";
 import fs from "fs";
 import cors from "cors";
+import { randomUUID } from "crypto";
+import {
+  canCreateUser,
+  canDeleteDocument,
+  canDeleteUser,
+  canDownloadDocument,
+  canReviewDocument,
+} from "./services/authorization";
+import {
+  ensureUploadsRoot,
+  removeStoredFile,
+  resolveStoredFilePath,
+  uploadsRoot,
+} from "./services/file-storage";
 
 const loginSchema = z.object({
   username: z.string().min(1),
@@ -17,19 +31,15 @@ const loginSchema = z.object({
 });
 
 // Ensure uploads directory exists
-const uploadsDir = path.join(process.cwd(), "uploads");
-if (!fs.existsSync(uploadsDir)) {
-  fs.mkdirSync(uploadsDir, { recursive: true });
-}
+ensureUploadsRoot();
 
 // Configure multer for file uploads
 const storage_multer = multer.diskStorage({
   destination: (req, file, cb) => {
-    cb(null, uploadsDir);
+    cb(null, uploadsRoot);
   },
   filename: (req, file, cb) => {
-    const uniqueSuffix = Date.now() + "-" + Math.round(Math.random() * 1E9);
-    cb(null, uniqueSuffix + path.extname(file.originalname));
+    cb(null, randomUUID() + path.extname(file.originalname).toLowerCase());
   },
 });
 
@@ -66,7 +76,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   }));
 
   // Route pour récupérer les activités récentes
-  app.get("/api/activities", requireAuth, async (req: AuthRequest, res) => {
+  app.get("/api/activities", requireAuth, requireRole("ADMIN", "SUPERUSER"), async (req: AuthRequest, res) => {
     try {
       const limit = parseInt(req.query.limit as string) || 10;
       const activities = await storage.getRecentActivities(limit);
@@ -76,16 +86,38 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
   // Route pour approuver un fichier (admin/superuser)
-  app.patch("/api/files/:id/approve", requireAuth, requireRole("admin", "superuser"), async (req: AuthRequest, res) => {
+  app.patch("/api/files/:id/approve", requireAuth, requireRole("ADMIN", "SUPERUSER"), async (req: AuthRequest, res) => {
     try {
       const id = parseInt(req.params.id);
-      // TODO: vérifier que l'utilisateur est admin/superuser (à sécuriser selon ton auth)
-      const file = await storage.updateFile(id, { status: "approved" });
+      if (!req.user) {
+        return res.status(401).json({ message: "Non authentifié" });
+      }
+      const [actor, existingFile] = await Promise.all([
+        storage.getUser(req.user.id),
+        storage.getFile(id),
+      ]);
+      if (!actor || !actor.isActive) {
+        return res.status(401).json({ message: "Compte invalide ou inactif" });
+      }
+      if (!existingFile) {
+        return res.status(404).json({ message: "Fichier non trouvé" });
+      }
+      if (!canReviewDocument(actor, existingFile)) {
+        return res.status(403).json({ message: "Accès interdit" });
+      }
+      if (existingFile.status !== "pending") {
+        return res.status(409).json({ message: "Ce document a déjà été traité" });
+      }
+      const { justification } = reviewDocumentSchema.parse(req.body);
+      const file = await storage.reviewFile(id, actor.id, "archived", justification);
       if (!file) {
         return res.status(404).json({ message: "Fichier non trouvé" });
       }
       res.json({ message: "Fichier approuvé", file });
     } catch (error) {
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({ message: "Justification invalide" });
+      }
       res.status(500).json({ message: "Erreur lors de l'approbation" });
     }
   });
@@ -97,9 +129,20 @@ export async function registerRoutes(app: Express): Promise<Server> {
       if (!file || !file.filePath) {
         return res.status(404).json({ message: "Fichier introuvable" });
       }
-      const absolutePath = path.isAbsolute(file.filePath)
-        ? file.filePath
-        : path.join(process.cwd(), file.filePath);
+      if (!req.user) {
+        return res.status(401).json({ message: "Non authentifié" });
+      }
+      const actor = await storage.getUser(req.user.id);
+      if (!actor || !actor.isActive) {
+        return res.status(401).json({ message: "Compte invalide ou inactif" });
+      }
+      if (!canDownloadDocument(actor, file)) {
+        return res.status(403).json({ message: "Accès interdit" });
+      }
+      const absolutePath = resolveStoredFilePath(file.filePath);
+      if (!absolutePath) {
+        return res.status(400).json({ message: "Chemin de fichier invalide" });
+      }
       if (!fs.existsSync(absolutePath)) {
         return res.status(404).json({ message: "Fichier non trouvé sur le serveur" });
       }
@@ -118,6 +161,29 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.download(absolutePath, file.originalName || file.filename);
     } catch (error) {
       res.status(500).json({ message: "Erreur serveur" });
+    }
+  });
+  app.patch("/api/files/:id/reject", requireAuth, requireRole("ADMIN", "SUPERUSER"), async (req: AuthRequest, res) => {
+    try {
+      const id = parseInt(req.params.id);
+      if (!req.user) return res.status(401).json({ message: "Non authentifié" });
+      const [actor, existingFile] = await Promise.all([
+        storage.getUser(req.user.id),
+        storage.getFile(id),
+      ]);
+      if (!actor || !actor.isActive) return res.status(401).json({ message: "Compte invalide ou inactif" });
+      if (!existingFile) return res.status(404).json({ message: "Fichier non trouvé" });
+      if (!canReviewDocument(actor, existingFile)) return res.status(403).json({ message: "Accès interdit" });
+      if (existingFile.status !== "pending") return res.status(409).json({ message: "Ce document a déjà été traité" });
+      const { justification } = reviewDocumentSchema.parse(req.body);
+      const file = await storage.reviewFile(id, actor.id, "rejected", justification);
+      if (!file) return res.status(404).json({ message: "Fichier non trouvé" });
+      res.json({ message: "Fichier refusé", file });
+    } catch (error) {
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({ message: "Justification invalide" });
+      }
+      res.status(500).json({ message: "Erreur lors du refus" });
     }
   });
   // Auth routes
@@ -151,6 +217,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           department: user.department,
           firstName: user.firstName,
           lastName: user.lastName,
+          isActive: user.isActive,
         }
       });
     } catch (error) {
@@ -168,8 +235,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // User routes
-  app.get("/api/users", requireAuth, requireRole("admin", "superuser"), async (req, res) => {
+  app.get("/api/users", requireAuth, requireRole("ADMIN", "SUPERUSER"), async (req, res) => {
     try {
+      const authRequest = req as AuthRequest;
+      if (!authRequest.user) {
+        return res.status(401).json({ message: "Non authentifié" });
+      }
+      const actor = await storage.getUser(authRequest.user.id);
+      if (!actor || !actor.isActive) {
+        return res.status(401).json({ message: "Compte invalide ou inactif" });
+      }
       const { page, limit } = req.query;
       
       // Parse pagination parameters
@@ -177,7 +252,23 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const limitNum = limit ? parseInt(limit as string) : 10;
       const paginationOptions = { page: pageNum, limit: limitNum };
       
-      const result = await storage.getAllUsers(paginationOptions);
+      let result;
+      if (actor.role === "SUPERUSER") {
+        result = await storage.getAllUsers(paginationOptions);
+      } else {
+        const departmentUsers = actor.department
+          ? await storage.getUsersByDepartment(actor.department)
+          : [];
+        const startIndex = (pageNum - 1) * limitNum;
+        const data = departmentUsers.slice(startIndex, startIndex + limitNum);
+        result = {
+          data,
+          total: departmentUsers.length,
+          page: pageNum,
+          limit: limitNum,
+          totalPages: Math.ceil(departmentUsers.length / limitNum),
+        };
+      }
       const sanitizedUsers = result.data.map(user => ({
         id: user.id,
         username: user.username,
@@ -205,11 +296,20 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.post("/api/users", requireAuth, requireRole("admin", "superuser"), async (req, res) => {
+  app.post("/api/users", requireAuth, requireRole("ADMIN", "SUPERUSER"), async (req, res) => {
     try {
-      console.log("Données reçues pour création d'utilisateur:", req.body);
+      const authRequest = req as AuthRequest;
+      if (!authRequest.user) {
+        return res.status(401).json({ message: "Non authentifié" });
+      }
+      const actor = await storage.getUser(authRequest.user.id);
+      if (!actor || !actor.isActive) {
+        return res.status(401).json({ message: "Compte invalide ou inactif" });
+      }
       const userData = insertUserSchema.parse(req.body);
-      console.log("Validation réussie, données parsées:", userData);
+      if (!canCreateUser(actor, userData)) {
+        return res.status(403).json({ message: "Accès interdit" });
+      }
       
       // Hash the password before storing
       const hashedPassword = await bcrypt.hash(userData.password, 10);
@@ -237,9 +337,26 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.delete("/api/users/:id", requireAuth, requireRole("admin", "superuser"), async (req, res) => {
+  app.delete("/api/users/:id", requireAuth, requireRole("ADMIN", "SUPERUSER"), async (req, res) => {
     try {
+      const authRequest = req as AuthRequest;
+      if (!authRequest.user) {
+        return res.status(401).json({ message: "Non authentifié" });
+      }
       const id = parseInt(req.params.id);
+      const [actor, target] = await Promise.all([
+        storage.getUser(authRequest.user.id),
+        storage.getUser(id),
+      ]);
+      if (!actor || !actor.isActive) {
+        return res.status(401).json({ message: "Compte invalide ou inactif" });
+      }
+      if (!target) {
+        return res.status(404).json({ message: "User not found" });
+      }
+      if (!canDeleteUser(actor, target)) {
+        return res.status(403).json({ message: "Accès interdit" });
+      }
       const success = await storage.deleteUser(id);
       if (!success) {
         return res.status(404).json({ message: "User not found" });
@@ -272,9 +389,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.post("/api/departments", requireAuth, requireRole("admin", "superuser"), async (req, res) => {
+  app.post("/api/departments", requireAuth, requireRole("ADMIN", "SUPERUSER"), async (req, res) => {
     try {
-      console.log("Received department data:", req.body);
       const departmentData = insertDepartmentSchema.parse(req.body);
       const department = await storage.createDepartment(departmentData);
       res.json(department);
@@ -288,7 +404,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Update department
-  app.put("/api/departments/:id", requireAuth, requireRole("admin", "superuser"), async (req, res) => {
+  app.put("/api/departments/:id", requireAuth, requireRole("ADMIN", "SUPERUSER"), async (req, res) => {
     try {
       const id = parseInt(req.params.id);
       const updateData = req.body;
@@ -303,7 +419,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Delete department
-  app.delete("/api/departments/:id", requireAuth, requireRole("admin", "superuser"), async (req, res) => {
+  app.delete("/api/departments/:id", requireAuth, requireRole("ADMIN", "SUPERUSER"), async (req, res) => {
     try {
       const id = parseInt(req.params.id);
       const deleted = await storage.deleteDepartment(id);
@@ -317,10 +433,41 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // File routes
+  app.get("/api/files/pending", requireAuth, requireRole("ADMIN", "SUPERUSER"), async (req: AuthRequest, res) => {
+    try {
+      if (!req.user) return res.status(401).json({ message: "Non authentifié" });
+      const actor = await storage.getUser(req.user.id);
+      if (!actor || !actor.isActive) return res.status(401).json({ message: "Compte invalide ou inactif" });
+      const page = Math.max(1, Number(req.query.page) || 1);
+      const limit = Math.min(100, Math.max(1, Number(req.query.limit) || 20));
+      const filters = actor.role === "SUPERUSER"
+        ? { status: "pending" as const }
+        : { status: "pending" as const, department: actor.department || undefined };
+      const result = await storage.getFilesWithFilters(filters, { page, limit });
+      const data = await Promise.all(result.data.map(async (file) => {
+        const uploader = file.uploadedBy ? await storage.getUser(file.uploadedBy) : undefined;
+        const uploaderName = uploader
+          ? `${uploader.firstName} ${uploader.lastName}`.trim()
+          : "Inconnu";
+        return { ...file, uploaderName };
+      }));
+      res.json({ ...result, data });
+    } catch {
+      res.status(500).json({ message: "Erreur lors du chargement des documents en attente" });
+    }
+  });
+
   app.get("/api/files", requireAuth, async (req: AuthRequest, res) => {
     try {
       const { department, search, date, type, page, limit } = req.query;
       const currentUser = req.user;
+      if (!currentUser) {
+        return res.status(401).json({ message: "Non authentifié" });
+      }
+      const actor = await storage.getUser(currentUser.id);
+      if (!actor || !actor.isActive) {
+        return res.status(401).json({ message: "Compte invalide ou inactif" });
+      }
       
       // Parse pagination parameters
       const pageNum = page ? parseInt(page as string) : 1;
@@ -344,14 +491,23 @@ export async function registerRoutes(app: Express): Promise<Server> {
       let files;
       
       // Filter files based on user role
-      if (currentUser.role.toUpperCase() === "SUPERUSER" || currentUser.role.toUpperCase() === "ADMIN") {
-        // Superuser and Admin can see all files
+      if (actor.role === "SUPERUSER") {
         result = await storage.getFilesWithFilters(filters, paginationOptions);
+        files = result.data;
+      } else if (actor.role === "ADMIN") {
+        result = await storage.getFilesWithFilters(
+          { ...filters, department: actor.department || undefined },
+          paginationOptions,
+        );
         files = result.data;
       } else {
         // Regular users can only see files they uploaded OR files from their department
-        const userFiles = await storage.getFilesByUser(currentUser.id, { page: 1, limit: 10000 });
-        const departmentFilters = { ...filters, department: currentUser.department };
+        const userFiles = await storage.getFilesByUser(actor.id, { page: 1, limit: 10000 });
+        const departmentFilters = {
+          ...filters,
+          department: actor.department || undefined,
+          status: "archived" as const,
+        };
         const departmentFiles = await storage.getFilesWithFilters(departmentFilters, { page: 1, limit: 10000 });
         
         // Combine and deduplicate files
@@ -475,17 +631,31 @@ export async function registerRoutes(app: Express): Promise<Server> {
     });
   }, async (req: AuthRequest, res) => {
     try {
+      const currentUser = req.user;
+      if (!currentUser) {
+        return res.status(401).json({ message: "Non authentifié" });
+      }
+
       if (!req.file) {
         return res.status(400).json({ message: "Aucun fichier fourni" });
       }
 
+      const actor = await storage.getUser(currentUser.id);
+      if (!actor || !actor.isActive) {
+        removeStoredFile(req.file.filename);
+        return res.status(401).json({ message: "Compte invalide ou inactif" });
+      }
+
       const { department, category, description } = req.body;
+      const targetDepartment = actor.role === "SUPERUSER"
+        ? department || actor.department
+        : actor.department;
       
       // Validate required fields
-      if (!department && req.user.role !== "user") {
+      if (!targetDepartment) {
         // Clean up uploaded file if validation fails
         if (fs.existsSync(req.file.path)) {
-          fs.unlinkSync(req.file.path);
+          removeStoredFile(req.file.filename);
         }
         return res.status(400).json({ message: "Département requis" });
       }
@@ -495,27 +665,30 @@ export async function registerRoutes(app: Express): Promise<Server> {
         originalName: req.file.originalname,
         fileType: path.extname(req.file.originalname).slice(1).toLowerCase(),
         fileSize: req.file.size,
-        filePath: req.file.path,
-        uploadedBy: req.user.id,
-        department: department || req.user.department || undefined,
+        filePath: req.file.filename,
+        uploadedBy: currentUser.id,
+        department: targetDepartment,
         category: category || undefined,
         description: description || undefined,
-        status: "approved" as const,
+        status: "pending" as const,
       };
 
       const file = await storage.createFile(fileData);
-      
-      // Log successful upload
-      console.log(`File uploaded successfully: ${fileData.originalName} by user ${req.user.id}`);
+      await storage.createActivity({
+        type: "document_uploaded",
+        userId: currentUser.id,
+        fileId: file.id,
+        description: `Document téléversé : ${file.originalName}`,
+      });
       
       res.json(file);
     } catch (error) {
       console.error("File upload error:", error);
       
       // Clean up uploaded file if database operation fails
-      if (req.file && fs.existsSync(req.file.path)) {
+      if (req.file) {
         try {
-          fs.unlinkSync(req.file.path);
+          removeStoredFile(req.file.filename);
         } catch (cleanupError) {
           console.error("Failed to cleanup file:", cleanupError);
         }
@@ -528,19 +701,25 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.delete("/api/files/:id", requireAuth, async (req: AuthRequest, res) => {
     try {
       const id = parseInt(req.params.id);
+      if (!req.user) {
+        return res.status(401).json({ message: "Non authentifié" });
+      }
       
-      // Get file info before deletion to delete physical file
-      const file = await storage.getFile(id);
+      const [actor, file] = await Promise.all([
+        storage.getUser(req.user.id),
+        storage.getFile(id),
+      ]);
+      if (!actor || !actor.isActive) {
+        return res.status(401).json({ message: "Compte invalide ou inactif" });
+      }
       if (!file) {
         return res.status(404).json({ message: "File not found" });
       }
-
-      // Delete physical file
-      if (fs.existsSync(file.filePath)) {
-        fs.unlinkSync(file.filePath);
+      if (!canDeleteDocument(actor, file)) {
+        return res.status(403).json({ message: "Accès interdit" });
       }
 
-      // Delete from database
+      // Soft-delete only. Physical purge requires a retention policy.
       const success = await storage.deleteFile(id);
       if (!success) {
         return res.status(404).json({ message: "File not found" });
@@ -554,13 +733,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Statistics routes
-  app.get("/api/stats", async (req, res) => {
+  app.get("/api/stats", requireAuth, async (req: AuthRequest, res) => {
     try {
-      const { userId } = req.query;
-      const currentUserId = parseInt(userId as string);
+      if (!req.user) {
+        return res.status(401).json({ message: "Non authentifié" });
+      }
+      const currentUserId = req.user.id;
       const currentUser = await storage.getUser(currentUserId);
       
-      if (!currentUser) {
+      if (!currentUser || !currentUser.isActive) {
         return res.status(401).json({ message: "Unauthorized" });
       }
 
@@ -571,7 +752,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       // Filter files based on user role
       let files = allFilesResult.data;
-      if (currentUser.role === "user") {
+      if (currentUser.role !== "SUPERUSER") {
         files = allFilesResult.data.filter(file => file.department === currentUser.department);
       }
 

@@ -1,12 +1,19 @@
 import { z } from "zod";
 
+export const roles = ["SUPERUSER", "ADMIN", "USER"] as const;
+export const roleSchema = z.enum(roles);
+export type Role = z.infer<typeof roleSchema>;
+export const documentStatuses = ["pending", "archived", "rejected"] as const;
+export const documentStatusSchema = z.enum(documentStatuses);
+export type DocumentStatus = z.infer<typeof documentStatusSchema>;
+
 // Prisma-based type definitions that match the Prisma schema
 export interface User {
   id: number;
   username: string;
   email: string;
   password: string;
-  role: string;
+  role: Role;
   department: string | null;
   firstName: string;
   lastName: string;
@@ -29,11 +36,14 @@ export interface File {
   fileType: string;
   fileSize: number;
   filePath: string;
-  uploadedBy: number;
+  uploadedBy: number | null;
   department: string | null;
   category: string | null;
   description: string | null;
-  status: string;
+  status: DocumentStatus;
+  reviewedBy: number | null;
+  reviewedAt: Date | null;
+  reviewComment: string | null;
   createdAt: Date;
   isDeleted: boolean;
 }
@@ -43,7 +53,7 @@ export const insertUserSchema = z.object({
   username: z.string().min(1),
   email: z.string().email(),
   password: z.string().min(6),
-  role: z.enum(["SUPERUSER", "ADMIN", "USER"]).default("USER"),
+  role: roleSchema.default("USER"),
   department: z.string().min(1),
   firstName: z.string().min(1),
   lastName: z.string().min(1),
@@ -64,7 +74,11 @@ export const insertFileSchema = z.object({
   department: z.string().optional(),
   category: z.string().optional(),
   description: z.string().optional(),
-  status: z.enum(["pending", "approved", "rejected"]).default("pending"),
+  status: documentStatusSchema.default("pending"),
+});
+
+export const reviewDocumentSchema = z.object({
+  justification: z.string().trim().min(3).max(1000),
 });
 
 export type InsertUser = z.infer<typeof insertUserSchema>;

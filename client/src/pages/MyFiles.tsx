@@ -21,8 +21,8 @@ export default function MyFiles() {
     date: "30days",
   });
 
-  const isRegularUser = user?.role?.toUpperCase() === "USER";
-  const isAdmin = user?.role?.toUpperCase() === "ADMIN" || user?.role?.toUpperCase() === "SUPERUSER";
+  const isRegularUser = user?.role === "USER";
+  const isAdmin = user?.role === "ADMIN" || user?.role === "SUPERUSER";
 
   if (!user) {
     return null;

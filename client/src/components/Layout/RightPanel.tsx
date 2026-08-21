@@ -11,7 +11,7 @@ export default function RightPanel() {
     queryKey: ["/api/stats", user?.id],
     queryFn: async () => {
       if (!user?.id) return null;
-      const res = await apiRequest("GET", `/api/stats?userId=${user.id}`);
+      const res = await apiRequest("GET", "/api/stats");
       return res.json();
     },
     enabled: !!user?.id,
@@ -45,7 +45,7 @@ export default function RightPanel() {
         ? users.sort((a, b) => new Date(b.createdAt || 0).getTime() - new Date(a.createdAt || 0).getTime()).slice(0, 2)
         : [];
     },
-    enabled: !!user && (user.role === "admin" || user.role === "superuser"),
+    enabled: !!user && (user.role === "ADMIN" || user.role === "SUPERUSER"),
   });
 
   const formatFileSize = (bytes: number) => {

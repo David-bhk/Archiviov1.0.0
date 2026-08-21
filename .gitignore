@@ -17,7 +17,6 @@ replit.md
 
 # Database/Prisma
 prisma/dev.db
-prisma/migrations/
 uploads/
 *.sqlite
 *.db
@@ -27,12 +26,6 @@ docs/API.md
 docs/TECHNICAL_IMPROVEMENTS.md
 docs/api-spec.yaml
 docs/NETWORK_SETUP.md
-
-# Tests et middleware de sécurité (révèlent vulnérabilités)
-server/middleware/
-*.test.ts
-*.test.tsx
-client/src/test/
 
 # Assets temporaires
 attached_assets/

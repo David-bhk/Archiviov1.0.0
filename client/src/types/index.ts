@@ -1,9 +1,11 @@
+import type { DocumentStatus, Role } from "@shared/schema";
+
 export interface User {
   id: number;
   username: string;
   email: string;
   password?: string;
-  role: "SUPERUSER" | "ADMIN" | "USER";
+  role: Role;
   department?: string;
   firstName: string;
   lastName: string;
@@ -33,7 +35,10 @@ export interface File {
   department?: string;
   category?: string;
   description?: string;
-  status?: string;
+  status: DocumentStatus;
+  reviewedBy?: number | null;
+  reviewedAt?: Date | null;
+  reviewComment?: string | null;
   createdAt?: Date;
   isDeleted?: boolean;
 }
@@ -86,7 +91,7 @@ export interface AuthContextType {
 }
 
 export interface RoleContextType {
-  hasAccess: (allowedRoles: string[]) => boolean;
+  hasAccess: (allowedRoles: Role[]) => boolean;
   canManageUsers: () => boolean;
   canDeleteFile: (file: File) => boolean;
   canAccessUserManagement: () => boolean;

@@ -14,6 +14,7 @@ import {
   Users,
 } from "lucide-react";
 import { Stats, User, File } from "../../types";
+import type { Role } from "@shared/schema";
 import { apiRequest } from "../../lib/queryClient";
 
 import React from "react";
@@ -28,11 +29,9 @@ export default function Sidebar({ onUserManagement, onClose }: SidebarProps) {
   const [location, navigate] = useLocation();
 
   // Create local hasAccess function to avoid RoleProvider dependency
-  const hasAccess = (allowedRoles: string[]): boolean => {
+  const hasAccess = (allowedRoles: Role[]): boolean => {
     if (!user) return false;
-    const userRole = user.role?.toUpperCase();
-    const allowedRolesUpper = allowedRoles.map(role => role.toUpperCase());
-    return allowedRolesUpper.includes(userRole);
+    return allowedRoles.includes(user.role);
   };
 
   // ...existing code...
@@ -53,27 +52,27 @@ export default function Sidebar({ onUserManagement, onClose }: SidebarProps) {
       const res = await apiRequest("GET", "/users");
       return res.json();
     },
-    enabled: !!user && (user.role?.toUpperCase() === "ADMIN" || user.role?.toUpperCase() === "SUPERUSER"),
+    enabled: !!user && (user.role === "ADMIN" || user.role === "SUPERUSER"),
   });
 
   function getInitials(firstName: string, lastName: string) {
     return `${firstName[0]}${lastName[0]}`.toUpperCase();
   }
 
-  function getRoleLabel(role: string) {
-    const roles: Record<string, string> = {
-      superuser: "Super Utilisateur",
-      admin: "Administrateur",
-      user: "Utilisateur",
+  function getRoleLabel(role: Role) {
+    const roles: Record<Role, string> = {
+      SUPERUSER: "Super Utilisateur",
+      ADMIN: "Administrateur",
+      USER: "Utilisateur",
     };
     return roles[role] || "Inconnu";
   }
 
-  function getRoleColor(role: string) {
-    const colors: Record<string, string> = {
-      superuser: "bg-red-500",
-      admin: "bg-blue-500",
-      user: "bg-green-500",
+  function getRoleColor(role: Role) {
+    const colors: Record<Role, string> = {
+      SUPERUSER: "bg-red-500",
+      ADMIN: "bg-blue-500",
+      USER: "bg-green-500",
     };
     return colors[role] || "bg-gray-400";
   }
@@ -146,7 +145,15 @@ export default function Sidebar({ onUserManagement, onClose }: SidebarProps) {
           <Building className={`w-4 xl:w-5 h-4 xl:h-5 ${location === "/departments" ? "text-primary" : "text-slate-500 group-hover:text-primary"}`} />
           <span className="font-medium text-sm xl:text-base truncate">Départements</span>
         </button>
-        {hasAccess(["superuser", "admin"]) && (
+        {hasAccess(["SUPERUSER", "ADMIN"]) && (
+          <button
+            onClick={() => navigate("/pending-files")}
+            className={`w-full p-2 xl:p-3 text-left text-slate-700 hover:bg-slate-100 rounded-lg transition-colors ${location === "/pending-files" ? "bg-primary/10 text-primary" : ""}`}
+          >
+            <span className="font-medium text-sm xl:text-base">Validations</span>
+          </button>
+        )}
+        {hasAccess(["SUPERUSER", "ADMIN"]) && (
           <button
             onClick={onUserManagement}
             className="w-full flex items-center space-x-2 xl:space-x-3 p-2 xl:p-3 text-slate-700 hover:bg-slate-100 rounded-lg transition-colors group"
@@ -156,7 +163,7 @@ export default function Sidebar({ onUserManagement, onClose }: SidebarProps) {
             <span className="ml-auto text-xs px-1.5 xl:px-2 py-0.5 rounded-full bg-slate-200 text-slate-700 font-semibold">{Array.isArray(users) ? users.length : 0}</span>
           </button>
         )}
-        {hasAccess(["superuser"]) && (
+        {hasAccess(["SUPERUSER"]) && (
           <button
             onClick={() => navigate("/configuration")}
             className={`w-full flex items-center space-x-2 xl:space-x-3 p-2 xl:p-3 text-slate-700 hover:bg-slate-100 rounded-lg transition-colors group ${location === "/configuration" ? "bg-primary/10 text-primary" : ""}`}

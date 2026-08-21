@@ -31,7 +31,7 @@ export default function Configuration() {
     sessionTimeout: "30",
   });
 
-  if (!user || !hasAccess(["superuser"])) {
+  if (!user || !hasAccess(["SUPERUSER"])) {
     return (
       <div className="min-h-screen flex bg-slate-50">
         <Sidebar onUserManagement={() => setShowUserModal(true)} />

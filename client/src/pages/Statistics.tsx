@@ -24,7 +24,7 @@ export default function Statistics() {
     queryKey: ["/api/stats", user?.id],
     queryFn: async () => {
       if (!user?.id) return null;
-      const res = await apiRequest("GET", `/api/stats?userId=${user.id}`);
+      const res = await apiRequest("GET", "/api/stats");
       return res.json();
     },
     enabled: !!user?.id,

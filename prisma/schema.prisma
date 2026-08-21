@@ -24,7 +24,8 @@ model User {
   lastLogin   DateTime?
   
   // Relations
-  uploadedFiles File[]
+  uploadedFiles File[]     @relation("UploadedFiles")
+  reviewedFiles File[]     @relation("ReviewedFiles")
   activities Activity[]
   
   @@map("users")
@@ -55,10 +56,14 @@ model File {
   isDeleted    Boolean     @default(false)
   createdAt    DateTime    @default(now())
   status       String      @default("pending")
+  reviewedBy   Int?
+  reviewedAt   DateTime?
+  reviewComment String?
   
   // Relations
   uploadedBy   Int?
-  user         User?       @relation(fields: [uploadedBy], references: [id], onDelete: SetNull)
+  user         User?       @relation("UploadedFiles", fields: [uploadedBy], references: [id], onDelete: SetNull)
+  reviewer     User?       @relation("ReviewedFiles", fields: [reviewedBy], references: [id], onDelete: SetNull)
   departmentRef Department? @relation(fields: [department], references: [name])
   activities Activity[]
   

@@ -172,13 +172,13 @@ export default function UserManagementModal({ onClose }: UserManagementModalProp
     
     // Admin can only see users from their department, SUPERUSER can see all
     const matchesDepartment = 
-      user?.role?.toUpperCase() === "SUPERUSER" || 
+      user?.role === "SUPERUSER" ||
       u.department === user?.department;
     
     return matchesSearch && matchesRole && matchesDepartment;
   }) : [];
 
-  if (!hasAccess(["superuser", "admin"])) {
+  if (!hasAccess(["SUPERUSER", "ADMIN"])) {
     return null;
   }
 

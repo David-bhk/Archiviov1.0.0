@@ -41,8 +41,8 @@ export default function UserTable({ users }: UserTableProps) {
     return `${firstName.charAt(0)}${lastName.charAt(0)}`;
   };
 
-  const getRoleColor = (role: string) => {
-    switch (role.toUpperCase()) {
+  const getRoleColor = (role: User["role"]) => {
+    switch (role) {
       case "SUPERUSER":
         return "bg-red-100 text-red-800";
       case "ADMIN":
@@ -54,8 +54,8 @@ export default function UserTable({ users }: UserTableProps) {
     }
   };
 
-  const getRoleLabel = (role: string) => {
-    switch (role.toUpperCase()) {
+  const getRoleLabel = (role: User["role"]) => {
+    switch (role) {
       case "SUPERUSER":
         return "SuperUser";
       case "ADMIN":
@@ -83,8 +83,8 @@ export default function UserTable({ users }: UserTableProps) {
 
   const canDeleteUser = (user: User) => {
     if (currentUser?.id === user.id) return false; // Can't delete self
-    if (currentUser?.role?.toUpperCase() === "SUPERUSER") return true;
-    if (currentUser?.role?.toUpperCase() === "ADMIN" && user.role?.toUpperCase() === "USER") return true;
+    if (currentUser?.role === "SUPERUSER") return true;
+    if (currentUser?.role === "ADMIN" && user.role === "USER") return true;
     return false;
   };
 

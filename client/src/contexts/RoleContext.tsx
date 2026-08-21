@@ -1,5 +1,6 @@
 import { createContext, useContext } from "react";
 import { RoleContextType, File } from "../types";
+import type { Role } from "@shared/schema";
 import { useAuth } from "./AuthContext";
 
 const RoleContext = createContext<RoleContextType | undefined>(undefined);
@@ -7,35 +8,33 @@ const RoleContext = createContext<RoleContextType | undefined>(undefined);
 export function RoleProvider({ children }: { children: React.ReactNode }) {
   const { user } = useAuth();
 
-  const hasAccess = (allowedRoles: string[]): boolean => {
+  const hasAccess = (allowedRoles: Role[]): boolean => {
     if (!user) return false;
-    const userRole = user.role?.toUpperCase();
-    const allowedRolesUpper = allowedRoles.map(role => role.toUpperCase());
-    return allowedRolesUpper.includes(userRole);
+    return allowedRoles.includes(user.role);
   };
 
   const canManageUsers = (): boolean => {
     if (!user) return false;
-    return user.role?.toUpperCase() === "SUPERUSER" || user.role?.toUpperCase() === "ADMIN";
+    return user.role === "SUPERUSER" || user.role === "ADMIN";
   };
 
   const canDeleteFile = (file: File): boolean => {
     if (!user) return false;
-    if (user.role?.toUpperCase() === "SUPERUSER" || user.role?.toUpperCase() === "ADMIN") return true;
+    if (user.role === "SUPERUSER" || user.role === "ADMIN") return true;
     // Regular users cannot delete files without admin approval
     return false;
   };
 
   const canAccessFile = (file: File): boolean => {
     if (!user) return false;
-    if (user.role?.toUpperCase() === "SUPERUSER" || user.role?.toUpperCase() === "ADMIN") return true;
+    if (user.role === "SUPERUSER" || user.role === "ADMIN") return true;
     // Regular users can access files they uploaded OR files from their department
     return file.uploadedBy === user.id || file.department === user.department;
   };
 
   const canManageDepartments = (): boolean => {
     if (!user) return false;
-    return user.role?.toUpperCase() === "SUPERUSER" || user.role?.toUpperCase() === "ADMIN";
+    return user.role === "SUPERUSER" || user.role === "ADMIN";
   };
 
   const canUploadFiles = (): boolean => {
@@ -46,7 +45,7 @@ export function RoleProvider({ children }: { children: React.ReactNode }) {
 
   const canAccessUserManagement = (): boolean => {
     if (!user) return false;
-    return user.role?.toUpperCase() === "SUPERUSER" || user.role?.toUpperCase() === "ADMIN";
+    return user.role === "SUPERUSER" || user.role === "ADMIN";
   };
 
   return (

@@ -29,9 +29,8 @@ export default function Dashboard() {
     return <div>Erreur: Utilisateur sans rôle défini</div>;
   }
 
-  const userRoleUpper = user.role.toUpperCase();
-  const isRegularUser = userRoleUpper === "USER";
-  const isAdmin = userRoleUpper === "ADMIN" || userRoleUpper === "SUPERUSER";
+  const isRegularUser = user.role === "USER";
+  const isAdmin = user.role === "ADMIN" || user.role === "SUPERUSER";
 
   return (
     <div className="min-h-screen flex flex-col lg:flex-row bg-slate-50">

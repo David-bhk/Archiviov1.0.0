@@ -1,5 +1,5 @@
 import { PrismaClient } from '@prisma/client'
-import { type User, type InsertUser, type Department, type InsertDepartment, type File, type InsertFile } from "@shared/schema";
+import { type User, type InsertUser, type Department, type InsertDepartment, type File, type InsertFile, type Role, type DocumentStatus } from "@shared/schema";
 
 export interface PaginationOptions {
   page?: number;
@@ -12,6 +12,7 @@ export interface FileFilters {
   search?: string;
   dateRange?: number; // days
   uploadedBy?: number;
+  status?: DocumentStatus;
 }
 
 export interface PaginatedResult<T> {
@@ -45,6 +46,7 @@ export interface IStorage {
   getFile(id: number): Promise<File | undefined>;
   createFile(file: InsertFile): Promise<File>;
   updateFile(id: number, file: Partial<InsertFile>): Promise<File | undefined>;
+  reviewFile(id: number, reviewerId: number, status: Exclude<DocumentStatus, "pending">, comment: string): Promise<File | undefined>;
   deleteFile(id: number): Promise<boolean>;
   getAllFiles(options?: PaginationOptions): Promise<PaginatedResult<File>>;
   getFilesByUser(userId: number, options?: PaginationOptions): Promise<PaginatedResult<File>>;
@@ -90,7 +92,7 @@ export class PrismaStorage implements IStorage {
     const user = await this.prisma.user.create({
       data: {
         ...insertUser,
-        role: insertUser.role?.toUpperCase() as any || 'USER',
+        role: insertUser.role,
       },
     });
     return this.mapPrismaUserToUser(user);
@@ -98,15 +100,9 @@ export class PrismaStorage implements IStorage {
 
   async updateUser(id: number, updateData: Partial<InsertUser & { lastLogin: Date }>): Promise<User | undefined> {
     try {
-      // Transform role to match Prisma enum if it exists
-      const prismaUpdateData: any = { ...updateData };
-      if (prismaUpdateData.role) {
-        prismaUpdateData.role = prismaUpdateData.role.toUpperCase();
-      }
-      
       const user = await this.prisma.user.update({
         where: { id },
-        data: prismaUpdateData,
+        data: updateData,
       });
       return this.mapPrismaUserToUser(user);
     } catch (error) {
@@ -241,6 +237,39 @@ export class PrismaStorage implements IStorage {
       });
       return this.mapPrismaFileToFile(file);
     } catch (error) {
+      return undefined;
+    }
+  }
+
+  async reviewFile(
+    id: number,
+    reviewerId: number,
+    status: Exclude<DocumentStatus, "pending">,
+    comment: string,
+  ): Promise<File | undefined> {
+    try {
+      const file = await this.prisma.$transaction(async (transaction) => {
+        const updated = await transaction.file.update({
+          where: { id },
+          data: {
+            status,
+            reviewedBy: reviewerId,
+            reviewedAt: new Date(),
+            reviewComment: comment,
+          },
+        });
+        await transaction.activity.create({
+          data: {
+            type: status === "archived" ? "document_archived" : "document_rejected",
+            userId: reviewerId,
+            fileId: id,
+            description: comment,
+          },
+        });
+        return updated;
+      });
+      return this.mapPrismaFileToFile(file);
+    } catch {
       return undefined;
     }
   }
@@ -389,6 +418,10 @@ export class PrismaStorage implements IStorage {
       where.uploadedBy = filters.uploadedBy;
     }
 
+    if (filters.status) {
+      where.status = filters.status;
+    }
+
     if (filters.search) {
       where.OR = [
         { originalName: { contains: filters.search } },
@@ -430,7 +463,7 @@ export class PrismaStorage implements IStorage {
     username: prismaUser.username,
     email: prismaUser.email,
     password: prismaUser.password,
-    role: prismaUser.role.toLowerCase(),
+    role: prismaUser.role as Role,
     department: prismaUser.department,
     firstName: prismaUser.firstName,
     lastName: prismaUser.lastName,
@@ -458,6 +491,9 @@ export class PrismaStorage implements IStorage {
     category: prismaFile.category,
     description: prismaFile.description,
     status: prismaFile.status,
+    reviewedBy: prismaFile.reviewedBy,
+    reviewedAt: prismaFile.reviewedAt,
+    reviewComment: prismaFile.reviewComment,
     isDeleted: prismaFile.isDeleted,
     createdAt: prismaFile.createdAt,
   });

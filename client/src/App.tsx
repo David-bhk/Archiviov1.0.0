@@ -40,6 +40,8 @@ function AppContent() {
         <Route path="/statistics" component={Statistics} />
         <Route path="/search" component={Search} />
         <Route path="/configuration" component={Configuration} />
+        <Route path="/pending-files" component={PendingFiles} />
+        <Route path="/activity-history" component={ActivityHistory} />
         <Route component={NotFound} />
       </Switch>
     </RoleProvider>

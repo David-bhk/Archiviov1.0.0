@@ -47,8 +47,9 @@ export default function UploadModal({ onClose }: UploadModalProps) {
 
   // Set default department for regular users
   useEffect(() => {
-    if (user && user.role === "user" && user.department) {
-      setFormData(prev => ({ ...prev, department: user.department }));
+    const userDepartment = user?.department;
+    if (user?.role === "USER" && userDepartment) {
+      setFormData(prev => ({ ...prev, department: userDepartment }));
     }
   }, [user]);
 
@@ -163,7 +164,7 @@ export default function UploadModal({ onClose }: UploadModalProps) {
       return;
     }
     
-    if (!formData.department && user?.role !== "user") {
+    if (!formData.department && user?.role !== "USER") {
       toast({
         title: "Erreur",
         description: "Veuillez sélectionner un département",
@@ -502,7 +503,7 @@ export default function UploadModal({ onClose }: UploadModalProps) {
               <Select
                 value={formData.department}
                 onValueChange={(value) => setFormData({ ...formData, department: value })}
-                disabled={user?.role === "user"}
+                disabled={user?.role === "USER"}
               >
                 <SelectTrigger>
                   <SelectValue placeholder="Sélectionner un département" />
