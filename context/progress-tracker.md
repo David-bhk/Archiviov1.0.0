@@ -95,6 +95,11 @@ Mettre ce fichier à jour après chaque modification significative de l'impléme
 - Retrait de la recherche et du filtre limités silencieusement à dix comptes, ainsi que de l'action de modification sans route serveur ; la suppression physique actuelle est désormais confirmée explicitement.
 - Alignement de l'action de suppression visible avec la règle serveur : aucun compte ne peut s'auto-supprimer, un superutilisateur est protégé et un administrateur reste limité aux utilisateurs simples de son département.
 - Baseline de la gestion des utilisateurs validée : TypeScript, 32 tests et build réussis.
+- Migration de la modale de téléversement vers une interface institutionnelle responsive, avec sélection multiple, glisser-déposer, progression par fichier, synthèse du lot et erreurs relançables.
+- Centralisation des extensions et de la taille maximale actuellement appliquées par le serveur afin de les afficher sans créer une politique documentaire supplémentaire ; les limites produit définitives restent ouvertes.
+- Alignement du département de destination sur le contrat serveur : seul le superutilisateur peut en choisir un autre, tandis que l'identité de l'auteur reste déterminée par la session authentifiée.
+- Remplacement de la catégorie fictivement obligatoire par une métadonnée libre et facultative, partagée avec la description par l'ensemble des fichiers sélectionnés.
+- Baseline du téléversement validée : TypeScript, 32 tests et build réussis.
 
 ## En cours
 
@@ -109,7 +114,7 @@ Mettre ce fichier à jour après chaque modification significative de l'impléme
 - Étendre le service d'autorisation avec la hiérarchie validée.
 - Ajouter les tests de matrice rôle, département et niveau.
 - Vérifier visuellement l'écran de validation dès qu'un navigateur contrôlable est disponible.
-- Auditer ensuite le parcours de téléversement et harmoniser sa modale sans modifier les règles documentaires ou inventer des limites de fichiers encore indécises.
+- Standardiser ensuite l'écran de connexion sans modifier le contrat d'authentification ni inventer de parcours de récupération de compte.
 - Décider ultérieurement du traitement d'un document refusé avant d'ajouter correction ou resoumission.
 - Auditer séparément les 24 vulnérabilités signalées dans les dépendances.
 
