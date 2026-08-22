@@ -1,580 +1,562 @@
-import { useState, useEffect, useRef } from "react";
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useRef, useState } from "react";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { AlertCircle, CheckCircle2, CloudUpload, FileText, Loader2, X } from "lucide-react";
+import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Textarea } from "@/components/ui/textarea";
+import { Progress } from "@/components/ui/progress";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { CloudUpload, X, FileText, AlertCircle } from "lucide-react";
+import { Textarea } from "@/components/ui/textarea";
+import { useToast } from "@/hooks/use-toast";
+import { allowedUploadExtensions, maxUploadFileSizeBytes } from "@shared/uploadConstraints";
 import { useAuth } from "../../contexts/AuthContext";
 import { useRole } from "../../contexts/RoleContext";
-import { useToast } from "@/hooks/use-toast";
 import { apiRequest } from "../../lib/queryClient";
-import { Department } from "../../types";
+import type { Department } from "../../types";
 
 interface UploadModalProps {
   onClose: () => void;
 }
 
-interface FileWithStatus {
+type UploadStatus = "pending" | "uploading" | "done" | "error";
+
+interface SelectedFile {
+  id: string;
   file: File;
   progress: number;
-  status: 'pending' | 'uploading' | 'done' | 'error';
-  xhr?: XMLHttpRequest;
+  status: UploadStatus;
   errorMessage?: string;
+  retryable?: boolean;
+}
+
+interface UploadProgress {
+  completed: number;
+  total: number;
+}
+
+interface UploadSummary {
+  success: number;
+  error: number;
+}
+
+const statusLabels: Record<UploadStatus, string> = {
+  pending: "Prêt",
+  uploading: "En cours",
+  done: "Téléversé",
+  error: "À corriger",
+};
+
+const statusClasses: Record<UploadStatus, string> = {
+  pending: "border-border bg-muted text-foreground",
+  uploading: "border-info/30 bg-info/10 text-info",
+  done: "border-success/30 bg-success/10 text-success",
+  error: "border-destructive/30 bg-destructive/10 text-destructive",
+};
+
+function getFileId(file: File) {
+  return `${file.name}:${file.size}:${file.lastModified}`;
+}
+
+function getFileExtension(filename: string) {
+  const separatorIndex = filename.lastIndexOf(".");
+  return separatorIndex >= 0 ? filename.slice(separatorIndex).toLowerCase() : "";
+}
+
+function formatFileSize(bytes: number) {
+  if (bytes < 1024) return `${bytes} octets`;
+  if (bytes < 1024 * 1024) return `${new Intl.NumberFormat("fr-FR", { maximumFractionDigits: 1 }).format(bytes / 1024)} Ko`;
+  return `${new Intl.NumberFormat("fr-FR", { maximumFractionDigits: 1 }).format(bytes / 1024 / 1024)} Mo`;
+}
+
+function validateFile(file: File) {
+  const extension = getFileExtension(file.name);
+  if (!allowedUploadExtensions.includes(extension)) {
+    return `Extension non autorisée${extension ? ` : ${extension}` : ""}. Formats acceptés : ${allowedUploadExtensions.join(", ")}.`;
+  }
+  if (file.size > maxUploadFileSizeBytes) {
+    return `Fichier trop volumineux : ${formatFileSize(file.size)}. Limite actuelle : ${formatFileSize(maxUploadFileSizeBytes)}.`;
+  }
+  return null;
+}
+
+function readStringProperty(value: unknown, property: string) {
+  if (typeof value !== "object" || value === null || !(property in value)) return undefined;
+  const candidate = Reflect.get(value, property);
+  return typeof candidate === "string" ? candidate : undefined;
+}
+
+function getUploadErrorMessage(xhr: XMLHttpRequest) {
+  try {
+    const response: unknown = JSON.parse(xhr.responseText);
+    const message = readStringProperty(response, "message");
+    const details = readStringProperty(response, "details");
+    if (message && details) return `${message}. ${details}`;
+    if (message) return message;
+  } catch {
+    // La réponse peut être vide ou ne pas être au format JSON.
+  }
+  return xhr.status === 0
+    ? "Le serveur est inaccessible. Vérifiez la connexion puis réessayez."
+    : `Le serveur a refusé le fichier (erreur ${xhr.status}).`;
 }
 
 export default function UploadModal({ onClose }: UploadModalProps) {
   const { user } = useAuth();
-  const { canManageDepartments } = useRole();
+  const { canUploadFiles } = useRole();
   const { toast } = useToast();
   const queryClient = useQueryClient();
-  const [selectedFiles, setSelectedFiles] = useState<FileWithStatus[]>([]);
-  const [isDragActive, setIsDragActive] = useState(false);
-  const [isUploading, setIsUploading] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
   const dragCountRef = useRef(0);
-  const [formData, setFormData] = useState({
-    department: "",
+  const [selectedFiles, setSelectedFiles] = useState<SelectedFile[]>([]);
+  const [isDragActive, setIsDragActive] = useState(false);
+  const [isUploading, setIsUploading] = useState(false);
+  const [formError, setFormError] = useState<string | null>(null);
+  const [uploadProgress, setUploadProgress] = useState<UploadProgress | null>(null);
+  const [uploadSummary, setUploadSummary] = useState<UploadSummary | null>(null);
+  const [formData, setFormData] = useState(() => ({
+    department: user?.role === "SUPERUSER" ? "" : user?.department ?? "",
     category: "",
     description: "",
-  });
+  }));
 
-  // Constants for file validation
-  const MAX_FILE_SIZE = 10 * 1024 * 1024; // 10MB
-  const ALLOWED_TYPES = ['.pdf', '.doc', '.docx', '.xls', '.xlsx', '.jpg', '.jpeg', '.png', '.gif'];
-
-  // Set default department for regular users
-  useEffect(() => {
-    const userDepartment = user?.department;
-    if (user?.role === "USER" && userDepartment) {
-      setFormData(prev => ({ ...prev, department: userDepartment }));
-    }
-  }, [user]);
-
-  const { data: departments } = useQuery<Department[]>({
+  const departmentsQuery = useQuery<Department[]>({
     queryKey: ["/api/departments"],
-  });
-
-  // File validation function
-  const validateFile = (file: File): { isValid: boolean; error?: string } => {
-    const fileExtension = '.' + file.name.split('.').pop()?.toLowerCase();
-    
-    if (!ALLOWED_TYPES.includes(fileExtension)) {
-      return { 
-        isValid: false, 
-        error: `Type de fichier non autorisé: ${fileExtension}. Types autorisés: ${ALLOWED_TYPES.join(', ')}` 
-      };
-    }
-    
-    if (file.size > MAX_FILE_SIZE) {
-      return { 
-        isValid: false, 
-        error: `Fichier trop volumineux: ${(file.size / 1024 / 1024).toFixed(1)}MB. Limite: ${MAX_FILE_SIZE / 1024 / 1024}MB` 
-      };
-    }
-    
-    return { isValid: true };
-  };
-
-  // Add files with validation
-  const addFiles = (files: File[]) => {
-    const newFiles: FileWithStatus[] = files.map(file => {
-      const validation = validateFile(file);
-      return {
-        file,
-        progress: 0, // Toujours commencer à 0
-        status: validation.isValid ? 'pending' as const : 'error' as const,
-        errorMessage: validation.error
-      };
-    });
-
-    // Check for duplicates
-    const filteredFiles = newFiles.filter(newFile => 
-      !selectedFiles.some(existingFile => 
-        existingFile.file.name === newFile.file.name && 
-        existingFile.file.size === newFile.file.size
-      )
-    );
-
-    if (filteredFiles.length !== newFiles.length) {
-      toast({
-        title: "Fichiers en double",
-        description: "Certains fichiers ont été ignorés car ils sont déjà sélectionnés",
-        variant: "destructive",
-      });
-    }
-
-    setSelectedFiles(prev => [...prev, ...filteredFiles]);
-  };
-
-  const uploadMutation = useMutation({
-    mutationFn: async (fileData: FormData) => {
-      const response = await fetch("/api/files", {
-        method: "POST",
-        body: fileData,
-      });
-      if (!response.ok) {
-        throw new Error("Upload failed");
-      }
+    queryFn: async () => {
+      const response = await apiRequest("GET", "/api/departments");
       return response.json();
     },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/files"] });
-      queryClient.invalidateQueries({ queryKey: ["/api/stats"] });
-    },
-    onError: () => {
-      toast({
-        title: "Erreur",
-        description: "Impossible de télécharger le fichier",
-        variant: "destructive",
-      });
-    },
+    enabled: Boolean(user?.role === "SUPERUSER"),
   });
 
-  const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const files = Array.from(e.target.files || []);
-    addFiles(files);
-    if (inputRef.current) inputRef.current.value = "";
-  };
+  if (!user || !canUploadFiles()) return null;
 
-  const handleRemoveFile = (index: number) => {
-    setSelectedFiles(prev => {
-      const fileObj = prev[index];
-      if (fileObj && fileObj.status === 'uploading' && fileObj.xhr) {
-        fileObj.xhr.abort();
-      }
-      return prev.filter((_, i) => i !== index);
+  const pendingFiles = selectedFiles.filter((item) => item.status === "pending");
+  const uploadedFiles = selectedFiles.filter((item) => item.status === "done");
+  const targetDepartment = user.role === "SUPERUSER" ? formData.department : user.department ?? "";
+  const isMissingDepartment = !targetDepartment;
+  const departmentsUnavailable = user.role === "SUPERUSER" && departmentsQuery.isError;
+  const noDepartments = user.role === "SUPERUSER" && !departmentsQuery.isLoading && !departmentsQuery.isError && (departmentsQuery.data?.length ?? 0) === 0;
+  const overallProgress = uploadProgress && uploadProgress.total > 0
+    ? Math.round((uploadProgress.completed / uploadProgress.total) * 100)
+    : 0;
+
+  const addFiles = (files: File[]) => {
+    if (isUploading) return;
+    const existingIds = new Set(selectedFiles.map((item) => item.id));
+    const uniqueFiles = files.filter((file) => !existingIds.has(getFileId(file)));
+    const duplicateCount = files.length - uniqueFiles.length;
+    const additions = uniqueFiles.map((file): SelectedFile => {
+      const errorMessage = validateFile(file);
+      return {
+        id: getFileId(file),
+        file,
+        progress: 0,
+        status: errorMessage ? "error" : "pending",
+        errorMessage: errorMessage ?? undefined,
+        retryable: false,
+      };
     });
+
+    if (duplicateCount > 0) {
+      toast({
+        title: "Fichier déjà sélectionné",
+        description: `${duplicateCount} ${duplicateCount > 1 ? "fichiers ont été ignorés" : "fichier a été ignoré"}.`,
+      });
+    }
+
+    setSelectedFiles((current) => [...current, ...additions]);
+    setUploadSummary(null);
+    setFormError(null);
   };
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    
-    // Validate form data
-    const validFiles = selectedFiles.filter(f => f.status !== 'error');
-    
-    if (validFiles.length === 0) {
-      toast({
-        title: "Erreur",
-        description: "Veuillez sélectionner au moins un fichier valide",
-        variant: "destructive",
+  const updateSelectedFile = (id: string, values: Partial<Omit<SelectedFile, "id" | "file">>) => {
+    setSelectedFiles((current) => current.map((item) => item.id === id ? { ...item, ...values } : item));
+  };
+
+  const uploadFile = (selectedFile: SelectedFile, department: string) => new Promise<boolean>((resolve) => {
+    const fileFormData = new FormData();
+    fileFormData.append("file", selectedFile.file);
+    if (user.role === "SUPERUSER") fileFormData.append("department", department);
+    if (formData.category.trim()) fileFormData.append("category", formData.category.trim());
+    if (formData.description.trim()) fileFormData.append("description", formData.description.trim());
+
+    const xhr = new XMLHttpRequest();
+    xhr.open("POST", "/api/files");
+    const token = localStorage.getItem("archivio_token");
+    if (token) xhr.setRequestHeader("Authorization", `Bearer ${token}`);
+
+    xhr.upload.onprogress = (event) => {
+      if (!event.lengthComputable) return;
+      updateSelectedFile(selectedFile.id, {
+        progress: Math.round((event.loaded / event.total) * 100),
       });
+    };
+
+    xhr.onload = () => {
+      if (xhr.status >= 200 && xhr.status < 300) {
+        updateSelectedFile(selectedFile.id, { status: "done", progress: 100, errorMessage: undefined, retryable: false });
+        resolve(true);
+        return;
+      }
+      updateSelectedFile(selectedFile.id, {
+        status: "error",
+        errorMessage: getUploadErrorMessage(xhr),
+        retryable: true,
+      });
+      resolve(false);
+    };
+
+    xhr.onerror = () => {
+      updateSelectedFile(selectedFile.id, {
+        status: "error",
+        errorMessage: "Le serveur est inaccessible. Vérifiez la connexion puis réessayez.",
+        retryable: true,
+      });
+      resolve(false);
+    };
+
+    xhr.send(fileFormData);
+  });
+
+  const submitUpload = async (event: React.FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    if (pendingFiles.length === 0) {
+      setFormError("Sélectionnez au moins un fichier valide à téléverser.");
       return;
     }
-    
-    if (!formData.department && user?.role !== "USER") {
-      toast({
-        title: "Erreur",
-        description: "Veuillez sélectionner un département",
-        variant: "destructive",
-      });
+    if (isMissingDepartment) {
+      setFormError(user.role === "SUPERUSER"
+        ? "Sélectionnez le département propriétaire des documents."
+        : "Votre compte doit être rattaché à un département avant de téléverser un document.");
+      return;
+    }
+    if (departmentsUnavailable || noDepartments) {
+      setFormError("Le référentiel des départements n'est pas disponible.");
       return;
     }
 
+    const uploadQueue = [...pendingFiles];
     setIsUploading(true);
+    setFormError(null);
+    setUploadSummary(null);
+    setUploadProgress({ completed: 0, total: uploadQueue.length });
     let successCount = 0;
     let errorCount = 0;
 
-    // Upload each valid file
-    for (let i = 0; i < selectedFiles.length; i++) {
-      const fileObj = selectedFiles[i];
-      
-      // Skip invalid files
-      if (fileObj.status === 'error') continue;
-
-      try {
-        // Update status to uploading
-        setSelectedFiles(prev => prev.map((f, idx) => 
-          idx === i ? { ...f, status: 'uploading', progress: 0 } : f
-        ));
-
-        await new Promise<void>((resolve, reject) => {
-          const fileFormData = new FormData();
-          fileFormData.append("file", fileObj.file);
-          fileFormData.append("uploadedBy", user!.id.toString());
-          fileFormData.append("department", formData.department || user!.department || "");
-          fileFormData.append("category", formData.category);
-          fileFormData.append("description", formData.description);
-
-          const xhr = new XMLHttpRequest();
-          
-          // Store XHR reference for potential cancellation
-          setSelectedFiles(prev => prev.map((f, idx) => 
-            idx === i ? { ...f, xhr } : f
-          ));
-
-          xhr.open("POST", "/api/files");
-          
-          const token = localStorage.getItem("archivio_token");
-          if (token) {
-            xhr.setRequestHeader("Authorization", `Bearer ${token}`);
-          }
-
-          xhr.upload.onprogress = (event) => {
-            if (event.lengthComputable) {
-              const percent = Math.round((event.loaded / event.total) * 100);
-              console.log(`Progress for file ${i}: ${percent}%`); // Debug log
-              setSelectedFiles(prev => prev.map((f, idx) => 
-                idx === i ? { ...f, progress: percent } : f
-              ));
-            }
-          };
-
-          xhr.onload = () => {
-            if (xhr.status >= 200 && xhr.status < 300) {
-              setSelectedFiles(prev => prev.map((f, idx) => 
-                idx === i ? { ...f, status: 'done', progress: 100, xhr: undefined } : f
-              ));
-              successCount++;
-              resolve();
-            } else {
-              const errorMessage = `Erreur ${xhr.status}: ${xhr.statusText}`;
-              setSelectedFiles(prev => prev.map((f, idx) => 
-                idx === i ? { ...f, status: 'error', xhr: undefined, errorMessage } : f
-              ));
-              errorCount++;
-              reject(new Error(errorMessage));
-            }
-          };
-
-          xhr.onerror = () => {
-            const errorMessage = "Erreur de réseau";
-            setSelectedFiles(prev => prev.map((f, idx) => 
-              idx === i ? { ...f, status: 'error', xhr: undefined, errorMessage } : f
-            ));
-            errorCount++;
-            reject(new Error(errorMessage));
-          };
-
-          xhr.onabort = () => {
-            setSelectedFiles(prev => prev.map((f, idx) => 
-              idx === i ? { ...f, status: 'error', xhr: undefined, errorMessage: "Upload annulé" } : f
-            ));
-            errorCount++;
-            reject(new Error("Upload cancelled"));
-          };
-
-          xhr.send(fileFormData);
-        });
-      } catch (error) {
-        console.error('Upload error:', error);
-      }
+    for (const selectedFile of uploadQueue) {
+      updateSelectedFile(selectedFile.id, { status: "uploading", progress: 0, errorMessage: undefined, retryable: false });
+      const succeeded = await uploadFile(selectedFile, targetDepartment);
+      if (succeeded) successCount += 1;
+      else errorCount += 1;
+      setUploadProgress((current) => current ? { ...current, completed: current.completed + 1 } : current);
     }
+
+    await Promise.all([
+      queryClient.invalidateQueries({ queryKey: ["/api/files"] }),
+      queryClient.invalidateQueries({ queryKey: ["/api/files/pending"] }),
+      queryClient.invalidateQueries({ queryKey: ["/api/stats"] }),
+      queryClient.invalidateQueries({ queryKey: ["/api/activities"] }),
+      queryClient.invalidateQueries({ queryKey: ["/api/departments"] }),
+    ]);
 
     setIsUploading(false);
-
-    // Update cache and show summary
-    queryClient.invalidateQueries({ queryKey: ["/api/files"] });
-    queryClient.invalidateQueries({ queryKey: ["/api/stats"] });
-
+    setUploadSummary({ success: successCount, error: errorCount });
     if (successCount > 0 && errorCount === 0) {
       toast({
-        title: "Succès",
-        description: `${successCount} fichier(s) téléchargé(s) avec succès`,
+        title: "Téléversement terminé",
+        description: `${successCount} ${successCount > 1 ? "documents ont été envoyés" : "document a été envoyé"} pour validation.`,
       });
-      setTimeout(() => onClose(), 1500); // Auto-close after success
-    } else if (successCount > 0 && errorCount > 0) {
+    } else if (successCount > 0) {
       toast({
-        title: "Partiellement réussi",
-        description: `${successCount} fichier(s) réussi(s), ${errorCount} échoué(s)`,
+        title: "Téléversement partiel",
+        description: `${successCount} réussi${successCount > 1 ? "s" : ""}, ${errorCount} échoué${errorCount > 1 ? "s" : ""}.`,
         variant: "destructive",
       });
-    } else if (errorCount > 0) {
+    } else {
       toast({
-        title: "Échec",
-        description: `${errorCount} fichier(s) ont échoué`,
+        title: "Téléversement impossible",
+        description: "Aucun document n'a pu être envoyé.",
         variant: "destructive",
       });
     }
   };
 
-  // Improved drag and drop handlers
-  const handleDragEnter = (e: React.DragEvent) => {
-    e.preventDefault();
-    e.stopPropagation();
-    dragCountRef.current++;
-    if (e.dataTransfer.items && e.dataTransfer.items.length > 0) {
-      setIsDragActive(true);
-    }
+  const handleFileSelect = (event: React.ChangeEvent<HTMLInputElement>) => {
+    addFiles(Array.from(event.target.files ?? []));
+    if (inputRef.current) inputRef.current.value = "";
   };
 
-  const handleDragLeave = (e: React.DragEvent) => {
-    e.preventDefault();
-    e.stopPropagation();
-    dragCountRef.current--;
-    if (dragCountRef.current === 0) {
-      setIsDragActive(false);
-    }
+  const handleDragEnter = (event: React.DragEvent<HTMLDivElement>) => {
+    event.preventDefault();
+    if (isUploading) return;
+    dragCountRef.current += 1;
+    if (event.dataTransfer.items.length > 0) setIsDragActive(true);
   };
 
-  const handleDragOver = (e: React.DragEvent) => {
-    e.preventDefault();
-    e.stopPropagation();
+  const handleDragLeave = (event: React.DragEvent<HTMLDivElement>) => {
+    event.preventDefault();
+    dragCountRef.current = Math.max(0, dragCountRef.current - 1);
+    if (dragCountRef.current === 0) setIsDragActive(false);
   };
 
-  const handleDrop = (e: React.DragEvent) => {
-    e.preventDefault();
-    e.stopPropagation();
+  const handleDrop = (event: React.DragEvent<HTMLDivElement>) => {
+    event.preventDefault();
     setIsDragActive(false);
     dragCountRef.current = 0;
-    
-    const files = Array.from(e.dataTransfer.files || []);
-    if (files.length > 0) {
-      addFiles(files);
-    }
+    if (isUploading) return;
+    const files = Array.from(event.dataTransfer.files ?? []);
+    if (files.length > 0) addFiles(files);
+  };
+
+  const requestClose = () => {
+    if (!isUploading) onClose();
   };
 
   return (
-    <Dialog open={true} onOpenChange={onClose}>
-      <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
-        <DialogHeader>
-          <DialogTitle className="flex items-center justify-between">
-            <span>Télécharger des fichiers</span>
-            <Button variant="ghost" size="sm" onClick={onClose} disabled={isUploading}>
-              <X className="w-4 h-4" />
-            </Button>
-          </DialogTitle>
-        </DialogHeader>
-        
-        <form onSubmit={handleSubmit} className="space-y-6">
-          {/* Progress Global - Visible uniquement pendant l'upload */}
-          {isUploading && (
-            <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
-              <div className="flex items-center justify-between mb-2">
-                <span className="text-sm font-medium text-blue-700">
-                  Upload en cours...
-                </span>
-                <span className="text-sm text-blue-600">
-                  {selectedFiles.filter(f => f.status === 'done').length} / {selectedFiles.filter(f => f.status !== 'error').length}
-                </span>
-              </div>
-              <div className="w-full bg-blue-200 rounded-full h-3 overflow-hidden">
-                <div 
-                  className="h-3 bg-blue-500 transition-all duration-500"
-                  style={{ 
-                    width: `${(selectedFiles.filter(f => f.status === 'done').length / selectedFiles.filter(f => f.status !== 'error').length) * 100}%` 
-                  }}
-                />
-              </div>
+    <Dialog open onOpenChange={(open) => { if (!open) requestClose(); }}>
+      <DialogContent className="max-h-[90vh] w-[calc(100vw-2rem)] max-w-3xl overflow-y-auto [&>button]:hidden">
+        <div className="flex items-start justify-between gap-4">
+          <DialogHeader>
+            <DialogTitle>Téléverser des documents</DialogTitle>
+            <DialogDescription>
+              Les documents envoyés reçoivent le statut « En attente » avant leur validation.
+            </DialogDescription>
+          </DialogHeader>
+          <Button
+            type="button"
+            variant="ghost"
+            size="icon"
+            className="h-10 w-10 shrink-0"
+            onClick={requestClose}
+            disabled={isUploading}
+            aria-label="Fermer la fenêtre de téléversement"
+          >
+            <X className="h-4 w-4" aria-hidden="true" />
+          </Button>
+        </div>
+
+        <form onSubmit={submitUpload} className="space-y-6">
+          {formError && (
+            <div role="alert" className="rounded-md border border-destructive/30 bg-destructive/10 p-3 text-sm text-destructive">
+              {formError}
             </div>
           )}
 
-          <div
-            className={`border-2 border-dashed rounded-xl p-8 text-center transition-all duration-200 ${
-              isDragActive 
-                ? 'border-primary bg-primary/5 scale-105' 
-                : 'border-slate-300 hover:border-primary hover:bg-slate-50'
-            }`}
-            onDragEnter={handleDragEnter}
-            onDragLeave={handleDragLeave}
-            onDragOver={handleDragOver}
-            onDrop={handleDrop}
-          >
-            <CloudUpload 
-              className={`mx-auto mb-4 transition-colors ${
-                isDragActive ? 'text-primary' : 'text-slate-400'
-              }`} 
-              size={48} 
-            />
-            <p className="text-lg font-medium text-slate-700 mb-2">
-              {isDragActive ? 'Déposez vos fichiers ici' : 'Glissez et déposez vos fichiers ici'}
-            </p>
-            <p className="text-sm text-slate-500 mb-4">
-              ou cliquez pour sélectionner • Limite: {MAX_FILE_SIZE / 1024 / 1024}MB par fichier
-            </p>
+          {uploadProgress && isUploading && (
+            <section aria-live="polite" className="rounded-lg border border-info/30 bg-info/10 p-4">
+              <div className="flex items-center justify-between gap-3 text-sm">
+                <span className="font-medium text-info">Téléversement en cours</span>
+                <span className="text-muted-foreground">{uploadProgress.completed} sur {uploadProgress.total} traité{uploadProgress.completed > 1 ? "s" : ""}</span>
+              </div>
+              <Progress value={overallProgress} className="mt-3 h-2" aria-label={`Progression globale : ${overallProgress} %`} />
+            </section>
+          )}
 
-            <label className="inline-block cursor-pointer bg-white border border-slate-300 rounded px-4 py-2 hover:border-primary transition-colors">
-              Sélectionner des fichiers
-              <Input
+          {uploadSummary && !isUploading && (
+            <section aria-live="polite" className={`rounded-lg border p-4 ${uploadSummary.error > 0 ? "border-warning/30 bg-warning/10" : "border-success/30 bg-success/10"}`}>
+              <div className="flex items-start gap-3">
+                {uploadSummary.error > 0
+                  ? <AlertCircle className="mt-0.5 h-5 w-5 shrink-0 text-warning" aria-hidden="true" />
+                  : <CheckCircle2 className="mt-0.5 h-5 w-5 shrink-0 text-success" aria-hidden="true" />}
+                <div>
+                  <p className="font-medium">Téléversement terminé</p>
+                  <p className="mt-1 text-sm text-muted-foreground">
+                    {uploadSummary.success} réussi{uploadSummary.success > 1 ? "s" : ""} · {uploadSummary.error} échoué{uploadSummary.error > 1 ? "s" : ""}.
+                    {uploadSummary.success > 0 ? " Les documents envoyés attendent maintenant une validation." : ""}
+                  </p>
+                </div>
+              </div>
+            </section>
+          )}
+
+          <section aria-labelledby="file-selection-title">
+            <div
+              className={`rounded-lg border-2 border-dashed px-5 py-8 text-center transition-colors ${isDragActive ? "border-primary bg-primary/5" : "border-border bg-muted/30"}`}
+              onDragEnter={handleDragEnter}
+              onDragLeave={handleDragLeave}
+              onDragOver={(event) => event.preventDefault()}
+              onDrop={handleDrop}
+            >
+              <CloudUpload className="mx-auto h-9 w-9 text-primary" aria-hidden="true" />
+              <h3 id="file-selection-title" className="mt-3 font-semibold">
+                {isDragActive ? "Déposez les fichiers ici" : "Sélectionnez les documents à envoyer"}
+              </h3>
+              <p className="mx-auto mt-2 max-w-xl text-sm leading-6 text-muted-foreground">
+                Glissez-déposez vos fichiers ou utilisez le sélecteur. Limite technique actuelle : {formatFileSize(maxUploadFileSizeBytes)} par fichier.
+              </p>
+              <p className="mt-1 text-xs text-muted-foreground">{allowedUploadExtensions.join(", ")}</p>
+              <Button type="button" variant="outline" className="mt-4" onClick={() => inputRef.current?.click()} disabled={isUploading}>
+                Choisir des fichiers
+              </Button>
+              <input
                 ref={inputRef}
                 type="file"
                 multiple
-                accept={ALLOWED_TYPES.join(',')}
+                accept={allowedUploadExtensions.join(",")}
                 onChange={handleFileSelect}
-                className="hidden"
+                className="sr-only"
+                tabIndex={-1}
                 disabled={isUploading}
+                aria-label="Choisir les fichiers à téléverser"
               />
-            </label>
-            
-            {/* File List */}
+            </div>
+
             {selectedFiles.length > 0 && (
-              <div className="mt-6 text-sm">
-                <div className="flex items-center justify-between mb-3">
-                  <p className="font-medium text-slate-700">
-                    Fichiers sélectionnés: {selectedFiles.length}
-                  </p>
+              <div className="mt-4">
+                <div className="flex items-center justify-between gap-3">
+                  <p className="text-sm font-medium">{selectedFiles.length} {selectedFiles.length > 1 ? "fichiers sélectionnés" : "fichier sélectionné"}</p>
                   {!isUploading && (
-                    <Button
-                      type="button"
-                      variant="ghost"
-                      size="sm"
-                      onClick={() => setSelectedFiles([])}
-                      className="text-red-600 hover:text-red-700"
-                    >
-                      Tout supprimer
+                    <Button type="button" variant="ghost" size="sm" className="text-destructive hover:text-destructive" onClick={() => { setSelectedFiles([]); setUploadSummary(null); }}>
+                      Tout retirer
                     </Button>
                   )}
                 </div>
-                
-                <div className="space-y-3 max-h-48 overflow-y-auto">
-                  {selectedFiles.map((fileObj, index) => (
-                    <div 
-                      key={index} 
-                      className={`flex items-center gap-3 p-3 rounded-lg border text-left ${
-                        fileObj.status === 'error' ? 'border-red-200 bg-red-50' :
-                        fileObj.status === 'done' ? 'border-green-200 bg-green-50' :
-                        fileObj.status === 'uploading' ? 'border-blue-200 bg-blue-50' :
-                        'border-slate-200 bg-white'
-                      }`}
-                    >
-                      <FileText className={`w-4 h-4 flex-shrink-0 ${
-                        fileObj.status === 'error' ? 'text-red-500' :
-                        fileObj.status === 'done' ? 'text-green-500' :
-                        fileObj.status === 'uploading' ? 'text-blue-500' :
-                        'text-slate-400'
-                      }`} />
-                      
-                      <div className="flex-1 min-w-0">
-                        <div className="font-medium text-slate-700 truncate">
-                          {fileObj.file.name}
-                        </div>
-                        <div className="text-xs text-slate-500">
-                          {(fileObj.file.size / 1024).toFixed(1)} KB
-                        </div>
-                        {fileObj.errorMessage && (
-                          <div className="text-xs text-red-600 mt-1 flex items-center gap-1">
-                            <AlertCircle className="w-3 h-3" />
-                            {fileObj.errorMessage}
-                          </div>
-                        )}
-                      </div>
 
-                      {/* Progress Bar - Toujours visible sauf pour les erreurs */}
-                      {fileObj.status !== 'error' && (
-                        <div className="w-24">
-                          <div className="w-full bg-slate-200 rounded-full h-2 overflow-hidden">
-                            <div 
-                              className={`h-2 transition-all duration-300 ${
-                                fileObj.status === 'done' ? 'bg-green-500' : 
-                                fileObj.status === 'uploading' ? 'bg-blue-500' : 
-                                'bg-slate-300'
-                              }`}
-                              style={{ width: `${fileObj.progress}%` }}
-                            />
-                          </div>
-                          <div className="text-xs text-slate-500 mt-1 text-center">
-                            {fileObj.status === 'pending' ? 'En attente' : `${fileObj.progress}%`}
-                          </div>
+                <div className="mt-3 max-h-64 space-y-3 overflow-y-auto pr-1">
+                  {selectedFiles.map((selectedFile) => (
+                    <article key={selectedFile.id} className={`rounded-lg border p-3 ${selectedFile.status === "error" ? "border-destructive/30 bg-destructive/5" : "bg-card"}`}>
+                      <div className="flex items-start gap-3">
+                        <FileText className="mt-1 h-5 w-5 shrink-0 text-muted-foreground" aria-hidden="true" />
+                        <div className="min-w-0 flex-1">
+                          <p className="truncate text-sm font-medium" title={selectedFile.file.name}>{selectedFile.file.name}</p>
+                          <p className="mt-0.5 text-xs text-muted-foreground">{formatFileSize(selectedFile.file.size)}</p>
                         </div>
-                      )}
-
-                      {/* Status Icons and Actions */}
-                      <div className="flex items-center gap-2">
-                        {fileObj.status === 'done' && (
-                          <span className="text-green-600 font-medium">✓</span>
-                        )}
-                        {fileObj.status === 'error' && (
-                          <span className="text-red-600 font-medium">✕</span>
-                        )}
-                        {(fileObj.status === 'pending' || fileObj.status === 'error') && !isUploading && (
-                          <Button 
-                            type="button" 
-                            size="sm" 
-                            variant="ghost" 
-                            onClick={() => handleRemoveFile(index)}
-                            className="p-1 h-6 w-6 text-slate-400 hover:text-red-600"
+                        <Badge variant="outline" className={statusClasses[selectedFile.status]}>
+                          {selectedFile.status === "uploading" && <Loader2 className="mr-1 h-3 w-3 animate-spin motion-reduce:animate-none" aria-hidden="true" />}
+                          {statusLabels[selectedFile.status]}
+                        </Badge>
+                        {!isUploading && selectedFile.status === "error" && selectedFile.retryable && (
+                          <Button
+                            type="button"
+                            variant="outline"
+                            size="sm"
+                            onClick={() => {
+                              updateSelectedFile(selectedFile.id, {
+                                status: "pending",
+                                progress: 0,
+                                errorMessage: undefined,
+                                retryable: false,
+                              });
+                              setUploadSummary(null);
+                            }}
                           >
-                            <X className="w-3 h-3" />
+                            Réessayer
+                          </Button>
+                        )}
+                        {!isUploading && selectedFile.status !== "done" && (
+                          <Button
+                            type="button"
+                            variant="ghost"
+                            size="icon"
+                            className="h-10 w-10 shrink-0 text-muted-foreground hover:text-destructive"
+                            onClick={() => setSelectedFiles((current) => current.filter((item) => item.id !== selectedFile.id))}
+                            aria-label={`Retirer ${selectedFile.file.name}`}
+                          >
+                            <X className="h-4 w-4" aria-hidden="true" />
                           </Button>
                         )}
                       </div>
-                    </div>
+                      {selectedFile.status === "uploading" && (
+                        <Progress value={selectedFile.progress} className="mt-3 h-1.5" aria-label={`${selectedFile.file.name} : ${selectedFile.progress} %`} />
+                      )}
+                      {selectedFile.errorMessage && (
+                        <p role="alert" className="mt-2 flex items-start gap-2 text-xs leading-5 text-destructive">
+                          <AlertCircle className="mt-0.5 h-3.5 w-3.5 shrink-0" aria-hidden="true" />
+                          {selectedFile.errorMessage}
+                        </p>
+                      )}
+                    </article>
                   ))}
                 </div>
               </div>
             )}
-          </div>
-          
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          </section>
+
+          <section className="grid gap-4 border-t pt-5 sm:grid-cols-2" aria-label="Métadonnées communes">
             <div className="space-y-2">
-              <Label htmlFor="department">Département *</Label>
-              <Select
-                value={formData.department}
-                onValueChange={(value) => setFormData({ ...formData, department: value })}
-                disabled={user?.role === "USER"}
-              >
-                <SelectTrigger>
-                  <SelectValue placeholder="Sélectionner un département" />
-                </SelectTrigger>
-                <SelectContent>
-                  {canManageDepartments() ? (
-                    departments?.map((dept) => (
-                      <SelectItem key={dept.id} value={dept.name}>
-                        {dept.name}
-                      </SelectItem>
-                    ))
-                  ) : (
-                    <SelectItem value={user?.department || ""}>
-                      {user?.department}
-                    </SelectItem>
-                  )}
-                </SelectContent>
-              </Select>
+              <Label htmlFor="upload-department">Département propriétaire</Label>
+              {user.role === "SUPERUSER" ? (
+                departmentsQuery.isError ? (
+                  <div className="rounded-md border border-destructive/30 p-3">
+                    <p className="text-sm text-destructive">Impossible de charger les départements.</p>
+                    <Button type="button" variant="outline" size="sm" className="mt-2" onClick={() => void departmentsQuery.refetch()}>
+                      Réessayer
+                    </Button>
+                  </div>
+                ) : (
+                  <Select
+                    value={formData.department}
+                    onValueChange={(value) => setFormData((current) => ({ ...current, department: value }))}
+                    disabled={isUploading || departmentsQuery.isLoading || noDepartments}
+                  >
+                    <SelectTrigger id="upload-department">
+                      <SelectValue placeholder={departmentsQuery.isLoading ? "Chargement..." : "Sélectionner un département"} />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {departmentsQuery.data?.map((department) => (
+                        <SelectItem key={department.id} value={department.name}>{department.name}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                )
+              ) : (
+                <Input id="upload-department" value={user.department ?? "Non attribué"} disabled />
+              )}
+              {noDepartments && <p className="text-sm text-warning">Créez d'abord un département avant de téléverser un document.</p>}
+              {user.role !== "SUPERUSER" && !user.department && (
+                <p className="text-sm text-warning">Votre compte n'est rattaché à aucun département.</p>
+              )}
             </div>
-            
+
             <div className="space-y-2">
-              <Label htmlFor="category">Catégorie *</Label>
-              <Select
+              <Label htmlFor="upload-category">Catégorie <span className="font-normal text-muted-foreground">(facultatif)</span></Label>
+              <Input
+                id="upload-category"
                 value={formData.category}
-                onValueChange={(value) => setFormData({ ...formData, category: value })}
-              >
-                <SelectTrigger>
-                  <SelectValue placeholder="Sélectionner une catégorie" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="Rapport">Rapport</SelectItem>
-                  <SelectItem value="Manuel">Manuel</SelectItem>
-                  <SelectItem value="Budget">Budget</SelectItem>
-                  <SelectItem value="Design">Design</SelectItem>
-                  <SelectItem value="Contrat">Contrat</SelectItem>
-                </SelectContent>
-              </Select>
+                onChange={(event) => setFormData((current) => ({ ...current, category: event.target.value }))}
+                placeholder="Ex. Rapport, manuel, contrat"
+                disabled={isUploading}
+              />
             </div>
-          </div>
-          
-          <div className="space-y-2">
-            <Label htmlFor="description">Description (optionnel)</Label>
-            <Textarea
-              id="description"
-              value={formData.description}
-              onChange={(e) => setFormData({ ...formData, description: e.target.value })}
-              placeholder="Ajoutez une description pour ces fichiers..."
-              rows={3}
-            />
-          </div>
-          
-          <div className="flex items-center justify-end space-x-4">
-            <Button 
-              type="button" 
-              variant="outline" 
-              onClick={onClose}
-              disabled={isUploading}
-            >
-              {isUploading ? 'Fermer après upload' : 'Annuler'}
+
+            <div className="space-y-2 sm:col-span-2">
+              <Label htmlFor="upload-description">Description <span className="font-normal text-muted-foreground">(facultatif)</span></Label>
+              <Textarea
+                id="upload-description"
+                value={formData.description}
+                onChange={(event) => setFormData((current) => ({ ...current, description: event.target.value }))}
+                placeholder="Contexte utile pour la validation et la recherche"
+                rows={3}
+                disabled={isUploading}
+              />
+              <p className="text-xs text-muted-foreground">La catégorie et la description s'appliquent à tous les fichiers de cette sélection.</p>
+            </div>
+          </section>
+
+          <DialogFooter>
+            <Button type="button" variant="outline" onClick={requestClose} disabled={isUploading}>
+              {uploadedFiles.length > 0 && pendingFiles.length === 0 ? "Fermer" : "Annuler"}
             </Button>
             <Button
               type="submit"
-              disabled={isUploading || selectedFiles.filter(f => f.status !== 'error').length === 0}
-              className="min-w-[120px]"
+              disabled={isUploading || pendingFiles.length === 0 || isMissingDepartment || departmentsUnavailable || noDepartments}
             >
-              {isUploading 
-                ? `Upload... (${selectedFiles.filter(f => f.status === 'done').length}/${selectedFiles.filter(f => f.status !== 'error').length})`
-                : `Télécharger (${selectedFiles.filter(f => f.status !== 'error').length})`
-              }
+              {isUploading
+                ? `Téléversement… (${uploadProgress?.completed ?? 0}/${uploadProgress?.total ?? 0})`
+                : pendingFiles.length > 0
+                  ? `Téléverser ${pendingFiles.length} ${pendingFiles.length > 1 ? "documents" : "document"}`
+                  : "Téléverser"}
             </Button>
-          </div>
+          </DialogFooter>
         </form>
       </DialogContent>
     </Dialog>

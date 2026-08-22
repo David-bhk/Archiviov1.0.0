@@ -3,7 +3,12 @@ import type { Express } from "express";
 import { generateToken, requireAuth, requireRole, requireSelfOrAdmin, AuthRequest } from "./middleware/auth";
 import { createServer, type Server } from "http";
 import { storage } from "./storage";
-import { insertUserSchema, insertDepartmentSchema, reviewDocumentSchema } from "@shared/schema";
+import {
+  insertDepartmentSchema,
+  insertUserSchema,
+  reviewDocumentSchema,
+} from "@shared/schema";
+import { allowedUploadExtensions, maxUploadFileSizeBytes } from "@shared/uploadConstraints";
 import { z } from "zod";
 import bcrypt from "bcryptjs";
 import multer from "multer";
@@ -46,16 +51,15 @@ const storage_multer = multer.diskStorage({
 const upload = multer({ 
   storage: storage_multer,
   limits: { 
-    fileSize: 10 * 1024 * 1024, // 10MB limit
+    fileSize: maxUploadFileSizeBytes,
     files: 10 // Max 10 files at once
   },
   fileFilter: (req, file, cb) => {
-    const allowedTypes = ['.pdf', '.doc', '.docx', '.xls', '.xlsx', '.png', '.jpg', '.jpeg', '.gif'];
     const ext = path.extname(file.originalname).toLowerCase();
-    if (allowedTypes.includes(ext)) {
+    if (allowedUploadExtensions.includes(ext)) {
       cb(null, true);
     } else {
-      cb(new Error(`Type de fichier non autorisé: ${ext}. Types autorisés: ${allowedTypes.join(', ')}`));
+      cb(new Error(`Type de fichier non autorisé: ${ext}. Types autorisés: ${allowedUploadExtensions.join(', ')}`));
     }
   }
 });
@@ -634,7 +638,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           if (err.code === 'LIMIT_FILE_SIZE') {
             return res.status(400).json({ 
               message: "Fichier trop volumineux", 
-              details: "La taille maximale autorisée est de 10MB" 
+              details: `La taille maximale autorisée est de ${maxUploadFileSizeBytes / 1024 / 1024} Mo`
             });
           }
           if (err.code === 'LIMIT_FILE_COUNT') {
