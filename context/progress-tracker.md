@@ -90,6 +90,11 @@ Mettre ce fichier à jour après chaque modification significative de l'impléme
 - Conservation stricte du contrat d'autorisation actuel : lecture pour tout utilisateur authentifié et actions de création, modification ou suppression uniquement pour `ADMIN` et `SUPERUSER`, sans exposer les niveaux encore indécis.
 - Ajout d'un formulaire ciblé et d'une confirmation accessible signalant qu'un département encore rattaché peut ne pas être supprimable, sans modifier les contraintes serveur.
 - Baseline de l'écran Départements validée : TypeScript, 32 tests et build réussis.
+- Migration de la gestion des utilisateurs vers une modale institutionnelle responsive, avec table sur ordinateur, cartes mobiles, états chargement, vide et erreur, et pagination serveur réelle.
+- Correction du contrat de chargement des départements dans le formulaire de création ; les administrateurs utilisent leur département imposé et seuls les superutilisateurs choisissent un autre département et un rôle privilégié.
+- Retrait de la recherche et du filtre limités silencieusement à dix comptes, ainsi que de l'action de modification sans route serveur ; la suppression physique actuelle est désormais confirmée explicitement.
+- Alignement de l'action de suppression visible avec la règle serveur : aucun compte ne peut s'auto-supprimer, un superutilisateur est protégé et un administrateur reste limité aux utilisateurs simples de son département.
+- Baseline de la gestion des utilisateurs validée : TypeScript, 32 tests et build réussis.
 
 ## En cours
 
@@ -104,7 +109,7 @@ Mettre ce fichier à jour après chaque modification significative de l'impléme
 - Étendre le service d'autorisation avec la hiérarchie validée.
 - Ajouter les tests de matrice rôle, département et niveau.
 - Vérifier visuellement l'écran de validation dès qu'un navigateur contrôlable est disponible.
-- Auditer ensuite l'interface de gestion des utilisateurs et harmoniser son affichage sans modifier la matrice d'autorisation existante.
+- Auditer ensuite le parcours de téléversement et harmoniser sa modale sans modifier les règles documentaires ou inventer des limites de fichiers encore indécises.
 - Décider ultérieurement du traitement d'un document refusé avant d'ajouter correction ou resoumission.
 - Auditer séparément les 24 vulnérabilités signalées dans les dépendances.
 
