@@ -1,160 +1,168 @@
-import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Edit, Trash2 } from "lucide-react";
-import { useAuth } from "../../contexts/AuthContext";
+import { Trash2 } from "lucide-react";
 import { useRole } from "../../contexts/RoleContext";
-import { useToast } from "@/hooks/use-toast";
-import { apiRequest } from "../../lib/queryClient";
-import { User } from "../../types";
+import type { User } from "../../types";
 
 interface UserTableProps {
   users: User[];
+  onRequestDelete: (user: User) => void;
 }
 
-export default function UserTable({ users }: UserTableProps) {
-  const { user: currentUser } = useAuth();
-  const { hasAccess } = useRole();
-  const { toast } = useToast();
-  const queryClient = useQueryClient();
+const roleLabels: Record<User["role"], string> = {
+  SUPERUSER: "Superutilisateur",
+  ADMIN: "Administrateur",
+  USER: "Utilisateur",
+};
 
-  const deleteUserMutation = useMutation({
-    mutationFn: (id: number) => apiRequest("DELETE", `/api/users/${id}`),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/users"] });
-      toast({
-        title: "Utilisateur supprimé",
-        description: "L'utilisateur a été supprimé avec succès",
-      });
-    },
-    onError: () => {
-      toast({
-        title: "Erreur",
-        description: "Impossible de supprimer l'utilisateur",
-        variant: "destructive",
-      });
-    },
-  });
+const roleBadgeClasses: Record<User["role"], string> = {
+  SUPERUSER: "border-destructive/30 bg-destructive/10 text-destructive",
+  ADMIN: "border-primary/30 bg-primary/10 text-primary",
+  USER: "border-border bg-muted text-foreground",
+};
 
-  const getInitials = (firstName: string, lastName: string) => {
-    return `${firstName.charAt(0)}${lastName.charAt(0)}`;
-  };
+function getInitials(user: User) {
+  const initials = `${user.firstName?.slice(0, 1) ?? ""}${user.lastName?.slice(0, 1) ?? ""}`;
+  return initials.toUpperCase() || user.username.slice(0, 2).toUpperCase();
+}
 
-  const getRoleColor = (role: User["role"]) => {
-    switch (role) {
-      case "SUPERUSER":
-        return "bg-red-100 text-red-800";
-      case "ADMIN":
-        return "bg-blue-100 text-blue-800";
-      case "USER":
-        return "bg-slate-100 text-slate-800";
-      default:
-        return "bg-slate-100 text-slate-800";
-    }
-  };
+function formatLastLogin(lastLogin: Date | string | null | undefined) {
+  if (!lastLogin) return "Jamais";
+  const date = new Date(lastLogin);
+  if (Number.isNaN(date.getTime())) return "Date indisponible";
+  return new Intl.DateTimeFormat("fr-FR", {
+    dateStyle: "medium",
+    timeStyle: "short",
+  }).format(date);
+}
 
-  const getRoleLabel = (role: User["role"]) => {
-    switch (role) {
-      case "SUPERUSER":
-        return "SuperUser";
-      case "ADMIN":
-        return "Admin";
-      case "USER":
-        return "Utilisateur";
-      default:
-        return role;
-    }
-  };
-
-  const formatLastLogin = (lastLogin: Date | string | null | undefined) => {
-    if (!lastLogin) return "Jamais";
-    
-    const date = new Date(lastLogin);
-    const now = new Date();
-    const diffInMs = now.getTime() - date.getTime();
-    const diffInHours = Math.floor(diffInMs / (1000 * 60 * 60));
-    
-    if (diffInHours < 1) return "Maintenant";
-    if (diffInHours < 24) return `Il y a ${diffInHours}h`;
-    if (diffInHours < 48) return "Hier";
-    return date.toLocaleDateString("fr-FR");
-  };
-
-  const canDeleteUser = (user: User) => {
-    if (currentUser?.id === user.id) return false; // Can't delete self
-    if (currentUser?.role === "SUPERUSER") return true;
-    if (currentUser?.role === "ADMIN" && user.role === "USER") return true;
-    return false;
-  };
-
-  const handleDelete = (user: User) => {
-    if (window.confirm(`Êtes-vous sûr de vouloir supprimer ${user.firstName} ${user.lastName} ?`)) {
-      deleteUserMutation.mutate(user.id);
-    }
-  };
+export default function UserTable({ users, onRequestDelete }: UserTableProps) {
+  const { canDeleteUser } = useRole();
 
   return (
-    <div className="bg-slate-50 rounded-lg overflow-hidden">
-      <Table>
-        <TableHeader>
-          <TableRow className="bg-slate-100">
-            <TableHead className="font-medium text-slate-700">Utilisateur</TableHead>
-            <TableHead className="font-medium text-slate-700">Rôle</TableHead>
-            <TableHead className="font-medium text-slate-700">Département</TableHead>
-            <TableHead className="font-medium text-slate-700">Dernière connexion</TableHead>
-            <TableHead className="font-medium text-slate-700">Actions</TableHead>
-          </TableRow>
-        </TableHeader>
-        <TableBody>
-          {users.map((user) => (
-            <TableRow key={user.id} className="bg-white hover:bg-slate-50">
-              <TableCell>
-                <div className="flex items-center space-x-3">
-                  <div className="w-10 h-10 bg-primary rounded-full flex items-center justify-center text-white font-semibold">
-                    {getInitials(user.firstName, user.lastName)}
+    <>
+      <div className="hidden overflow-hidden rounded-lg border md:block">
+        <Table>
+          <TableHeader>
+            <TableRow className="bg-muted/60 hover:bg-muted/60">
+              <TableHead>Utilisateur</TableHead>
+              <TableHead>Rôle</TableHead>
+              <TableHead>Département</TableHead>
+              <TableHead>Statut</TableHead>
+              <TableHead>Dernière connexion</TableHead>
+              <TableHead className="text-right">Action</TableHead>
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            {users.map((listedUser) => (
+              <TableRow key={listedUser.id}>
+                <TableCell>
+                  <div className="flex min-w-52 items-center gap-3">
+                    <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-accent text-sm font-semibold text-primary" aria-hidden="true">
+                      {getInitials(listedUser)}
+                    </span>
+                    <div className="min-w-0">
+                      <p className="truncate font-medium">{listedUser.firstName} {listedUser.lastName}</p>
+                      <p className="truncate text-xs text-muted-foreground">{listedUser.email}</p>
+                      <p className="truncate text-xs text-muted-foreground">@{listedUser.username}</p>
+                    </div>
                   </div>
-                  <div>
-                    <p className="font-medium text-slate-800">
-                      {user.firstName} {user.lastName}
-                    </p>
-                    <p className="text-sm text-slate-500">{user.email}</p>
-                  </div>
-                </div>
-              </TableCell>
-              <TableCell>
-                <Badge className={getRoleColor(user.role)}>
-                  {getRoleLabel(user.role)}
-                </Badge>
-              </TableCell>
-              <TableCell>
-                <span className="text-slate-700">{user.department}</span>
-              </TableCell>
-              <TableCell>
-                <span className="text-slate-600">{formatLastLogin(user.lastLogin)}</span>
-              </TableCell>
-              <TableCell>
-                <div className="flex items-center space-x-2">
-                  <Button variant="ghost" size="sm">
-                    <Edit className="w-4 h-4" />
-                  </Button>
-                  {canDeleteUser(user) && (
+                </TableCell>
+                <TableCell>
+                  <Badge variant="outline" className={roleBadgeClasses[listedUser.role]}>
+                    {roleLabels[listedUser.role]}
+                  </Badge>
+                </TableCell>
+                <TableCell>{listedUser.department || "Non attribué"}</TableCell>
+                <TableCell>
+                  <Badge
+                    variant="outline"
+                    className={listedUser.isActive === false
+                      ? "border-destructive/30 bg-destructive/10 text-destructive"
+                      : "border-success/30 bg-success/10 text-success"}
+                  >
+                    {listedUser.isActive === false ? "Inactif" : "Actif"}
+                  </Badge>
+                </TableCell>
+                <TableCell className="text-sm text-muted-foreground">
+                  {formatLastLogin(listedUser.lastLogin)}
+                </TableCell>
+                <TableCell className="text-right">
+                  {canDeleteUser(listedUser) ? (
                     <Button
                       variant="ghost"
                       size="sm"
-                      onClick={() => handleDelete(user)}
-                      disabled={deleteUserMutation.isPending}
-                      className="text-red-500 hover:text-red-700"
+                      className="text-destructive hover:text-destructive"
+                      onClick={() => onRequestDelete(listedUser)}
                     >
-                      <Trash2 className="w-4 h-4" />
+                      <Trash2 className="mr-2 h-4 w-4" aria-hidden="true" />
+                      Supprimer
                     </Button>
+                  ) : (
+                    <span className="text-xs text-muted-foreground">Protégé</span>
                   )}
-                </div>
-              </TableCell>
-            </TableRow>
-          ))}
-        </TableBody>
-      </Table>
-    </div>
+                </TableCell>
+              </TableRow>
+            ))}
+          </TableBody>
+        </Table>
+      </div>
+
+      <div className="space-y-3 md:hidden">
+        {users.map((listedUser) => (
+          <article key={listedUser.id} className="rounded-lg border bg-card p-4">
+            <div className="flex items-start gap-3">
+              <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-accent text-sm font-semibold text-primary" aria-hidden="true">
+                {getInitials(listedUser)}
+              </span>
+              <div className="min-w-0 flex-1">
+                <p className="truncate font-semibold">{listedUser.firstName} {listedUser.lastName}</p>
+                <p className="truncate text-sm text-muted-foreground">{listedUser.email}</p>
+                <p className="truncate text-xs text-muted-foreground">@{listedUser.username}</p>
+              </div>
+              <Badge
+                variant="outline"
+                className={listedUser.isActive === false
+                  ? "border-destructive/30 bg-destructive/10 text-destructive"
+                  : "border-success/30 bg-success/10 text-success"}
+              >
+                {listedUser.isActive === false ? "Inactif" : "Actif"}
+              </Badge>
+            </div>
+
+            <dl className="mt-4 grid grid-cols-2 gap-3 border-t pt-4 text-sm">
+              <div>
+                <dt className="text-xs text-muted-foreground">Rôle</dt>
+                <dd className="mt-1">
+                  <Badge variant="outline" className={roleBadgeClasses[listedUser.role]}>
+                    {roleLabels[listedUser.role]}
+                  </Badge>
+                </dd>
+              </div>
+              <div>
+                <dt className="text-xs text-muted-foreground">Département</dt>
+                <dd className="mt-1 font-medium">{listedUser.department || "Non attribué"}</dd>
+              </div>
+              <div className="col-span-2">
+                <dt className="text-xs text-muted-foreground">Dernière connexion</dt>
+                <dd className="mt-1">{formatLastLogin(listedUser.lastLogin)}</dd>
+              </div>
+            </dl>
+
+            {canDeleteUser(listedUser) && (
+              <Button
+                variant="outline"
+                className="mt-4 w-full text-destructive hover:text-destructive"
+                onClick={() => onRequestDelete(listedUser)}
+              >
+                <Trash2 className="mr-2 h-4 w-4" aria-hidden="true" />
+                Supprimer l'utilisateur
+              </Button>
+            )}
+          </article>
+        ))}
+      </div>
+    </>
   );
 }

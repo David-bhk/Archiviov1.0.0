@@ -1,5 +1,5 @@
 import { createContext, useContext } from "react";
-import { RoleContextType, File } from "../types";
+import type { RoleContextType, File, User } from "../types";
 import type { Role } from "@shared/schema";
 import { useAuth } from "./AuthContext";
 
@@ -22,6 +22,16 @@ export function RoleProvider({ children }: { children: React.ReactNode }) {
     if (!user) return false;
     if (user.role === "SUPERUSER") return true;
     return user.role === "ADMIN" && Boolean(user.department && user.department === file.department);
+  };
+
+  const canDeleteUser = (target: User): boolean => {
+    if (!user || user.id === target.id || target.role === "SUPERUSER") return false;
+    if (user.role === "SUPERUSER") return true;
+    return (
+      user.role === "ADMIN" &&
+      target.role === "USER" &&
+      Boolean(user.department && user.department === target.department)
+    );
   };
 
   const canDownloadFile = (file: File): boolean => {
@@ -63,6 +73,7 @@ export function RoleProvider({ children }: { children: React.ReactNode }) {
         hasAccess,
         canManageUsers,
         canDeleteFile,
+        canDeleteUser,
         canDownloadFile,
         canAccessUserManagement,
         canAccessFile,
