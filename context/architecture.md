@@ -128,10 +128,11 @@ Le client peut masquer une action interdite pour améliorer l'expérience, mais 
 - Lorsque `niveauAdministrateur < niveauDocument`, seul un superutilisateur peut prendre la décision.
 - L'approbateur ne peut jamais déléguer un niveau qu'il ne possède pas lui-même, à l'exception du superutilisateur qui possède le privilège global.
 - Toute décision contient une justification non vide, l'identité du décideur et la date de décision.
-- Une approbation produit une autorisation valable jusqu'à 24 heures après la décision et consommable une seule fois.
-- Le premier téléchargement réussi marque l'autorisation comme utilisée. Une tentative échouée avant l'envoi effectif du fichier ne doit pas la consommer.
-- Une autorisation expirée, refusée, annulée ou déjà utilisée n'accorde aucun accès.
-- Une nouvelle demande est nécessaire pour un autre téléchargement si l'utilisateur ne possède toujours pas d'accès direct.
+- Une approbation produit une autorisation de consultation protégée en lecture seule valable jusqu'à 24 heures après la décision.
+- Cette autorisation n'accorde jamais la route de téléchargement et doit être vérifiée par le serveur à chaque requête du visualiseur.
+- Une autorisation expirée, refusée ou annulée n'accorde aucun accès.
+- Une nouvelle demande est nécessaire pour consulter de nouveau le document après expiration si l'utilisateur ne possède toujours pas d'accès direct.
+- Un filigrane identifiant l'utilisateur autorisé et la période d'accès est ajouté lorsque le format et le mode de rendu le permettent. Il complète l'autorisation et l'audit sans être considéré comme une protection absolue contre la capture.
 - Les dates sont stockées en UTC et interprétées dans le fuseau de l'utilisateur uniquement pour l'affichage.
 
 ## Flux de téléversement cible
@@ -149,10 +150,19 @@ Le client peut masquer une action interdite pour améliorer l'expérience, mais 
 
 1. Authentifier l'utilisateur et charger le document depuis la base.
 2. Refuser les documents supprimés ou indisponibles.
-3. Évaluer l'autorisation côté serveur, y compris une éventuelle demande approuvée.
+3. Évaluer l'autorisation directe côté serveur ; une demande temporaire approuvée ne confère pas le droit de télécharger.
 4. Résoudre et vérifier le chemin physique dans la racine de stockage configurée.
 5. Envoyer le fichier avec un nom de téléchargement sûr et un type de contenu contrôlé.
 6. Journaliser le téléchargement ou la récupération du document.
+
+## Flux de consultation temporaire cible
+
+1. Authentifier l'utilisateur et charger le document ainsi que sa demande approuvée.
+2. Vérifier côté serveur que la demande appartient à cet utilisateur, concerne ce document, n'est ni refusée ni annulée et n'a pas expiré.
+3. Refuser un document supprimé, non archivé ou dont le format ne dispose pas encore d'un rendu protégé pris en charge.
+4. Servir la représentation par une route authentifiée dédiée au visualiseur, sans exposer le stockage ni accorder la route de téléchargement.
+5. Appliquer les en-têtes empêchant la mise en cache lorsque le client et le format les respectent, puis ajouter un filigrane nominatif et daté lorsque le rendu le permet.
+6. Journaliser les ouvertures et refus de consultation utiles à la traçabilité.
 
 ## Invariants
 
@@ -169,7 +179,7 @@ Le client peut masquer une action interdite pour améliorer l'expérience, mais 
 11. Les fichiers archivés et la base de données doivent être sauvegardés ensemble de façon cohérente.
 12. Le client ne constitue jamais l'unique mécanisme de sécurité.
 13. Une autorisation issue d'une demande d'accès ne peut servir qu'au document et au demandeur auxquels elle est liée.
-14. Une autorisation temporaire expire au plus tard 24 heures après son approbation et ne permet qu'un téléchargement réussi.
+14. Une autorisation temporaire expire au plus tard 24 heures après son approbation, permet uniquement une consultation protégée et n'accorde aucun téléchargement.
 15. Un administrateur ne peut accorder aucun accès dépassant son propre niveau.
 
 ## Écarts connus entre l'existant et la cible

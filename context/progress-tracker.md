@@ -16,7 +16,7 @@ Mettre ce fichier à jour après chaque modification significative de l'impléme
 - Première définition de la vision, des utilisateurs, du cycle de vie documentaire, du périmètre et des critères de réussite dans `project-overview.md`.
 - Adoption provisoire d'une hiérarchie croissante de quatre niveaux d'accès.
 - Première documentation de l'architecture existante, de l'architecture cible, des flux de fichiers et des invariants de sécurité dans `architecture.md`.
-- Définition du circuit d'approbation des demandes d'accès, limité à un téléchargement pendant 24 heures.
+- Définition du circuit d'approbation des demandes d'accès, limité à une consultation protégée en lecture seule pendant 24 heures, sans téléchargement.
 - Définition du langage visuel, des jetons, des mises en page et des règles de sobriété dans `ui-context.md`.
 - Définition des conventions TypeScript, React, Express, Prisma, sécurité, stockage et vérification dans `code-standards.md`.
 - Définition du protocole d'analyse, de scoping, d'implémentation, de vérification et de livraison dans `ai-workflow-rules.md`.
@@ -104,6 +104,8 @@ Mettre ce fichier à jour après chaque modification significative de l'impléme
 - Retrait des contrôles sans comportement de mémorisation et de récupération de mot de passe ; aucun parcours d'authentification absent n'a été simulé.
 - Conservation de la page pendant la soumission, ajout d'erreurs accessibles près des champs et distinction entre identifiants refusés, serveur local inaccessible et erreur inattendue.
 - Ajout de quatre tests de classification des erreurs de connexion ; baseline validée avec TypeScript, 36 tests et build réussis.
+- Remplacement de la future autorisation temporaire de téléchargement par une consultation protégée pendant 24 heures, sans modifier le code actuel puisque les demandes d'accès ne sont pas encore implémentées.
+- Adoption d'un filigrane nominatif et daté lorsque le format le permet, accompagné d'une formation recommandant les documents non modifiables ; cette mesure complète la traçabilité sans promettre l'impossibilité absolue d'une capture.
 
 ## En cours
 
@@ -130,6 +132,8 @@ Mettre ce fichier à jour après chaque modification significative de l'impléme
 - Que devient un document refusé ?
 - Quelle politique de suppression, restauration et conservation faut-il appliquer ?
 - Quels types et tailles de fichiers faut-il accepter ?
+- Quels formats doivent être pris en charge par le premier visualiseur protégé et quelle conversion utiliser pour les documents bureautiques modifiables ?
+- Qui décide qu'un document peut recevoir des demandes d'accès : l'auteur comme proposition, ou uniquement l'approbateur autorisé lors de l'archivage ?
 - Quelles sauvegardes et quel chiffrement sont requis pour la première version ?
 
 ## Décisions d'architecture
@@ -141,7 +145,7 @@ Mettre ce fichier à jour après chaque modification significative de l'impléme
 - Un utilisateur accède directement aux niveaux inférieurs ou égaux au sien et demande une autorisation pour un niveau supérieur.
 - Le niveau initial d'un document est hérité du département de l'auteur et peut être corrigé pendant la validation.
 - Un administrateur peut approuver une demande lorsque son niveau couvre le document ; au-delà, la décision appartient au superutilisateur.
-- Une demande approuvée autorise un téléchargement unique pendant 24 heures.
+- Une demande approuvée autorise uniquement une consultation protégée en lecture seule pendant 24 heures et ne confère aucun téléchargement.
 - Toute décision de demande d'accès exige une justification et une trace d'audit.
 - L'interface reste sobre, sans dégradés et sans multiplication décorative des icônes.
 - Le thème clair est prioritaire ; le thème sombre doit rester cohérent s'il est proposé.
@@ -165,3 +169,4 @@ Mettre ce fichier à jour après chaque modification significative de l'impléme
 - La vérification visuelle de l'écran de validation n'a pas pu être exécutée car aucun navigateur contrôlable n'était disponible.
 - L'installation des outils de test signale 24 vulnérabilités de dépendances à auditer séparément ; ne pas appliquer de correction forcée sans analyse.
 - Ne pas commencer l'interface des demandes d'accès avant la stabilisation des rôles, autorisations serveur et tests.
+- Décision du 23 août 2026 : les accès exceptionnels seront des consultations temporaires en lecture seule ; les téléchargements restent réservés aux utilisateurs disposant d'un accès direct.

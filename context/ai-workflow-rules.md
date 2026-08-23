@@ -127,7 +127,7 @@ Exemple pour les demandes d'accès :
 1. ajouter et migrer le modèle de données ;
 2. implémenter et tester le service d'autorisation ;
 3. exposer les routes de création et de décision ;
-4. sécuriser le téléchargement avec consommation de l'autorisation ;
+4. sécuriser la consultation temporaire sans accorder la route de téléchargement ;
 5. construire l'interface utilisateur et administrative.
 
 ## Gestion des exigences manquantes

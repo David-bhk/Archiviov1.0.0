@@ -88,7 +88,8 @@
 - Une décision d'accès tient compte du rôle, de l'état actif, du département, du niveau, du document et de toute demande temporaire valide.
 - Le superutilisateur possède un accès global, mais chaque opération sensible reste auditée.
 - Un administrateur n'accorde jamais un niveau supérieur au sien.
-- La consommation d'une autorisation temporaire survient uniquement après un téléchargement réussi.
+- Une autorisation temporaire issue d'une demande permet uniquement la consultation protégée pendant sa période de validité ; elle n'accorde jamais le téléchargement.
+- Le serveur réévalue le demandeur, le document, la décision et l'expiration à chaque requête du visualiseur.
 - Les contrôles côté client ne sont jamais cités comme preuve de sécurité.
 - Les erreurs d'authentification ne révèlent pas si un compte précis existe, sauf dans une interface administrative autorisée.
 
@@ -144,7 +145,7 @@
 - Toute règle d'autorisation possède des tests positifs et négatifs pour les rôles et niveaux concernés.
 - Les services métier sont testés sans dépendre obligatoirement du navigateur.
 - Les routes sensibles ont des tests d'intégration couvrant authentification, validation, autorisation et réponse.
-- Les flux critiques de téléversement, approbation, demande d'accès et téléchargement sont vérifiés de bout en bout.
+- Les flux critiques de téléversement, approbation, demande d'accès, consultation temporaire et téléchargement direct sont vérifiés de bout en bout.
 - Les tests utilisent des fichiers temporaires et une base isolée ; ils ne modifient jamais les archives réelles.
 - Ne pas affaiblir, ignorer ou supprimer un test uniquement pour faire passer la suite.
 - Avant de déclarer une unité terminée, exécuter au minimum les vérifications pertinentes parmi :

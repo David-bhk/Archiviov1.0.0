@@ -139,7 +139,7 @@ La première priorité n'est pas d'ajouter l'interface des demandes d'accès. Il
 
 ### A11 — Demandes d'accès absentes
 
-**État : absent.** Aucun modèle, service, route ou écran ne représente la demande, la décision, l'expiration de 24 heures ou la consommation après un téléchargement réussi.
+**État : absent.** Aucun modèle, service, route ou écran ne représente la demande, la décision, l'expiration de 24 heures ou la consultation protégée en lecture seule. La route actuelle sert uniquement le téléchargement direct et aucun visualiseur temporaire n'existe.
 
 **Cible :** implémentation par tranches après stabilisation de l'autorisation documentaire.
 
@@ -289,8 +289,8 @@ Le README demande d'installer les dépendances séparément dans `client` et `se
 
 1. Ajouter `AccessRequest` et sa migration.
 2. Implémenter création, décision justifiée et règles d'escalade.
-3. Implémenter l'expiration à 24 heures et l'utilisation unique.
-4. Consommer l'autorisation seulement après téléchargement réussi.
+3. Implémenter l'expiration à 24 heures et la consultation temporaire en lecture seule.
+4. Ajouter une route de visualisation protégée qui ne confère jamais la route de téléchargement et réévalue l'autorisation à chaque requête.
 5. Ajouter les interfaces sobres du demandeur et de l'approbateur.
 
 ### Phase 5 — Démonstration et durcissement

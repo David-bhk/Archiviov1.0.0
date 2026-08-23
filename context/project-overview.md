@@ -89,9 +89,11 @@ Archivio est un système moderne d'archivage destiné aux organisations qui doiv
 - Approbation possible par l'administrateur du demandeur lorsque le niveau du document est inférieur ou égal au niveau d'accès de cet administrateur.
 - Approbation réservée au superutilisateur lorsque le niveau du document dépasse celui de l'administrateur du demandeur.
 - Justification obligatoire pour toute décision d'approbation ou de refus.
-- Autorisation limitée à un seul téléchargement et valable pendant 24 heures après son approbation.
-- Expiration de l'autorisation après son utilisation ou à la fin des 24 heures, selon la première éventualité.
-- Nouvelle demande obligatoire pour tout téléchargement ultérieur en l'absence d'un accès direct.
+- Autorisation limitée à une consultation protégée en lecture seule pendant 24 heures après son approbation ; elle n'accorde aucun téléchargement.
+- Vérification de l'autorisation pendant toute la période de consultation et expiration à la fin des 24 heures.
+- Nouvelle demande obligatoire pour toute consultation ultérieure en l'absence d'un accès direct.
+- Filigrane nominatif et daté prévu lorsque le format et le visualiseur le permettent, comme mesure de dissuasion et de traçabilité complémentaire.
+- Formation des utilisateurs à privilégier les formats non modifiables lorsqu'une consultation protégée doit être possible.
 - Historique des demandes et de leurs décisions.
 
 ### Administration et audit
@@ -152,6 +154,6 @@ Archivio est un système moderne d'archivage destiné aux organisations qui doiv
 - Le niveau initial d'un document est hérité du département de son auteur, puis peut être corrigé pendant la validation.
 - L'administrateur du demandeur peut traiter une demande seulement lorsque son propre niveau couvre celui du document demandé.
 - Une demande dépassant le niveau de cet administrateur relève obligatoirement d'un superutilisateur.
-- Une demande approuvée autorise un téléchargement unique pendant une fenêtre maximale de 24 heures.
+- Une demande approuvée autorise uniquement une consultation protégée en lecture seule pendant une fenêtre maximale de 24 heures ; elle ne donne pas accès au téléchargement.
 - Toute approbation ou tout refus exige une justification et une trace d'audit.
 - Cette politique constitue la règle de la première version et pourra évoluer à travers une décision produit et une migration documentées.

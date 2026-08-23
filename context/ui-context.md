@@ -141,6 +141,8 @@ Les valeurs exactes de ces quatre variables doivent respecter un contraste acces
 - Une opération longue montre un état de chargement sans bloquer inutilement toute la page.
 - Les actions destructrices demandent une confirmation décrivant précisément la conséquence.
 - Les demandes d'accès affichent leur état, l'expiration éventuelle et le décideur lorsque l'utilisateur est autorisé à voir ces informations.
+- Une autorisation temporaire est présentée explicitement comme `Consultation uniquement` ; aucune action de téléchargement n'est affichée dans ce parcours.
+- Le visualiseur temporaire affiche un filigrane nominatif et daté lorsque le format le permet, sans nuire à la lisibilité du document.
 
 ## Accessibilité et ergonomie
 
