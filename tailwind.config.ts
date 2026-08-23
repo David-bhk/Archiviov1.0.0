@@ -44,6 +44,7 @@ export default {
         success: "var(--success)",
         warning: "var(--warning)",
         info: "var(--info)",
+        overlay: "var(--overlay)",
         classification: {
           "1": "var(--classification-1)",
           "2": "var(--classification-2)",

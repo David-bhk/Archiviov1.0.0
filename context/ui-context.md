@@ -44,6 +44,9 @@ Toutes les couleurs fonctionnelles doivent provenir de propriétés CSS. Les com
 | Succès | `--success` | `hsl(145 60% 32%)` |
 | Avertissement | `--warning` | `hsl(32 90% 40%)` |
 | Information | `--info` | `hsl(202 75% 38%)` |
+| Superposition modale | `--overlay` | `hsl(222 47% 11% / 0.72)` |
+
+Le thème sombre utilise une valeur plus profonde de `--overlay` pour conserver la séparation entre le contenu courant et la surface active. Les modales, confirmations et panneaux escamotables partagent ce jeton sans modifier les comportements de focus, de clavier ou de fermeture fournis par Radix UI.
 
 ### Classification documentaire
 
