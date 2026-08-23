@@ -106,6 +106,10 @@ Mettre ce fichier à jour après chaque modification significative de l'impléme
 - Ajout de quatre tests de classification des erreurs de connexion ; baseline validée avec TypeScript, 36 tests et build réussis.
 - Remplacement de la future autorisation temporaire de téléchargement par une consultation protégée pendant 24 heures, sans modifier le code actuel puisque les demandes d'accès ne sont pas encore implémentées.
 - Adoption d'un filigrane nominatif et daté lorsque le format le permet, accompagné d'une formation recommandant les documents non modifiables ; cette mesure complète la traçabilité sans promettre l'impossibilité absolue d'une capture.
+- Audit ciblé des couleurs directes restantes : le panneau droit et la carte responsive historiques ne sont plus importés, tandis que la page 404, les notifications et les superpositions restent des surfaces actives.
+- Migration de la page 404 vers une présentation institutionnelle française, responsive et reliée au tableau de bord, sans couleur directe.
+- Alignement du bouton de fermeture des notifications destructrices et de la barre de défilement globale sur les jetons sémantiques clair et sombre.
+- Baseline de cette première tranche de nettoyage visuel validée : TypeScript, 36 tests et build réussis.
 
 ## En cours
 
@@ -120,7 +124,7 @@ Mettre ce fichier à jour après chaque modification significative de l'impléme
 - Étendre le service d'autorisation avec la hiérarchie validée.
 - Ajouter les tests de matrice rôle, département et niveau.
 - Vérifier visuellement l'écran de validation dès qu'un navigateur contrôlable est disponible.
-- Auditer ensuite les composants frontend encore actifs qui conservent les anciennes couleurs directes, puis les migrer par petites unités sans refonte fonctionnelle.
+- Migrer ensuite les primitives de superposition réellement utilisées par les modales et panneaux mobiles vers un jeton sémantique partagé, sans modifier leurs comportements Radix.
 - Décider ultérieurement du traitement d'un document refusé avant d'ajouter correction ou resoumission.
 - Auditer séparément les 24 vulnérabilités signalées dans les dépendances.
 
