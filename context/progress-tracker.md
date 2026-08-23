@@ -100,6 +100,10 @@ Mettre ce fichier à jour après chaque modification significative de l'impléme
 - Alignement du département de destination sur le contrat serveur : seul le superutilisateur peut en choisir un autre, tandis que l'identité de l'auteur reste déterminée par la session authentifiée.
 - Remplacement de la catégorie fictivement obligatoire par une métadonnée libre et facultative, partagée avec la description par l'ensemble des fichiers sélectionnés.
 - Baseline du téléversement validée : TypeScript, 32 tests et build réussis.
+- Migration de la connexion vers une page institutionnelle responsive, alignée sur le shell principal et entièrement fondée sur les jetons sémantiques.
+- Retrait des contrôles sans comportement de mémorisation et de récupération de mot de passe ; aucun parcours d'authentification absent n'a été simulé.
+- Conservation de la page pendant la soumission, ajout d'erreurs accessibles près des champs et distinction entre identifiants refusés, serveur local inaccessible et erreur inattendue.
+- Ajout de quatre tests de classification des erreurs de connexion ; baseline validée avec TypeScript, 36 tests et build réussis.
 
 ## En cours
 
@@ -114,7 +118,7 @@ Mettre ce fichier à jour après chaque modification significative de l'impléme
 - Étendre le service d'autorisation avec la hiérarchie validée.
 - Ajouter les tests de matrice rôle, département et niveau.
 - Vérifier visuellement l'écran de validation dès qu'un navigateur contrôlable est disponible.
-- Standardiser ensuite l'écran de connexion sans modifier le contrat d'authentification ni inventer de parcours de récupération de compte.
+- Auditer ensuite les composants frontend encore actifs qui conservent les anciennes couleurs directes, puis les migrer par petites unités sans refonte fonctionnelle.
 - Décider ultérieurement du traitement d'un document refusé avant d'ajouter correction ou resoumission.
 - Auditer séparément les 24 vulnérabilités signalées dans les dépendances.
 
