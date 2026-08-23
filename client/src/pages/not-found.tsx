@@ -1,21 +1,33 @@
-import { Card, CardContent } from "@/components/ui/card";
-import { AlertCircle } from "lucide-react";
+import { Link } from "wouter";
+import { ArrowLeft, FileQuestion } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 
 export default function NotFound() {
   return (
-    <div className="min-h-screen w-full flex items-center justify-center bg-gray-50">
-      <Card className="w-full max-w-md mx-4">
-        <CardContent className="pt-6">
-          <div className="flex mb-4 gap-2">
-            <AlertCircle className="h-8 w-8 text-red-500" />
-            <h1 className="text-2xl font-bold text-gray-900">404 Page Not Found</h1>
+    <main className="flex min-h-screen items-center justify-center bg-background px-4 py-10">
+      <Card className="w-full max-w-lg border-border shadow-sm">
+        <CardHeader className="space-y-5 pb-4">
+          <span className="flex h-12 w-12 items-center justify-center rounded-md bg-accent text-primary">
+            <FileQuestion className="h-5 w-5" aria-hidden="true" />
+          </span>
+          <div className="space-y-2">
+            <p className="text-sm font-semibold text-primary">Erreur 404</p>
+            <CardTitle className="text-2xl">Page introuvable</CardTitle>
+            <CardDescription className="text-sm leading-6">
+              L’adresse demandée n’existe pas ou n’est plus disponible dans Archivio.
+            </CardDescription>
           </div>
-
-          <p className="mt-4 text-sm text-gray-600">
-            Did you forget to add the page to the router?
-          </p>
+        </CardHeader>
+        <CardContent>
+          <Button asChild className="min-h-10">
+            <Link href="/">
+              <ArrowLeft className="h-4 w-4" aria-hidden="true" />
+              Retour au tableau de bord
+            </Link>
+          </Button>
         </CardContent>
       </Card>
-    </div>
+    </main>
   );
 }

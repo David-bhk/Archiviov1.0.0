@@ -77,16 +77,16 @@
 }
 
 ::-webkit-scrollbar-track {
-  background: hsl(220, 14.3%, 95.9%);
+  background: var(--muted);
 }
 
 ::-webkit-scrollbar-thumb {
-  background: hsl(220, 8.9%, 46.1%);
+  background: var(--muted-foreground);
   border-radius: 3px;
 }
 
 ::-webkit-scrollbar-thumb:hover {
-  background: hsl(220, 8.9%, 36.1%);
+  background: var(--secondary-foreground);
 }
 
 /* File upload drag and drop styles */
