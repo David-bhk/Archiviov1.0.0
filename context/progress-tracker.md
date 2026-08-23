@@ -110,6 +110,9 @@ Mettre ce fichier à jour après chaque modification significative de l'impléme
 - Migration de la page 404 vers une présentation institutionnelle française, responsive et reliée au tableau de bord, sans couleur directe.
 - Alignement du bouton de fermeture des notifications destructrices et de la barre de défilement globale sur les jetons sémantiques clair et sombre.
 - Baseline de cette première tranche de nettoyage visuel validée : TypeScript, 36 tests et build réussis.
+- Ajout du jeton sémantique partagé `--overlay` pour les thèmes clair et sombre, avec exposition dans la configuration Tailwind.
+- Migration des superpositions de `Dialog`, `AlertDialog` et `Sheet` vers ce jeton, sans modifier leurs portails, interactions clavier, focus, fermeture ou animations Radix.
+- Baseline de la tranche des superpositions actives validée : TypeScript, 36 tests et build réussis.
 
 ## En cours
 
@@ -124,7 +127,7 @@ Mettre ce fichier à jour après chaque modification significative de l'impléme
 - Étendre le service d'autorisation avec la hiérarchie validée.
 - Ajouter les tests de matrice rôle, département et niveau.
 - Vérifier visuellement l'écran de validation dès qu'un navigateur contrôlable est disponible.
-- Migrer ensuite les primitives de superposition réellement utilisées par les modales et panneaux mobiles vers un jeton sémantique partagé, sans modifier leurs comportements Radix.
+- Auditer les classes globales et composants historiques encore porteurs de couleurs directes afin de confirmer leurs consommateurs avant toute migration ou suppression.
 - Décider ultérieurement du traitement d'un document refusé avant d'ajouter correction ou resoumission.
 - Auditer séparément les 24 vulnérabilités signalées dans les dépendances.
 
