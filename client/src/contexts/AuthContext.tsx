@@ -4,6 +4,25 @@ import { apiRequest } from "../lib/queryClient";
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
+export type LoginErrorReason = "invalidCredentials" | "network" | "unexpected";
+
+export class LoginError extends Error {
+  constructor(public readonly reason: LoginErrorReason) {
+    super(reason);
+    this.name = "LoginError";
+  }
+}
+
+export function classifyLoginError(error: unknown): LoginError {
+  if (error instanceof TypeError) {
+    return new LoginError("network");
+  }
+  if (error instanceof Error && error.message.startsWith("401:")) {
+    return new LoginError("invalidCredentials");
+  }
+  return new LoginError("unexpected");
+}
+
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [isLoading, setIsLoading] = useState(true);
@@ -40,7 +59,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   const login = async (username: string, password: string) => {
-    setIsLoading(true);
     try {
       const response = await apiRequest("POST", "/api/auth/login", {
         username,
@@ -53,9 +71,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         localStorage.setItem("archivio_token", data.token);
       }
     } catch (error) {
-      throw new Error("Invalid credentials");
-    } finally {
-      setIsLoading(false);
+      throw classifyLoginError(error);
     }
   };
 
