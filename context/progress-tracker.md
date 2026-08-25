@@ -122,6 +122,9 @@ Mettre ce fichier à jour après chaque modification significative de l'impléme
 - Audit du groupe autonome `Calendar`, `Carousel`, `InputOTP` et `Resizable` : aucune primitive ni dépendance associée n'avait de consommateur applicatif.
 - Suppression de ces quatre primitives et des dépendances `react-day-picker`, `date-fns`, `embla-carousel-react`, `input-otp` et `react-resizable-panels`.
 - Baseline de cette deuxième tranche des primitives inutilisées validée : TypeScript, 36 tests et build réussis.
+- Audit du groupe de formulaire et de commande : `Form`, `Command`, `Checkbox`, `RadioGroup`, `Slider`, `Switch`, `Toggle` et `ToggleGroup` n'avaient aucun consommateur applicatif.
+- Suppression de ces huit primitives et de leurs neuf dépendances directes, dont `react-hook-form`, `cmdk` et les six paquets Radix associés ; les champs simples réellement utilisés restent inchangés.
+- Baseline de cette troisième tranche des primitives inutilisées validée : TypeScript, 36 tests et build réussis.
 
 ## En cours
 
@@ -136,7 +139,7 @@ Mettre ce fichier à jour après chaque modification significative de l'impléme
 - Étendre le service d'autorisation avec la hiérarchie validée.
 - Ajouter les tests de matrice rôle, département et niveau.
 - Vérifier visuellement l'écran de validation dès qu'un navigateur contrôlable est disponible.
-- Auditer ensuite le groupe des primitives de formulaire et de commande non importées ainsi que leurs dépendances exclusives.
+- Auditer ensuite les primitives de navigation et de contenu non importées ainsi que leurs dépendances exclusives.
 - Décider ultérieurement du traitement d'un document refusé avant d'ajouter correction ou resoumission.
 - Auditer séparément les 24 vulnérabilités signalées dans les dépendances.
 
