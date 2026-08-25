@@ -116,6 +116,9 @@ Mettre ce fichier à jour après chaque modification significative de l'impléme
 - Confirmation par recherche des consommateurs que `RightPanel`, `ResponsiveCard` et les anciens helpers globaux de rôle, type de fichier, statut et badge n'étaient plus utilisés.
 - Suppression de ces deux composants historiques et des styles directs correspondants, sans toucher aux primitives génériques shadcn/ui non importées.
 - Baseline du nettoyage historique validée : TypeScript, 36 tests et build réussis.
+- Audit ciblé des primitives génériques : `Chart`, `Drawer` et `Sidebar` n'avaient aucun consommateur ; `use-mobile.tsx` n'était utilisé que par ce sidebar.
+- Suppression de ce groupe, de ses jetons Tailwind orphelins et des dépendances exclusives `recharts` et `vaul`, soit 38 paquets installés devenus inutiles.
+- Baseline de cette première tranche des primitives inutilisées validée : TypeScript, 36 tests et build réussis.
 
 ## En cours
 
@@ -130,7 +133,7 @@ Mettre ce fichier à jour après chaque modification significative de l'impléme
 - Étendre le service d'autorisation avec la hiérarchie validée.
 - Ajouter les tests de matrice rôle, département et niveau.
 - Vérifier visuellement l'écran de validation dès qu'un navigateur contrôlable est disponible.
-- Auditer séparément les primitives génériques shadcn/ui non importées et leurs dépendances avant de décider de leur conservation, migration ou retrait.
+- Poursuivre par petits groupes l'audit des autres primitives génériques non importées et de leurs dépendances exclusives avant toute suppression.
 - Décider ultérieurement du traitement d'un document refusé avant d'ajouter correction ou resoumission.
 - Auditer séparément les 24 vulnérabilités signalées dans les dépendances.
 
