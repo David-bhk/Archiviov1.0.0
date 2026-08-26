@@ -130,6 +130,9 @@ Mettre ce fichier à jour après chaque modification significative de l'impléme
 - Audit du sous-groupe de contenu : `Accordion`, `AspectRatio`, `Avatar`, `Collapsible`, `HoverCard`, `Popover`, `ScrollArea` et `Separator` n'avaient aucun consommateur applicatif.
 - Suppression de ces huit primitives et de leurs huit paquets Radix exclusifs, sans modifier les surfaces ou comportements actifs.
 - Baseline de cette quatrième tranche des primitives inutilisées validée : TypeScript, 36 tests et build réussis.
+- Audit des dépendances frontend directes restantes : `data-fns`, `framer-motion`, `next-themes`, `react-icons` et `tw-animate-css` n'avaient aucun import ni configuration active.
+- Suppression de ces cinq dépendances directes, soit huit paquets installés devenus inutiles, sans changement du comportement ou du rendu actif.
+- Baseline du nettoyage des dépendances frontend validée : arbre npm cohérent, TypeScript, 36 tests et build réussis.
 
 ## En cours
 
@@ -144,7 +147,7 @@ Mettre ce fichier à jour après chaque modification significative de l'impléme
 - Étendre le service d'autorisation avec la hiérarchie validée.
 - Ajouter les tests de matrice rôle, département et niveau.
 - Vérifier visuellement l'écran de validation dès qu'un navigateur contrôlable est disponible.
-- Auditer ensuite les dépendances frontend directes restantes sans consommateur, séparément de l'audit de vulnérabilités.
+- Auditer ensuite les dépendances serveur directes et les paquets de types sans consommateur explicite, séparément de l'audit de vulnérabilités.
 - Décider ultérieurement du traitement d'un document refusé avant d'ajouter correction ou resoumission.
 - Auditer séparément les 24 vulnérabilités signalées dans les dépendances.
 
