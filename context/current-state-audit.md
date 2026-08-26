@@ -215,6 +215,8 @@ Tous les comptes de démonstration utilisent `password123`. Les fichiers sont re
 
 Le nettoyage complémentaire des dépendances frontend retire également `data-fns`, `framer-motion`, `next-themes`, `react-icons` et `tw-animate-css`, tous confirmés sans import ni configuration active. Cette opération réduit la surface d'installation sans modifier l'interface produite.
 
+L'audit serveur retire ensuite seize déclarations directes héritées sans consommateur : ancien support Neon/PostgreSQL, sessions Express, Passport, WebSocket, utilitaires orphelins et paquets de types associés. `bcryptjs` conserve son typage intégré ; le serveur actif reste fondé sur Express, JWT et Prisma/SQLite conformément à l'architecture documentée.
+
 ## Constats P3 — Faibles
 
 ### A27 — Build volumineux

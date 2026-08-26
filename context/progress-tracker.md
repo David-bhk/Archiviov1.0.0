@@ -133,6 +133,9 @@ Mettre ce fichier à jour après chaque modification significative de l'impléme
 - Audit des dépendances frontend directes restantes : `data-fns`, `framer-motion`, `next-themes`, `react-icons` et `tw-animate-css` n'avaient aucun import ni configuration active.
 - Suppression de ces cinq dépendances directes, soit huit paquets installés devenus inutiles, sans changement du comportement ou du rendu actif.
 - Baseline du nettoyage des dépendances frontend validée : arbre npm cohérent, TypeScript, 36 tests et build réussis.
+- Audit des dépendances serveur directes : l'ancien support Neon/PostgreSQL, les sessions Express, Passport, WebSocket, le formatage d'erreurs Zod et le traçage de sources n'avaient aucun consommateur dans le code ou la configuration.
+- Suppression de seize déclarations directes, incluant leurs paquets de types et `bufferutil`, soit cinquante paquets installés devenus inutiles ; `bcryptjs` conserve ses types intégrés.
+- Baseline du nettoyage des dépendances serveur validée : arbre npm cohérent, TypeScript, 36 tests et build réussis.
 
 ## En cours
 
@@ -147,7 +150,7 @@ Mettre ce fichier à jour après chaque modification significative de l'impléme
 - Étendre le service d'autorisation avec la hiérarchie validée.
 - Ajouter les tests de matrice rôle, département et niveau.
 - Vérifier visuellement l'écran de validation dès qu'un navigateur contrôlable est disponible.
-- Auditer ensuite les dépendances serveur directes et les paquets de types sans consommateur explicite, séparément de l'audit de vulnérabilités.
+- Auditer ensuite les dépendances de développement et plugins de build restants, séparément de l'audit de vulnérabilités.
 - Décider ultérieurement du traitement d'un document refusé avant d'ajouter correction ou resoumission.
 - Auditer séparément les 24 vulnérabilités signalées dans les dépendances.
 
