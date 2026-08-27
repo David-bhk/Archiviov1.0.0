@@ -22,7 +22,7 @@ Mettre ce fichier à jour après chaque modification significative de l'impléme
 - Définition du protocole d'analyse, de scoping, d'implémentation, de vérification et de livraison dans `ai-workflow-rules.md`.
 - Audit statique de l'application, baseline TypeScript/tests/build et plan priorisé consignés dans `current-state-audit.md`.
 - Correction de `.gitignore` afin de versionner migrations, middlewares et tests.
-- Installation et verrouillage de Vitest, jsdom et la couverture V8.
+- Installation et verrouillage initiaux de Vitest, jsdom et la couverture V8 ; `jsdom` a ensuite été retiré après confirmation que la suite active s'exécute uniquement en environnement Node.
 - Canonisation des rôles `SUPERUSER`, `ADMIN`, `USER` de Prisma jusqu'au frontend.
 - Validation stricte du rôle et de l'identité présents dans le JWT.
 - Correction des 14 erreurs TypeScript de la baseline.
@@ -136,6 +136,9 @@ Mettre ce fichier à jour après chaque modification significative de l'impléme
 - Audit des dépendances serveur directes : l'ancien support Neon/PostgreSQL, les sessions Express, Passport, WebSocket, le formatage d'erreurs Zod et le traçage de sources n'avaient aucun consommateur dans le code ou la configuration.
 - Suppression de seize déclarations directes, incluant leurs paquets de types et `bufferutil`, soit cinquante paquets installés devenus inutiles ; `bcryptjs` conserve ses types intégrés.
 - Baseline du nettoyage des dépendances serveur validée : arbre npm cohérent, TypeScript, 36 tests et build réussis.
+- Audit séparé des dépendances de développement et plugins de build : les plugins Vite Replit, Typography, PostCSS, Vite, Vitest et les autres outils restants ont tous un consommateur actif ou conditionnel identifié.
+- Suppression de `@tailwindcss/vite`, plugin Tailwind 4 sans import dans un projet construit avec Tailwind 3 via PostCSS, et de `jsdom`, inutilisé par la suite Vitest configurée explicitement pour Node, soit cinquante-six paquets installés devenus inutiles.
+- Baseline du nettoyage des dépendances de développement validée : arbre npm cohérent, TypeScript, 36 tests et build réussis.
 
 ## En cours
 
@@ -150,7 +153,6 @@ Mettre ce fichier à jour après chaque modification significative de l'impléme
 - Étendre le service d'autorisation avec la hiérarchie validée.
 - Ajouter les tests de matrice rôle, département et niveau.
 - Vérifier visuellement l'écran de validation dès qu'un navigateur contrôlable est disponible.
-- Auditer ensuite les dépendances de développement et plugins de build restants, séparément de l'audit de vulnérabilités.
 - Décider ultérieurement du traitement d'un document refusé avant d'ajouter correction ou resoumission.
 - Auditer séparément les 24 vulnérabilités signalées dans les dépendances.
 

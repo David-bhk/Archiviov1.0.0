@@ -151,7 +151,7 @@ La première priorité n'est pas d'ajouter l'interface des demandes d'accès. Il
 
 ### A13 — Base de tests initiale créée
 
-**État : partiellement résolu.** Vitest, jsdom et la couverture V8 sont installés et verrouillés. Deux fichiers exécutent 9 tests sur l'authentification, les rôles et les routes P0. La couverture reste initiale et ne protège pas encore l'ensemble des flux documentaires.
+**État : partiellement résolu.** Vitest et la couverture V8 sont installés et verrouillés. La suite actuelle exécute 36 tests en environnement Node sur l'authentification, les autorisations, le stockage, les routes de sécurité et les contrats partagés. `jsdom`, initialement installé, a été retiré car aucun test ni aucune configuration ne l'utilise ; il devra être réintroduit lorsque de véritables tests de composants DOM seront ajoutés. La couverture reste initiale et ne protège pas encore l'ensemble des flux documentaires.
 
 **Cible :** environnement isolé et premiers tests centrés sur authentification, autorisation, upload, validation et téléchargement.
 
@@ -216,6 +216,8 @@ Tous les comptes de démonstration utilisent `password123`. Les fichiers sont re
 Le nettoyage complémentaire des dépendances frontend retire également `data-fns`, `framer-motion`, `next-themes`, `react-icons` et `tw-animate-css`, tous confirmés sans import ni configuration active. Cette opération réduit la surface d'installation sans modifier l'interface produite.
 
 L'audit serveur retire ensuite seize déclarations directes héritées sans consommateur : ancien support Neon/PostgreSQL, sessions Express, Passport, WebSocket, utilitaires orphelins et paquets de types associés. `bcryptjs` conserve son typage intégré ; le serveur actif reste fondé sur Express, JWT et Prisma/SQLite conformément à l'architecture documentée.
+
+L'audit séparé des dépendances de développement retire `@tailwindcss/vite`, plugin Tailwind 4 sans import alors que le build actif utilise Tailwind 3 via PostCSS, ainsi que `jsdom`, sans consommateur dans une suite Vitest explicitement configurée pour Node. Les plugins Vite Replit restent installés parce qu'ils sont chargés par `vite.config.ts`, dont Cartographer conditionnellement, et les autres outils de build ou de test conservent chacun un consommateur identifié.
 
 ## Constats P3 — Faibles
 
