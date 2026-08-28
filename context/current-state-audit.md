@@ -56,7 +56,11 @@ Parmi les 9 tests, 5 sont volontairement déclarés avec `it.fails`. Ils documen
 
 Ces cinq vulnérabilités ont ensuite été corrigées dans l'unité P0 et les marqueurs `it.fails` ont été retirés. La baseline actuelle est de 18 tests normaux répartis dans 3 fichiers, avec TypeScript et build réussis.
 
-L'installation des outils de test a signalé 24 vulnérabilités de dépendances (`3 low`, `6 moderate`, `13 high`, `2 critical`). Elles doivent être analysées séparément avec `npm audit` avant toute mise à jour automatique. Ne pas lancer `npm audit fix --force` sans étude des changements majeurs.
+L'installation des outils de test avait initialement signalé 24 vulnérabilités de dépendances. L'audit actualisé du 27 août 2026 en recense 21 (`1 low`, `6 moderate`, `12 high`, `2 critical`). Le sous-rapport `npm audit --omit=dev` en remonte 13 (`3 moderate`, `10 high`, aucune critique), mais l'inspection des chemins montre que six d'entre elles appartiennent en réalité à la chaîne Tailwind/PostCSS exécutée au build et restent comptées à cause des relations de dépendances et de pairs.
+
+Les risques serveur directement applicables sont concentrés dans Express et ses transitives `body-parser`, `path-to-regexp` et `qs`, Multer, Nano ID, ainsi que `jws` via `jsonwebtoken`. Une simulation `npm audit fix --dry-run` confirme des correctifs compatibles avec les versions majeures actuelles : Express 4.22.2, Multer 2.2.0, Nano ID 5.1.16 et `jws` 3.2.3, disponible avec l'actualisation de la chaîne JWT. Cette tranche doit être appliquée et vérifiée en priorité.
+
+Les deux alertes critiques concernent Vitest et `@vitest/coverage-v8`. Leur scénario critique suppose l'exposition du serveur Vitest UI ; ce serveur ne fait pas partie du déploiement Archivio, mais `vitest --ui` ne doit pas être exposé sur le réseau avant correction. La résolution proposée passe par Vitest 4.1.11 et constitue une migration majeure. Vite conserve également des alertes jusqu'à la branche 6.4.2 malgré le correctif compatible 5.4.21 ; sa migration majeure doit donc être testée séparément. Aucun `npm audit fix`, aucun `--force` et aucune mutation du manifeste ou du verrou n'ont été exécutés pendant cet audit.
 
 ## Résumé exécutif
 

@@ -139,6 +139,10 @@ Mettre ce fichier à jour après chaque modification significative de l'impléme
 - Audit séparé des dépendances de développement et plugins de build : les plugins Vite Replit, Typography, PostCSS, Vite, Vitest et les autres outils restants ont tous un consommateur actif ou conditionnel identifié.
 - Suppression de `@tailwindcss/vite`, plugin Tailwind 4 sans import dans un projet construit avec Tailwind 3 via PostCSS, et de `jsdom`, inutilisé par la suite Vitest configurée explicitement pour Node, soit cinquante-six paquets installés devenus inutiles.
 - Baseline du nettoyage des dépendances de développement validée : arbre npm cohérent, TypeScript, 36 tests et build réussis.
+- Audit de vulnérabilités actualisé sans mutation : 21 alertes au total (`1 low`, `6 moderate`, `12 high`, `2 critical`) et 13 remontées par `--omit=dev` (`3 moderate`, `10 high`, aucune critique).
+- Inspection des chemins : les risques serveur directement applicables passent par Express, Multer, Nano ID et `jws` via JWT ; six alertes du sous-rapport de production appartiennent à la chaîne Tailwind/PostCSS de build.
+- Simulation sèche vérifiée : les correctifs serveur existent dans les versions majeures actuelles, tandis que la résolution complète de Vite et des deux alertes critiques Vitest exige des migrations majeures séparées.
+- Aucun `npm audit fix`, aucun `--force` et aucune modification de dépendance n'ont été exécutés pendant l'audit.
 
 ## En cours
 
@@ -154,7 +158,8 @@ Mettre ce fichier à jour après chaque modification significative de l'impléme
 - Ajouter les tests de matrice rôle, département et niveau.
 - Vérifier visuellement l'écran de validation dès qu'un navigateur contrôlable est disponible.
 - Décider ultérieurement du traitement d'un document refusé avant d'ajouter correction ou resoumission.
-- Auditer séparément les 24 vulnérabilités signalées dans les dépendances.
+- Appliquer en première tranche les correctifs compatibles d'Express, Multer, Nano ID et de la chaîne JWT, puis relancer TypeScript, les tests, le build et l'audit.
+- Actualiser séparément les outils de build compatibles et préparer les migrations majeures Vite/Vitest avec vérification de la version Node et des plugins Replit.
 
 ## Questions ouvertes
 
@@ -199,6 +204,6 @@ Mettre ce fichier à jour après chaque modification significative de l'impléme
 - La validation navigateur du nouveau tableau de bord n'a pas pu être exécutée le 21 août 2026, car aucune instance de navigateur contrôlable n'était disponible ; TypeScript, tests et build ont néanmoins réussi.
 - Plusieurs métadonnées existantes pointent vers des fichiers absents ; aucune suppression ou fabrication de fichier n'a été effectuée.
 - La vérification visuelle de l'écran de validation n'a pas pu être exécutée car aucun navigateur contrôlable n'était disponible.
-- L'installation des outils de test signale 24 vulnérabilités de dépendances à auditer séparément ; ne pas appliquer de correction forcée sans analyse.
+- Le relevé historique de 24 vulnérabilités est remplacé par l'audit du 27 août 2026 : 21 alertes classées et aucune correction forcée autorisée ; les correctifs serveur compatibles précèdent les migrations majeures Vite/Vitest.
 - Ne pas commencer l'interface des demandes d'accès avant la stabilisation des rôles, autorisations serveur et tests.
 - Décision du 23 août 2026 : les accès exceptionnels seront des consultations temporaires en lecture seule ; les téléchargements restent réservés aux utilisateurs disposant d'un accès direct.
