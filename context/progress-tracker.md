@@ -143,6 +143,9 @@ Mettre ce fichier à jour après chaque modification significative de l'impléme
 - Inspection des chemins : les risques serveur directement applicables passent par Express, Multer, Nano ID et `jws` via JWT ; six alertes du sous-rapport de production appartiennent à la chaîne Tailwind/PostCSS de build.
 - Simulation sèche vérifiée : les correctifs serveur existent dans les versions majeures actuelles, tandis que la résolution complète de Vite et des deux alertes critiques Vitest exige des migrations majeures séparées.
 - Aucun `npm audit fix`, aucun `--force` et aucune modification de dépendance n'ont été exécutés pendant l'audit.
+- Mise à jour ciblée des dépendances serveur compatibles : Express 4.22.2, Multer 2.2.0, Nano ID 5.1.16 et `jsonwebtoken` 9.0.3, avec correction transitive de `body-parser`, `qs`, `jws` et `path-to-regexp`.
+- Réduction de l'audit complet de 21 à 15 alertes ; le sous-rapport `--omit=dev` passe de 13 à 7 et ne contient plus que la chaîne Tailwind/PostCSS exécutée au build.
+- Baseline de la tranche serveur validée : arbre npm cohérent, TypeScript, 36 tests et build réussis.
 
 ## En cours
 
@@ -158,8 +161,8 @@ Mettre ce fichier à jour après chaque modification significative de l'impléme
 - Ajouter les tests de matrice rôle, département et niveau.
 - Vérifier visuellement l'écran de validation dès qu'un navigateur contrôlable est disponible.
 - Décider ultérieurement du traitement d'un document refusé avant d'ajouter correction ou resoumission.
-- Appliquer en première tranche les correctifs compatibles d'Express, Multer, Nano ID et de la chaîne JWT, puis relancer TypeScript, les tests, le build et l'audit.
-- Actualiser séparément les outils de build compatibles et préparer les migrations majeures Vite/Vitest avec vérification de la version Node et des plugins Replit.
+- Appliquer séparément les correctifs compatibles de la chaîne Tailwind/PostCSS et des autres transitives de build, puis mesurer l'audit résiduel.
+- Préparer les migrations majeures Vite/Vitest avec vérification de Node 25 et des plugins Replit.
 
 ## Questions ouvertes
 
@@ -204,6 +207,6 @@ Mettre ce fichier à jour après chaque modification significative de l'impléme
 - La validation navigateur du nouveau tableau de bord n'a pas pu être exécutée le 21 août 2026, car aucune instance de navigateur contrôlable n'était disponible ; TypeScript, tests et build ont néanmoins réussi.
 - Plusieurs métadonnées existantes pointent vers des fichiers absents ; aucune suppression ou fabrication de fichier n'a été effectuée.
 - La vérification visuelle de l'écran de validation n'a pas pu être exécutée car aucun navigateur contrôlable n'était disponible.
-- Le relevé historique de 24 vulnérabilités est remplacé par l'audit du 27 août 2026 : 21 alertes classées et aucune correction forcée autorisée ; les correctifs serveur compatibles précèdent les migrations majeures Vite/Vitest.
+- Le relevé historique de 24 vulnérabilités est remplacé par l'audit du 29 août 2026 : 15 alertes subsistent après les correctifs serveur compatibles, sans correction forcée ; les outils de build et migrations majeures Vite/Vitest restent séparés.
 - Ne pas commencer l'interface des demandes d'accès avant la stabilisation des rôles, autorisations serveur et tests.
 - Décision du 23 août 2026 : les accès exceptionnels seront des consultations temporaires en lecture seule ; les téléchargements restent réservés aux utilisateurs disposant d'un accès direct.
