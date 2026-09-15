@@ -158,15 +158,17 @@ Mettre ce fichier à jour après chaque modification significative de l'impléme
 - Ajout d'un Compose dédié au seul projet `archivio`, avec image PostgreSQL 17.11 épinglée, volume persistant propre, contrôle de santé et publication limitée à `127.0.0.1:5433`.
 - Validation statique réussie du Compose sans création de conteneur ; aucun projet, conteneur, réseau ou volume de `business-management-local` n'a été modifié.
 - Ajout des seules variables PostgreSQL non secrètes à `.env.example` ; le démarrage refuse explicitement tout mot de passe absent et aucun secret n'est versionné.
+- Ajout d'un schéma Prisma PostgreSQL parallèle et d'un historique de migrations distinct, sans modification du schéma, des migrations ou du client SQLite actifs.
+- Baseline PostgreSQL appliquée avec Prisma dans un conteneur éphémère isolé : historique à jour, quatre tables attendues, relations créées et deux contraintes de niveau 1 à 4 vérifiées.
+- Génération réussie d'un client Prisma PostgreSQL séparé dans `node_modules` ; TypeScript reste valide et aucun artefact généré n'est versionné.
 
 ## En cours
 
-- Configuration locale du secret PostgreSQL puis démarrage et contrôle de santé du service Docker Archivio ; SQLite reste utilisée par l'application pendant cette étape.
+- Configuration locale du secret PostgreSQL puis démarrage et contrôle de santé du service Docker Archivio ; préparer ensuite la copie contrôlée depuis SQLite sans basculer l'application.
 
 ## Prochaines étapes
 
 - Définir `ARCHIVIO_DB_PASSWORD` uniquement dans le fichier local `.env`, puis démarrer le Compose Archivio et vérifier PostgreSQL sans toucher aux autres projets Docker.
-- Créer un schéma Prisma PostgreSQL parallèle et une nouvelle baseline compatible, sans réécrire les migrations SQLite existantes.
 - Préparer une copie contrôlée des données SQLite vers PostgreSQL avec vérification des lignes, relations, identifiants et séquences avant toute bascule.
 - Décider les niveaux initiaux des départements existants avant toute application de la hiérarchie.
 - Clarifier les opérations qu'un administrateur peut effectuer sur son propre département avant de modifier les routes de gestion.

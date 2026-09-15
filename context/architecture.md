@@ -53,6 +53,8 @@ Ce document décrit à la fois l'architecture actuellement observée et l'archit
 
 Le schéma actuel contient les entités `User`, `Department`, `File` et `Activity`. Il stocke les comptes, rôles, métadonnées documentaires et événements. Une migration de transition ajoute `departmentId` aux utilisateurs et documents, `accessLevel` aux départements et `classificationLevel` aux documents. Les identifiants sont rétromigrés depuis les noms existants sans supprimer les colonnes textuelles historiques. Les niveaux restent nullable tant que leur attribution initiale n'a pas été décidée ; ils ne participent donc pas encore aux autorisations. Les demandes d'accès et autorisations temporaires ne sont pas encore modélisées.
 
+Pendant la transition de moteur, `prisma/schema.prisma` et `prisma/migrations/` restent exclusivement associés à SQLite. Le schéma et l'historique PostgreSQL vivent séparément dans `prisma/postgresql/` et génèrent un client isolé dans `node_modules`. Les migrations propres à un fournisseur ne sont jamais appliquées à l'autre. La baseline PostgreSQL est réservée à une base Archivio vide ; la copie des données et la bascule du client actif constituent des unités distinctes.
+
 ### Système de fichiers
 
 Le fichier binaire est conservé localement et son chemin est enregistré dans la base. Le nom physique doit être généré par le serveur et ne doit jamais provenir directement d'un chemin fourni par l'utilisateur.
