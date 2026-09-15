@@ -1,0 +1,29 @@
+name: archivio
+
+services:
+  postgres:
+    image: postgres:17.11-bookworm
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ${ARCHIVIO_DB_NAME:-archivio}
+      POSTGRES_USER: ${ARCHIVIO_DB_USER:-archivio}
+      POSTGRES_PASSWORD: ${ARCHIVIO_DB_PASSWORD:?Define ARCHIVIO_DB_PASSWORD in the local .env file}
+      POSTGRES_INITDB_ARGS: --data-checksums
+    ports:
+      - target: 5432
+        published: "${ARCHIVIO_DB_PORT:-5433}"
+        host_ip: 127.0.0.1
+        protocol: tcp
+    volumes:
+      - archivio_postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U \"$${POSTGRES_USER}\" -d \"$${POSTGRES_DB}\""]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+      start_period: 10s
+    shm_size: 128mb
+    stop_grace_period: 30s
+
+volumes:
+  archivio_postgres_data:
