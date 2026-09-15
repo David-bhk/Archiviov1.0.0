@@ -9,7 +9,7 @@ Ce document décrit à la fois l'architecture actuellement observée et l'archit
 | Couche | Technologie | Rôle |
 | --- | --- | --- |
 | Interface | React 18 + TypeScript | Pages, composants et interactions utilisateur |
-| Construction frontend | Vite 5 | Serveur de développement et génération des fichiers statiques |
+| Construction frontend | Vite 7 | Serveur de développement et génération des fichiers statiques |
 | Routage frontend | Wouter | Navigation côté client |
 | Données frontend | TanStack Query | Requêtes API, cache et synchronisation des données serveur |
 | Interface visuelle | Tailwind CSS + shadcn/ui + Radix UI | Styles, composants accessibles et primitives d'interface |

@@ -151,6 +151,9 @@ Mettre ce fichier à jour après chaque modification significative de l'impléme
 - Audit de production ramené à zéro vulnérabilité connue ; audit complet ramené à 6 alertes, toutes limitées au groupe Vite/Vitest qui exige une migration majeure séparée.
 - Actualisation de Browserslist et `caniuse-lite` ; l'avertissement de données navigateur anciennes a disparu du build.
 - Baseline de la maintenance compatible validée : arbre npm cohérent, TypeScript, 36 tests et build réussis.
+- Migration majeure coordonnée vers Vite 7.3.6, Vitest et couverture V8 4.1.11, plugin React 5.2.0 et versions courantes des deux plugins Replit ; `@types/node` reste sur la branche 20, alignée en 20.19.43.
+- Vérification du nouveau moteur de couverture : 6 fichiers de test et 36 tests réussissent avec V8 ; le rapport généré est désormais explicitement ignoré par Git.
+- Baseline après migration validée : arbre npm cohérent, TypeScript, 36 tests, couverture V8 et build réussis ; audits npm complet et de production à zéro vulnérabilité connue.
 
 ## En cours
 
@@ -166,7 +169,7 @@ Mettre ce fichier à jour après chaque modification significative de l'impléme
 - Ajouter les tests de matrice rôle, département et niveau.
 - Vérifier visuellement l'écran de validation dès qu'un navigateur contrôlable est disponible.
 - Décider ultérieurement du traitement d'un document refusé avant d'ajouter correction ou resoumission.
-- Préparer les migrations majeures coordonnées de Vite, Vitest et `@vitest/coverage-v8`, avec vérification de Node 25 et de la compatibilité des plugins Replit.
+- Corriger le README pour refléter l'installation réelle depuis la racine, les variables d'environnement requises et les commandes de vérification actives.
 
 ## Questions ouvertes
 
@@ -211,6 +214,6 @@ Mettre ce fichier à jour après chaque modification significative de l'impléme
 - La validation navigateur du nouveau tableau de bord n'a pas pu être exécutée le 21 août 2026, car aucune instance de navigateur contrôlable n'était disponible ; TypeScript, tests et build ont néanmoins réussi.
 - Plusieurs métadonnées existantes pointent vers des fichiers absents ; aucune suppression ou fabrication de fichier n'a été effectuée.
 - La vérification visuelle de l'écran de validation n'a pas pu être exécutée car aucun navigateur contrôlable n'était disponible.
-- L'audit du 15 septembre 2026 ne signale plus aucune vulnérabilité connue dans les dépendances de production ; 6 alertes de développement subsistent dans le groupe Vite/Vitest et aucune correction forcée n'a été appliquée.
+- Après la migration majeure coordonnée du 15 septembre 2026, les audits npm complet et de production ne signalent plus aucune vulnérabilité connue ; aucune correction forcée n'a été appliquée.
 - Ne pas commencer l'interface des demandes d'accès avant la stabilisation des rôles, autorisations serveur et tests.
 - Décision du 23 août 2026 : les accès exceptionnels seront des consultations temporaires en lecture seule ; les téléchargements restent réservés aux utilisateurs disposant d'un accès direct.
