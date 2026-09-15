@@ -4,11 +4,11 @@ Mettre ce fichier à jour après chaque modification significative de l'impléme
 
 ## Phase actuelle
 
-- Fondation de la hiérarchie départementale migrée et migration progressive des parcours documentaires vers l'interface institutionnelle.
+- Fondation de la transition vers PostgreSQL en parallèle de la base SQLite active, sans interrompre les parcours documentaires existants.
 
 ## Objectif actuel
 
-- Poursuivre l'harmonisation des parcours documentaires sans simuler de fonctions absentes, pendant que les décisions de niveaux restent ouvertes.
+- Établir et vérifier une base PostgreSQL Archivio isolée avant toute copie de données ou bascule de l'application.
 
 ## Terminé
 
@@ -154,13 +154,20 @@ Mettre ce fichier à jour après chaque modification significative de l'impléme
 - Migration majeure coordonnée vers Vite 7.3.6, Vitest et couverture V8 4.1.11, plugin React 5.2.0 et versions courantes des deux plugins Replit ; `@types/node` reste sur la branche 20, alignée en 20.19.43.
 - Vérification du nouveau moteur de couverture : 6 fichiers de test et 36 tests réussissent avec V8 ; le rapport généré est désormais explicitement ignoré par Git.
 - Baseline après migration validée : arbre npm cohérent, TypeScript, 36 tests, couverture V8 et build réussis ; audits npm complet et de production à zéro vulnérabilité connue.
+- Adoption de PostgreSQL 17 comme base applicative cible ; SQLite reste la source active et le retour arrière pendant la transition.
+- Ajout d'un Compose dédié au seul projet `archivio`, avec image PostgreSQL 17.11 épinglée, volume persistant propre, contrôle de santé et publication limitée à `127.0.0.1:5433`.
+- Validation statique réussie du Compose sans création de conteneur ; aucun projet, conteneur, réseau ou volume de `business-management-local` n'a été modifié.
+- Ajout des seules variables PostgreSQL non secrètes à `.env.example` ; le démarrage refuse explicitement tout mot de passe absent et aucun secret n'est versionné.
 
 ## En cours
 
-- Validation visuelle interactive du shell principal dès qu'un navigateur contrôlable est disponible ; les décisions de hiérarchie départementale restent ouvertes en parallèle.
+- Configuration locale du secret PostgreSQL puis démarrage et contrôle de santé du service Docker Archivio ; SQLite reste utilisée par l'application pendant cette étape.
 
 ## Prochaines étapes
 
+- Définir `ARCHIVIO_DB_PASSWORD` uniquement dans le fichier local `.env`, puis démarrer le Compose Archivio et vérifier PostgreSQL sans toucher aux autres projets Docker.
+- Créer un schéma Prisma PostgreSQL parallèle et une nouvelle baseline compatible, sans réécrire les migrations SQLite existantes.
+- Préparer une copie contrôlée des données SQLite vers PostgreSQL avec vérification des lignes, relations, identifiants et séquences avant toute bascule.
 - Décider les niveaux initiaux des départements existants avant toute application de la hiérarchie.
 - Clarifier les opérations qu'un administrateur peut effectuer sur son propre département avant de modifier les routes de gestion.
 - Migrer les contrats, filtres et décisions serveur de département vers `departmentId` en conservant une compatibilité contrôlée.
@@ -186,6 +193,8 @@ Mettre ce fichier à jour après chaque modification significative de l'impléme
 ## Décisions d'architecture
 
 - Le réseau local constitue la cible de déploiement prioritaire.
+- PostgreSQL 17 est la base applicative cible ; la transition conserve SQLite intacte jusqu'à validation de la copie et des parcours applicatifs.
+- L'environnement PostgreSQL Docker d'Archivio reste isolé des autres projets locaux et n'est publié que sur l'interface de boucle locale pendant le développement.
 - Un déploiement en ligne reste possible mais exigera une configuration et une étude de sécurité adaptées.
 - Les autorisations doivent être appliquées côté serveur, indépendamment des restrictions de l'interface.
 - Les départements et documents utilisent provisoirement une échelle croissante de niveaux 1 à 4.

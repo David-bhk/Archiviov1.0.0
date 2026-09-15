@@ -16,7 +16,8 @@ Ce document décrit à la fois l'architecture actuellement observée et l'archit
 | API | Express 4 + TypeScript | Routes HTTP, validation, autorisation et orchestration métier |
 | Validation | Zod | Validation des entrées aux frontières du système |
 | ORM | Prisma 6 | Accès typé aux données et migrations |
-| Base de données initiale | SQLite | Métadonnées locales pour la première version |
+| Base de données actuelle | SQLite | Source locale conservée pendant la transition et le retour arrière |
+| Base de données cible | PostgreSQL 17 | Métadonnées persistantes et accès concurrents, isolés dans Docker |
 | Stockage documentaire | Système de fichiers local + Multer | Conservation des fichiers téléversés sur le serveur local |
 | Authentification | JWT + bcrypt | Sessions par jeton et hachage des mots de passe |
 | Tests | Vitest | Tests unitaires et d'intégration |
@@ -25,7 +26,11 @@ Ce document décrit à la fois l'architecture actuellement observée et l'archit
 
 - La première cible est un serveur contrôlé par l'organisation et accessible sur son réseau local.
 - Le serveur Express expose l'API et sert l'application frontend construite en production.
-- SQLite et les fichiers archivés résident sur le serveur local dans la première version.
+- SQLite reste la source active tant que la copie des données et les parcours applicatifs n'ont pas été validés sur PostgreSQL.
+- PostgreSQL 17 est la cible validée pour la base applicative. En développement, son service Docker Compose utilise un projet, un réseau et un volume propres à Archivio ; aucun conteneur ou volume d'un autre projet ne doit être réutilisé.
+- Le port PostgreSQL de développement est publié uniquement sur l'interface locale. Le déploiement final pourra garder la base sur un réseau Docker privé sans publication sur le réseau de l'organisation.
+- Les fichiers archivés restent séparés de PostgreSQL dans la racine documentaire configurée.
+- Un volume Docker assure la persistance entre recréations du conteneur, mais ne remplace pas une sauvegarde ; la base et les fichiers archivés doivent être sauvegardés ensemble.
 - Un déploiement en ligne est une cible possible, mais pas un simple changement d'adresse : il exige HTTPS, gestion sécurisée des secrets, stockage durable, sauvegardes, durcissement réseau et réévaluation de SQLite et du stockage local.
 - Les adresses réseau et secrets ne doivent jamais être codés en dur ; ils proviennent de la configuration d'environnement.
 
