@@ -62,7 +62,9 @@ Les risques serveur directement applicables étaient concentrés dans Express et
 
 Après cette tranche, l'audit complet passe à 15 alertes (`1 low`, `4 moderate`, `8 high`, `2 critical`) et `npm audit --omit=dev` à 7 (`1 moderate`, `6 high`, aucune critique). L'inspection confirme que ces sept dernières appartiennent toutes à la chaîne Tailwind/PostCSS exécutée au build ; aucune dépendance serveur directement applicable précédemment identifiée ne subsiste dans le rapport. Cette conclusion porte uniquement sur les avis npm connus et ne remplace pas les tests de sécurité applicative.
 
-Les deux alertes critiques concernent Vitest et `@vitest/coverage-v8`. Leur scénario critique suppose l'exposition du serveur Vitest UI ; ce serveur ne fait pas partie du déploiement Archivio, mais `vitest --ui` ne doit pas être exposé sur le réseau avant correction. La résolution proposée passe par Vitest 4.1.11 et constitue une migration majeure. Vite conserve également des alertes jusqu'à la branche 6.4.2 malgré le correctif compatible 5.4.21 ; sa migration majeure doit donc être testée séparément. Aucun `npm audit fix`, aucun `--force` et aucune mutation du manifeste ou du verrou n'ont été exécutés pendant cet audit.
+Le 15 septembre 2026, un nouvel audit avant maintenance remonte à 22 alertes à cause d'avis publiés depuis la tranche précédente, notamment sur `qs`, Multer, Browserslist et Vitest. La maintenance compatible met Express à jour vers 4.22.3, Multer vers 2.4.0, PostCSS vers 8.5.28, Tailwind CSS vers 3.4.19, Autoprefixer vers 10.6.0, TSX vers 4.23.13 et Vite 5 vers 5.4.21. Les plugins React et Typography passent respectivement à 4.7.0 et 0.5.20 ; les transitives vulnérables autorisées par ces plages sont également actualisées de manière ciblée.
+
+Après cette maintenance, `npm audit --omit=dev` ne signale plus aucune vulnérabilité connue. L'audit complet conserve 6 alertes (`3 moderate`, `1 high`, `2 critical`), toutes rattachées au groupe Vite/Vitest et à leurs transitives `esbuild`, `vite-node` et `@vitest/mocker`. Les deux alertes critiques concernent Vitest et `@vitest/coverage-v8` ; leur scénario principal suppose l'exposition du serveur Vitest UI, qui ne fait pas partie du déploiement Archivio. La résolution complète exige des migrations majeures coordonnées de Vite, Vitest et de la couverture, à tester séparément avec les plugins Replit. Aucun `npm audit fix` ni `--force` n'a été exécuté ; les mises à jour ont été nommées explicitement.
 
 ## Résumé exécutif
 
@@ -233,7 +235,7 @@ Le bundle JavaScript principal produit environ 492 kB avant gzip. Une séparatio
 
 ### A28 — Données Browserslist anciennes
 
-Le build avertit que `caniuse-lite` date d'environ 22 mois. Mettre à jour lors d'une unité de maintenance des dépendances, pas au milieu d'une correction métier.
+**État : résolu lors de la maintenance compatible du 15 septembre 2026.** Browserslist, `caniuse-lite` et leurs données transitives ont été actualisés ; le build ne produit plus l'avertissement signalant des données vieilles d'environ 22 mois.
 
 ### A29 — README incorrect
 
