@@ -4,11 +4,11 @@ Mettre ce fichier à jour après chaque modification significative de l'impléme
 
 ## Phase actuelle
 
-- Fondation de la transition vers PostgreSQL en parallèle de la base SQLite active, sans interrompre les parcours documentaires existants.
+- Validation réversible de PostgreSQL en parallèle de la base SQLite active, sans interrompre les parcours documentaires existants.
 
 ## Objectif actuel
 
-- Établir et vérifier une base PostgreSQL Archivio isolée avant toute copie de données ou bascule de l'application.
+- Valider les parcours applicatifs sur PostgreSQL tout en conservant SQLite comme moteur par défaut et retour arrière intact.
 
 ## Terminé
 
@@ -168,14 +168,23 @@ Mettre ce fichier à jour après chaque modification significative de l'impléme
 - Validation de la source avant copie : 6 départements, 9 utilisateurs, 36 documents et 6 activités, sans doublon, relation orpheline, niveau ou statut documentaire invalide.
 - Copie persistante terminée puis comparée ligne par ligne à SQLite ; les quatre séquences PostgreSQL correspondent aux identifiants maximaux et une seconde copie est correctement refusée.
 - Baseline après copie validée : TypeScript, 36 tests et build réussis ; SQLite reste la source active de l'application et aucune bascule n'a été effectuée.
+- Ajout d'un sélecteur strict `ARCHIVIO_DB_PROVIDER` à la frontière de stockage : SQLite reste la valeur par défaut, PostgreSQL exige sa configuration locale et toute valeur inconnue bloque le démarrage.
+- Centralisation de l'URL PostgreSQL à partir de composants validés et encodés, sans journalisation de l'URL ni du mot de passe ; le script de copie partage désormais cette configuration.
+- Génération reproductible d'un client Prisma PostgreSQL isolé sous forme de paquet local, sans remplacer le client SQLite actif.
+- Démarrage parallèle réussi d'Archivio sur PostgreSQL au port 5001 ; cinq parcours en lecture seule ont répondu avec succès pour les départements, documents, statistiques et activités.
+- Build de production démarré temporairement sur PostgreSQL au port 5003 ; les mêmes cinq parcours en lecture seule ont réussi avec le client généré externe au bundle.
+- Commande `npm start` rendue compatible avec Windows puis validée sur PostgreSQL avec une réponse HTTP 200.
+- Retour arrière vérifié par une nouvelle instance sans sélecteur : moteur `sqlite`, interface HTTP 200 et refus d'identifiants invalides en 401.
+- Port et adresse d'écoute désormais configurables ; l'ancienne adresse LAN codée en dur a été retirée des journaux, tandis que la configuration CORS reste une unité distincte.
+- Baseline du sélecteur de moteur validée : TypeScript, 41 tests et build réussis, avec copie PostgreSQL toujours identique à SQLite avant les essais.
 
 ## En cours
 
-- Préparer une sélection explicite et réversible du moteur de base afin de valider l'application sur la copie PostgreSQL sans supprimer ni altérer SQLite.
+- Préparer la validation des parcours d'écriture sur une cible PostgreSQL isolée, sans modifier la copie contrôlée ni les archives réelles.
 
 ## Prochaines étapes
 
-- Ajouter une sélection explicite du client Prisma actif, conserver SQLite par défaut et tester les parcours applicatifs sur PostgreSQL avant toute bascule durable.
+- Valider sur une base PostgreSQL isolée les écritures critiques : connexion, téléversement de métadonnées, décision auditée et suppression logique, avec retour arrière transactionnel.
 - Décider les niveaux initiaux des départements existants avant toute application de la hiérarchie.
 - Clarifier les opérations qu'un administrateur peut effectuer sur son propre département avant de modifier les routes de gestion.
 - Migrer les contrats, filtres et décisions serveur de département vers `departmentId` en conservant une compatibilité contrôlée.
@@ -202,6 +211,7 @@ Mettre ce fichier à jour après chaque modification significative de l'impléme
 
 - Le réseau local constitue la cible de déploiement prioritaire.
 - PostgreSQL 17 est la base applicative cible ; la transition conserve SQLite intacte jusqu'à validation de la copie et des parcours applicatifs.
+- L'application sélectionne un seul fournisseur au démarrage ; SQLite reste le défaut et aucune double écriture implicite n'est autorisée pendant la transition.
 - L'environnement PostgreSQL Docker d'Archivio reste isolé des autres projets locaux et n'est publié que sur l'interface de boucle locale pendant le développement.
 - Un déploiement en ligne reste possible mais exigera une configuration et une étude de sécurité adaptées.
 - Les autorisations doivent être appliquées côté serveur, indépendamment des restrictions de l'interface.

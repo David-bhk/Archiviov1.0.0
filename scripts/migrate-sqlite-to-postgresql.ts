@@ -4,27 +4,10 @@ import { PrismaClient as SQLiteClient } from '@prisma/client'
 import {
   Prisma as PostgreSQLPrisma,
   PrismaClient as PostgreSQLClient,
-} from '../node_modules/.prisma/archivio-postgresql-client/index.js'
+} from '@archivio/postgresql-client'
+import { getPostgreSQLUrl } from '../server/database-config'
 
 const sqlite = new SQLiteClient()
-
-function getPostgreSQLUrl(): string {
-  const password = process.env.ARCHIVIO_DB_PASSWORD
-
-  if (!password) {
-    throw new Error('ARCHIVIO_DB_PASSWORD doit être défini dans le fichier local .env.')
-  }
-
-  const database = process.env.ARCHIVIO_DB_NAME || 'archivio'
-  const user = process.env.ARCHIVIO_DB_USER || 'archivio'
-  const port = process.env.ARCHIVIO_DB_PORT || '5433'
-
-  if (!/^\d+$/.test(port)) {
-    throw new Error('ARCHIVIO_DB_PORT doit être un numéro de port valide.')
-  }
-
-  return `postgresql://${encodeURIComponent(user)}:${encodeURIComponent(password)}@127.0.0.1:${port}/${encodeURIComponent(database)}?schema=public&connect_timeout=10`
-}
 
 const postgresql = new PostgreSQLClient({
   datasources: {

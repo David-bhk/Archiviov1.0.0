@@ -205,7 +205,7 @@ La route logout ne révoque rien. Avec un JWT autonome valable sept jours, suppr
 
 ### A22 — CORS et adresses réseau codés en dur
 
-Les origines CORS et l'adresse affichée au démarrage contiennent `192.168.0.103`. Le déploiement dans une autre organisation exigera une modification du code.
+**État : partiellement résolu.** Le port et l'adresse d'écoute proviennent désormais de `PORT` et `HOST`, et le journal de démarrage n'affiche plus d'adresse LAN codée en dur. Les origines CORS contiennent encore `192.168.0.103` dans le code ; leur migration vers une configuration validée reste nécessaire avant un déploiement dans une autre organisation.
 
 ### A23 — Seed non sûr et non idempotent pour les fichiers
 

@@ -35,3 +35,22 @@ npm run db:postgres:copy -- --verify
 ```
 
 Puisque SQLite reste active, toute écriture ultérieure peut rendre la copie PostgreSQL obsolète. La vérification exacte doit donc réussir juste avant les essais de bascule ; le rafraîchissement d'une cible déjà remplie nécessitera une procédure explicite séparée.
+
+## Sélection réversible du moteur
+
+L'application conserve SQLite par défaut lorsque `ARCHIVIO_DB_PROVIDER` est absent ou vaut `sqlite`. PostgreSQL n'est utilisé que lorsque cette variable vaut exactement `postgresql`; toute autre valeur bloque le démarrage.
+
+Pour démarrer une instance PostgreSQL parallèle sur PowerShell sans arrêter l'instance SQLite du port 5000 :
+
+```powershell
+$env:PORT='5001'
+npm run dev:postgres
+```
+
+Dans un autre terminal, vérifier les parcours locaux en lecture seule :
+
+```powershell
+npm run db:postgres:smoke
+```
+
+Le smoke test refuse toute adresse autre que `localhost`, garde son jeton temporaire en mémoire et ne modifie aucune ligne. Le moteur sélectionné est également annoncé au démarrage sans afficher l'URL ni le mot de passe.

@@ -1,5 +1,6 @@
-import { PrismaClient, type Activity as PrismaActivity } from '@prisma/client'
+import { type Activity as PrismaActivity } from '@prisma/client'
 import { type User, type InsertUser, type Department, type InsertDepartment, type File, type InsertFile, type Role, type DocumentStatus, type ActivitySummary } from "@shared/schema";
+import { activeDatabase, type ActiveDatabase, type DatabaseClient } from './database'
 
 export interface PaginationOptions {
   page?: number;
@@ -60,10 +61,12 @@ export interface IStorage {
 }
 
 export class PrismaStorage implements IStorage {
-  private prisma: PrismaClient;
+  private prisma: DatabaseClient;
+  private transaction: ActiveDatabase['transaction'];
 
-  constructor() {
-    this.prisma = new PrismaClient();
+  constructor(database: ActiveDatabase = activeDatabase) {
+    this.prisma = database.client;
+    this.transaction = database.transaction;
   }
 
   // User methods
@@ -248,7 +251,7 @@ export class PrismaStorage implements IStorage {
     comment: string,
   ): Promise<File | undefined> {
     try {
-      const file = await this.prisma.$transaction(async (transaction) => {
+      const file = await this.transaction(async (transaction) => {
         const updated = await transaction.file.update({
           where: { id },
           data: {
