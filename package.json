@@ -15,6 +15,7 @@
     "test:api": "vitest run server/**/*.test.ts",
     "test:frontend": "vitest run client/**/*.test.tsx",
     "db:generate": "prisma generate",
+    "db:postgres:copy": "tsx scripts/migrate-sqlite-to-postgresql.ts",
     "db:push": "prisma db push",
     "db:seed": "tsx prisma/seed.ts"
   },

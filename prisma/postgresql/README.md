@@ -8,4 +8,30 @@ Ce dossier prépare PostgreSQL sans modifier la base SQLite active ni son histor
 - Toute commande Prisma visant PostgreSQL doit fournir `--schema prisma/postgresql/schema.prisma` et une `DATABASE_URL` explicite vers la base Archivio.
 - Cette baseline ne doit jamais être appliquée à un conteneur ou une base d'un autre projet.
 
-La copie des données SQLite, la vérification des séquences et la bascule de l'application seront livrées dans des unités séparées.
+## Copie contrôlée des données
+
+Conserver `ARCHIVIO_DB_PASSWORD` uniquement dans le fichier local `.env`. La commande de copie construit l'URL de connexion en mémoire et ne l'affiche jamais.
+
+Exécuter d'abord le contrôle en lecture seule :
+
+```powershell
+npm run db:postgres:copy
+```
+
+Ce contrôle vérifie les relations, l'unicité, les niveaux et les statuts documentaires de la source. Il refuse aussi une cible PostgreSQL contenant déjà des lignes applicatives.
+
+Après un contrôle réussi, lancer explicitement la copie transactionnelle :
+
+```powershell
+npm run db:postgres:copy -- --apply
+```
+
+La copie conserve les identifiants, horodatages, empreintes de mots de passe et métadonnées, puis réaligne les séquences PostgreSQL et compare toutes les lignes à la source. SQLite reste intacte et demeure la source de l'application jusqu'à une bascule séparée et validée. En cas d'échec, le retour arrière opérationnel consiste donc à continuer d'utiliser SQLite ; ne pas supprimer sa base ni ses migrations.
+
+Une fois la cible remplie, revérifier l'égalité exacte des lignes et l'alignement des quatre séquences avec :
+
+```powershell
+npm run db:postgres:copy -- --verify
+```
+
+Puisque SQLite reste active, toute écriture ultérieure peut rendre la copie PostgreSQL obsolète. La vérification exacte doit donc réussir juste avant les essais de bascule ; le rafraîchissement d'une cible déjà remplie nécessitera une procédure explicite séparée.

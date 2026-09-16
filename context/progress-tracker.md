@@ -164,14 +164,18 @@ Mettre ce fichier à jour après chaque modification significative de l'impléme
 - Secret PostgreSQL local détecté sans exposition de sa valeur, puis démarrage réussi du service persistant `archivio-postgres-1` dans le seul projet Compose `archivio`.
 - Contrôle de santé réussi avec publication limitée à `127.0.0.1:5433` ; le réseau et le volume persistants restent propres à Archivio.
 - Baseline appliquée et vérifiée dans la base persistante : une migration terminée, quatre tables applicatives, deux contraintes de niveau et zéro ligne métier avant la copie contrôlée.
+- Ajout d'une commande de copie SQLite vers PostgreSQL avec audit en lecture seule par défaut, application explicite, transaction atomique, refus d'une cible non vide et réalignement des séquences.
+- Validation de la source avant copie : 6 départements, 9 utilisateurs, 36 documents et 6 activités, sans doublon, relation orpheline, niveau ou statut documentaire invalide.
+- Copie persistante terminée puis comparée ligne par ligne à SQLite ; les quatre séquences PostgreSQL correspondent aux identifiants maximaux et une seconde copie est correctement refusée.
+- Baseline après copie validée : TypeScript, 36 tests et build réussis ; SQLite reste la source active de l'application et aucune bascule n'a été effectuée.
 
 ## En cours
 
-- Préparer la copie contrôlée depuis SQLite vers PostgreSQL sans basculer l'application, en validant d'abord les données sources, les relations, les identifiants et les séquences.
+- Préparer une sélection explicite et réversible du moteur de base afin de valider l'application sur la copie PostgreSQL sans supprimer ni altérer SQLite.
 
 ## Prochaines étapes
 
-- Préparer une copie contrôlée des données SQLite vers PostgreSQL avec vérification des lignes, relations, identifiants et séquences avant toute bascule.
+- Ajouter une sélection explicite du client Prisma actif, conserver SQLite par défaut et tester les parcours applicatifs sur PostgreSQL avant toute bascule durable.
 - Décider les niveaux initiaux des départements existants avant toute application de la hiérarchie.
 - Clarifier les opérations qu'un administrateur peut effectuer sur son propre département avant de modifier les routes de gestion.
 - Migrer les contrats, filtres et décisions serveur de département vers `departmentId` en conservant une compatibilité contrôlée.
