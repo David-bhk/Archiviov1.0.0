@@ -18,6 +18,7 @@
     "db:generate": "prisma generate && prisma generate --schema prisma/postgresql/schema.prisma",
     "db:postgres:copy": "tsx scripts/migrate-sqlite-to-postgresql.ts",
     "db:postgres:smoke": "tsx scripts/smoke-postgresql-app.ts",
+    "db:postgres:validate-writes": "tsx scripts/validate-postgresql-writes.ts",
     "db:push": "prisma db push",
     "db:seed": "tsx prisma/seed.ts",
     "postinstall": "npm run db:generate"

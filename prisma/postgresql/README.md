@@ -54,3 +54,17 @@ npm run db:postgres:smoke
 ```
 
 Le smoke test refuse toute adresse autre que `localhost`, garde son jeton temporaire en mémoire et ne modifie aucune ligne. Le moteur sélectionné est également annoncé au démarrage sans afficher l'URL ni le mot de passe.
+
+## Validation isolée des écritures
+
+La validation des écritures crée une base PostgreSQL jetable portant un nom généré et un dossier d'uploads dans le répertoire temporaire du système. Elle applique les migrations, utilise uniquement des données synthétiques, puis vérifie la connexion, le téléversement, les audits de téléversement et d'approbation, le rollback transactionnel d'une décision incomplète et la suppression logique. La base et le dossier temporaires sont supprimés même si un contrôle échoue.
+
+```powershell
+npm run db:postgres:validate-writes
+```
+
+Cette commande refuse de supprimer une base ou un dossier ne respectant pas son format temporaire strict. Elle ne vise jamais la base contrôlée `archivio`, la base SQLite, les archives existantes ou les ressources Docker d'un autre projet. Après son exécution, vérifier que la copie contrôlée n'a pas changé :
+
+```powershell
+npm run db:postgres:copy -- --verify
+```

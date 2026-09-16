@@ -8,7 +8,7 @@ Mettre ce fichier à jour après chaque modification significative de l'impléme
 
 ## Objectif actuel
 
-- Valider les parcours applicatifs sur PostgreSQL tout en conservant SQLite comme moteur par défaut et retour arrière intact.
+- Préparer une répétition contrôlée de la bascule vers PostgreSQL tout en conservant SQLite comme moteur par défaut et retour arrière intact.
 
 ## Terminé
 
@@ -177,14 +177,17 @@ Mettre ce fichier à jour après chaque modification significative de l'impléme
 - Retour arrière vérifié par une nouvelle instance sans sélecteur : moteur `sqlite`, interface HTTP 200 et refus d'identifiants invalides en 401.
 - Port et adresse d'écoute désormais configurables ; l'ancienne adresse LAN codée en dur a été retirée des journaux, tandis que la configuration CORS reste une unité distincte.
 - Baseline du sélecteur de moteur validée : TypeScript, 41 tests et build réussis, avec copie PostgreSQL toujours identique à SQLite avant les essais.
+- Ajout d'une validation autonome des écritures PostgreSQL dans une base et un dossier d'uploads jetables, alimentés uniquement par des données synthétiques.
+- Validation réussie de la connexion et de `lastLogin`, du refus d'identifiants invalides, du téléversement et de son audit, de l'approbation auditée, du rollback atomique en cas d'échec d'audit et de la suppression logique conservant le fichier physique.
+- Nettoyage vérifié des ressources temporaires après le scénario ; la copie PostgreSQL contrôlée reste strictement identique à SQLite avec 6 départements, 9 utilisateurs, 36 documents, 6 activités et quatre séquences alignées.
 
 ## En cours
 
-- Préparer la validation des parcours d'écriture sur une cible PostgreSQL isolée, sans modifier la copie contrôlée ni les archives réelles.
+- Définir une répétition contrôlée de rafraîchissement et de bascule, car toute écriture SQLite postérieure peut rendre la copie PostgreSQL obsolète.
 
 ## Prochaines étapes
 
-- Valider sur une base PostgreSQL isolée les écritures critiques : connexion, téléversement de métadonnées, décision auditée et suppression logique, avec retour arrière transactionnel.
+- Documenter puis répéter la séquence de rafraîchissement final, vérification, bascule et retour arrière sans supprimer SQLite.
 - Décider les niveaux initiaux des départements existants avant toute application de la hiérarchie.
 - Clarifier les opérations qu'un administrateur peut effectuer sur son propre département avant de modifier les routes de gestion.
 - Migrer les contrats, filtres et décisions serveur de département vers `departmentId` en conservant une compatibilité contrôlée.
@@ -213,6 +216,7 @@ Mettre ce fichier à jour après chaque modification significative de l'impléme
 - PostgreSQL 17 est la base applicative cible ; la transition conserve SQLite intacte jusqu'à validation de la copie et des parcours applicatifs.
 - L'application sélectionne un seul fournisseur au démarrage ; SQLite reste le défaut et aucune double écriture implicite n'est autorisée pendant la transition.
 - L'environnement PostgreSQL Docker d'Archivio reste isolé des autres projets locaux et n'est publié que sur l'interface de boucle locale pendant le développement.
+- Les validations destructives PostgreSQL utilisent exclusivement une base au nom temporaire strictement contrôlé et un dossier d'uploads système temporaire ; la copie contrôlée et les archives réelles restent en lecture seule pendant ces essais.
 - Un déploiement en ligne reste possible mais exigera une configuration et une étude de sécurité adaptées.
 - Les autorisations doivent être appliquées côté serveur, indépendamment des restrictions de l'interface.
 - Les départements et documents utilisent provisoirement une échelle croissante de niveaux 1 à 4.
