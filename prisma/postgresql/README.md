@@ -1,10 +1,10 @@
 # Transition PostgreSQL
 
-Ce dossier prépare PostgreSQL sans modifier la base SQLite active ni son historique de migrations.
+Ce dossier porte le schéma PostgreSQL désormais actif dans l'environnement local. La base SQLite et son historique restent conservés comme point de retour figé.
 
 - `schema.prisma` décrit le modèle cible PostgreSQL et génère un client séparé dans `node_modules`.
 - `migrations/` contient un historique PostgreSQL indépendant, destiné uniquement à une base Archivio vide.
-- Les migrations SQLite de `prisma/migrations/` restent la référence de la base locale actuelle jusqu'à la bascule validée.
+- Les migrations SQLite de `prisma/migrations/` restent la référence de la copie SQLite figée et ne sont jamais appliquées à PostgreSQL.
 - Toute commande Prisma visant PostgreSQL doit fournir `--schema prisma/postgresql/schema.prisma` et une `DATABASE_URL` explicite vers la base Archivio.
 - Cette baseline ne doit jamais être appliquée à un conteneur ou une base d'un autre projet.
 
@@ -26,7 +26,7 @@ Après un contrôle réussi, lancer explicitement la copie transactionnelle :
 npm run db:postgres:copy -- --apply
 ```
 
-La copie conserve les identifiants, horodatages, empreintes de mots de passe et métadonnées, puis réaligne les séquences PostgreSQL et compare toutes les lignes à la source. SQLite reste intacte et demeure la source de l'application jusqu'à une bascule séparée et validée. En cas d'échec, le retour arrière opérationnel consiste donc à continuer d'utiliser SQLite ; ne pas supprimer sa base ni ses migrations.
+La copie conserve les identifiants, horodatages, empreintes de mots de passe et métadonnées, puis réaligne les séquences PostgreSQL et compare toutes les lignes à la source. SQLite reste intacte. Depuis la bascule locale du 16 septembre 2026, elle est figée et ne doit plus recevoir d'écriture applicative ; ne pas supprimer sa base ni ses migrations.
 
 Une fois la cible remplie, revérifier l'égalité exacte des lignes et l'alignement des quatre séquences avec :
 
@@ -55,19 +55,25 @@ Ce retour arrière n'est sans perte que tant qu'aucune écriture métier n'a ét
 
 ## Sélection réversible du moteur
 
-L'application conserve SQLite par défaut lorsque `ARCHIVIO_DB_PROVIDER` est absent ou vaut `sqlite`. PostgreSQL n'est utilisé que lorsque cette variable vaut exactement `postgresql`; toute autre valeur bloque le démarrage.
+Le code conserve SQLite par défaut lorsque `ARCHIVIO_DB_PROVIDER` est absent ou vaut `sqlite`. PostgreSQL n'est utilisé que lorsque cette variable vaut exactement `postgresql`; toute autre valeur bloque le démarrage. L'environnement local actif définit désormais explicitement cette variable à `postgresql` dans le fichier `.env` non versionné.
 
-Pour démarrer une instance PostgreSQL parallèle sur PowerShell sans arrêter l'instance SQLite du port 5000 :
+Dans l'environnement local basculé, la commande habituelle charge `.env` et démarre PostgreSQL sur le port 5000 :
+
+```powershell
+npm run dev
+```
+
+Pour démarrer temporairement une autre instance PostgreSQL sur PowerShell :
 
 ```powershell
 $env:PORT='5001'
 npm run dev:postgres
 ```
 
-Dans un autre terminal, vérifier les parcours locaux en lecture seule :
+Dans un autre terminal, vérifier les parcours locaux en lecture seule. Le smoke test cible le port 5001 par défaut ; pour l'instance active du port 5000 :
 
 ```powershell
-npm run db:postgres:smoke
+node_modules\.bin\cross-env.cmd ARCHIVIO_SMOKE_BASE_URL=http://127.0.0.1:5000 npm.cmd run db:postgres:smoke
 ```
 
 Le smoke test refuse toute adresse autre que `localhost`, garde son jeton temporaire en mémoire et ne modifie aucune ligne. Le moteur sélectionné est également annoncé au démarrage sans afficher l'URL ni le mot de passe.

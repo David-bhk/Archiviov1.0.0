@@ -4,11 +4,11 @@ Mettre ce fichier à jour après chaque modification significative de l'impléme
 
 ## Phase actuelle
 
-- Validation réversible de PostgreSQL en parallèle de la base SQLite active, sans interrompre les parcours documentaires existants.
+- PostgreSQL actif comme base locale d'Archivio, avec SQLite figée et conservée comme retour limité pendant la stabilisation.
 
 ## Objectif actuel
 
-- Préparer la décision de bascule finale vers PostgreSQL après validation du rafraîchissement, tout en conservant SQLite comme moteur actif et retour arrière intact avant ouverture des écritures.
+- Stabiliser l'application sur PostgreSQL et définir la sauvegarde cohérente de la base et des fichiers avant une utilisation durable avec des documents sensibles.
 
 ## Terminé
 
@@ -184,14 +184,18 @@ Mettre ce fichier à jour après chaque modification significative de l'impléme
 - Conservation du refus par défaut d'une cible non vide ; ni l'audit, ni la copie initiale, ni la vérification ne peuvent déclencher implicitement le rafraîchissement destructif.
 - Répétition réussie sur une base jetable : copie initiale de SQLite, injection d'une ligne obsolète, rafraîchissement confirmé, comparaison exacte, parcours applicatifs d'écriture puis nettoyage complet.
 - Baseline après répétition du rafraîchissement validée : TypeScript, 47 tests et build réussis ; la copie PostgreSQL contrôlée reste strictement identique à SQLite.
+- Fenêtre de bascule approuvée le 16 septembre 2026 : arrêt des anciennes instances Archivio, empreinte SHA-256 de SQLite relevée et rafraîchissement transactionnel de la base persistante `archivio` terminé.
+- Comparaison indépendante réussie après rafraîchissement : 6 départements, 9 utilisateurs, 36 documents, 6 activités et quatre séquences identiques à SQLite.
+- Sélecteur local `.env` fixé à `ARCHIVIO_DB_PROVIDER=postgresql`, sans versionner ni afficher les secrets ; Archivio redémarré sur le port 5000 avec le moteur PostgreSQL confirmé dans le journal.
+- Cinq parcours HTTP authentifiés en lecture seule et l'interface racine validés sur l'instance active ; SQLite conserve exactement son empreinte d'avant bascule.
 
 ## En cours
 
-- Préparer la décision et la fenêtre de maintenance de la bascule finale ; aucune bascule durable n'est exécutée tant que l'arrêt des écritures et la limite du retour arrière ne sont pas explicitement acceptés.
+- Conserver SQLite figée, surveiller les premiers usages PostgreSQL et préparer une stratégie de sauvegarde commune aux métadonnées et aux fichiers.
 
 ## Prochaines étapes
 
-- Pendant une fenêtre approuvée, arrêter les écritures SQLite, rafraîchir la cible contrôlée, vérifier son égalité, démarrer PostgreSQL et exécuter les contrôles avant de rouvrir les accès.
+- Définir et tester une sauvegarde/restauration cohérente de PostgreSQL et du dossier documentaire avant de considérer la bascule comme durable.
 - Décider les niveaux initiaux des départements existants avant toute application de la hiérarchie.
 - Clarifier les opérations qu'un administrateur peut effectuer sur son propre département avant de modifier les routes de gestion.
 - Migrer les contrats, filtres et décisions serveur de département vers `departmentId` en conservant une compatibilité contrôlée.
@@ -213,7 +217,6 @@ Mettre ce fichier à jour après chaque modification significative de l'impléme
 - Quels formats doivent être pris en charge par le premier visualiseur protégé et quelle conversion utiliser pour les documents bureautiques modifiables ?
 - Qui décide qu'un document peut recevoir des demandes d'accès : l'auteur comme proposition, ou uniquement l'approbateur autorisé lors de l'archivage ?
 - Quelles sauvegardes et quel chiffrement sont requis pour la première version ?
-- Quand planifier la fenêtre de bascule PostgreSQL et peut-on accepter qu'après les premières écritures PostgreSQL, un retour vers SQLite exige une migration inverse encore absente ?
 
 ## Décisions d'architecture
 
@@ -224,6 +227,7 @@ Mettre ce fichier à jour après chaque modification significative de l'impléme
 - Les validations destructives PostgreSQL utilisent exclusivement une base au nom temporaire strictement contrôlé et un dossier d'uploads système temporaire ; la copie contrôlée et les archives réelles restent en lecture seule pendant ces essais.
 - Le rafraîchissement d'une cible PostgreSQL non vide exige une confirmation égale à son nom configuré, refuse les bases système et remplace les données transactionnellement ; l'application doit être arrêtée pendant l'opération.
 - Le retour vers SQLite est sans perte uniquement avant toute écriture acceptée exclusivement dans PostgreSQL ; aucune double écriture ni migration inverse n'est actuellement implémentée.
+- L'environnement local actif sélectionne désormais PostgreSQL ; SQLite reste conservée et ne doit plus recevoir d'écriture applicative pendant cette phase.
 - Un déploiement en ligne reste possible mais exigera une configuration et une étude de sécurité adaptées.
 - Les autorisations doivent être appliquées côté serveur, indépendamment des restrictions de l'interface.
 - Les départements et documents utilisent provisoirement une échelle croissante de niveaux 1 à 4.

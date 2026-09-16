@@ -16,8 +16,8 @@ Ce document décrit à la fois l'architecture actuellement observée et l'archit
 | API | Express 4 + TypeScript | Routes HTTP, validation, autorisation et orchestration métier |
 | Validation | Zod | Validation des entrées aux frontières du système |
 | ORM | Prisma 6 | Accès typé aux données et migrations |
-| Base de données actuelle | SQLite | Source locale conservée pendant la transition et le retour arrière |
-| Base de données cible | PostgreSQL 17 | Métadonnées persistantes et accès concurrents, isolés dans Docker |
+| Base de données active locale | PostgreSQL 17 | Métadonnées persistantes et accès concurrents, isolés dans Docker |
+| Base de retour conservée | SQLite | Source figée au moment de la bascule, conservée sans suppression |
 | Stockage documentaire | Système de fichiers local + Multer | Conservation des fichiers téléversés sur le serveur local |
 | Authentification | JWT + bcrypt | Sessions par jeton et hachage des mots de passe |
 | Tests | Vitest | Tests unitaires et d'intégration |
@@ -26,10 +26,11 @@ Ce document décrit à la fois l'architecture actuellement observée et l'archit
 
 - La première cible est un serveur contrôlé par l'organisation et accessible sur son réseau local.
 - Le serveur Express expose l'API et sert l'application frontend construite en production.
-- SQLite reste la source active et le moteur par défaut tant que la bascule n'a pas été décidée. Une sélection explicite par environnement permet de lancer l'application sur la copie PostgreSQL sans altérer SQLite ; toute valeur de fournisseur inconnue bloque le démarrage. Les écritures applicatives PostgreSQL sont validées uniquement dans une base jetable ; la copie persistante contrôlée reste en lecture seule hors copie ou rafraîchissement explicitement déclenché.
+- PostgreSQL est le moteur actif de l'environnement local depuis la bascule contrôlée du 16 septembre 2026. Le code conserve SQLite comme valeur par défaut en l'absence de sélecteur, mais le fichier d'environnement local choisit explicitement `postgresql`. Toute valeur de fournisseur inconnue bloque le démarrage.
 - PostgreSQL 17 est la cible validée pour la base applicative. En développement, son service Docker Compose utilise un projet, un réseau et un volume propres à Archivio ; aucun conteneur ou volume d'un autre projet ne doit être réutilisé.
 - Le port PostgreSQL de développement est publié uniquement sur l'interface locale. Le déploiement final pourra garder la base sur un réseau Docker privé sans publication sur le réseau de l'organisation.
 - Les fichiers archivés restent séparés de PostgreSQL dans la racine documentaire configurée.
+- La base SQLite figée reste intacte pour un retour immédiat avant toute écriture exclusive dans PostgreSQL. Après de telles écritures, revenir sans perte exige une migration inverse qui n'est pas encore implémentée.
 - Un volume Docker assure la persistance entre recréations du conteneur, mais ne remplace pas une sauvegarde ; la base et les fichiers archivés doivent être sauvegardés ensemble.
 - Un déploiement en ligne est une cible possible, mais pas un simple changement d'adresse : il exige HTTPS, gestion sécurisée des secrets, stockage durable, sauvegardes, durcissement réseau et réévaluation de SQLite et du stockage local.
 - Les adresses réseau et secrets ne doivent jamais être codés en dur ; ils proviennent de la configuration d'environnement.
@@ -53,7 +54,7 @@ Ce document décrit à la fois l'architecture actuellement observée et l'archit
 
 Le schéma actuel contient les entités `User`, `Department`, `File` et `Activity`. Il stocke les comptes, rôles, métadonnées documentaires et événements. Une migration de transition ajoute `departmentId` aux utilisateurs et documents, `accessLevel` aux départements et `classificationLevel` aux documents. Les identifiants sont rétromigrés depuis les noms existants sans supprimer les colonnes textuelles historiques. Les niveaux restent nullable tant que leur attribution initiale n'a pas été décidée ; ils ne participent donc pas encore aux autorisations. Les demandes d'accès et autorisations temporaires ne sont pas encore modélisées.
 
-Pendant la transition de moteur, `prisma/schema.prisma` et `prisma/migrations/` restent exclusivement associés à SQLite. Le schéma et l'historique PostgreSQL vivent séparément dans `prisma/postgresql/` et génèrent un client isolé dans `node_modules`. Les migrations propres à un fournisseur ne sont jamais appliquées à l'autre. La baseline PostgreSQL est réservée à une base Archivio vide. La copie initiale valide la source, refuse une cible non vide, conserve les identifiants et vérifie les lignes ainsi que les séquences. Un rafraîchissement d'une cible déjà remplie exige le nom exact de la base, refuse les bases système et remplace les quatre tables dans une transaction avant leur comparaison exacte. Le stockage sélectionne ensuite un seul client au démarrage : `sqlite` par défaut ou `postgresql` explicitement, sans double écriture ni synchronisation implicite.
+`prisma/schema.prisma` et `prisma/migrations/` restent exclusivement associés à la copie SQLite figée. Le schéma et l'historique PostgreSQL vivent séparément dans `prisma/postgresql/` et génèrent un client isolé dans `node_modules`. Les migrations propres à un fournisseur ne sont jamais appliquées à l'autre. La baseline PostgreSQL est réservée à une base Archivio vide. La copie initiale valide la source, refuse une cible non vide, conserve les identifiants et vérifie les lignes ainsi que les séquences. Un rafraîchissement d'une cible déjà remplie exige le nom exact de la base, refuse les bases système et remplace les quatre tables dans une transaction avant leur comparaison exacte. Le stockage sélectionne un seul client au démarrage : `sqlite` par défaut dans le code ou `postgresql` explicitement dans l'environnement local actif, sans double écriture ni synchronisation implicite.
 
 ### Système de fichiers
 
