@@ -1,6 +1,10 @@
 import { describe, expect, it } from 'vitest'
 
-import { getPostgreSQLUrl, resolveDatabaseConfig } from './database-config'
+import {
+  getPostgreSQLDatabaseName,
+  getPostgreSQLUrl,
+  resolveDatabaseConfig,
+} from './database-config'
 
 describe('database configuration', () => {
   it('keeps SQLite as the default provider', () => {
@@ -30,6 +34,13 @@ describe('database configuration', () => {
 
     expect(url).toBe(
       'postgresql://archivio%40example:test%3A%2F%3F%23%5B%5D%40@postgres:5432/archivio%20local?schema=public&connect_timeout=10',
+    )
+  })
+
+  it('resolves the PostgreSQL database name independently from its secret', () => {
+    expect(getPostgreSQLDatabaseName({})).toBe('archivio')
+    expect(getPostgreSQLDatabaseName({ ARCHIVIO_DB_NAME: ' archivio_test ' })).toBe(
+      'archivio_test',
     )
   })
 

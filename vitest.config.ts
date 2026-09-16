@@ -8,7 +8,12 @@ export default defineConfig({
     env: {
       JWT_SECRET: 'archivio-test-secret-not-for-production',
     },
-    include: ['client/src/**/*.test.{ts,tsx}', 'server/**/*.test.ts', 'shared/**/*.test.ts'],
+    include: [
+      'client/src/**/*.test.{ts,tsx}',
+      'server/**/*.test.ts',
+      'shared/**/*.test.ts',
+      'scripts/**/*.test.ts',
+    ],
     coverage: {
       reporter: ['text', 'json', 'html'],
       include: ['client/src/**/*.{ts,tsx}', 'server/**/*.ts', 'shared/**/*.ts'],

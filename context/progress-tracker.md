@@ -8,7 +8,7 @@ Mettre ce fichier à jour après chaque modification significative de l'impléme
 
 ## Objectif actuel
 
-- Préparer une répétition contrôlée de la bascule vers PostgreSQL tout en conservant SQLite comme moteur par défaut et retour arrière intact.
+- Préparer la décision de bascule finale vers PostgreSQL après validation du rafraîchissement, tout en conservant SQLite comme moteur actif et retour arrière intact avant ouverture des écritures.
 
 ## Terminé
 
@@ -177,17 +177,21 @@ Mettre ce fichier à jour après chaque modification significative de l'impléme
 - Retour arrière vérifié par une nouvelle instance sans sélecteur : moteur `sqlite`, interface HTTP 200 et refus d'identifiants invalides en 401.
 - Port et adresse d'écoute désormais configurables ; l'ancienne adresse LAN codée en dur a été retirée des journaux, tandis que la configuration CORS reste une unité distincte.
 - Baseline du sélecteur de moteur validée : TypeScript, 41 tests et build réussis, avec copie PostgreSQL toujours identique à SQLite avant les essais.
-- Ajout d'une validation autonome des écritures PostgreSQL dans une base et un dossier d'uploads jetables, alimentés uniquement par des données synthétiques.
+- Ajout d'une validation autonome des écritures PostgreSQL dans une base et un dossier d'uploads jetables, sans modification de la source SQLite ni des archives réelles ; les écritures de test utilisent des données synthétiques.
 - Validation réussie de la connexion et de `lastLogin`, du refus d'identifiants invalides, du téléversement et de son audit, de l'approbation auditée, du rollback atomique en cas d'échec d'audit et de la suppression logique conservant le fichier physique.
 - Nettoyage vérifié des ressources temporaires après le scénario ; la copie PostgreSQL contrôlée reste strictement identique à SQLite avec 6 départements, 9 utilisateurs, 36 documents, 6 activités et quatre séquences alignées.
+- Ajout d'un mode de rafraîchissement PostgreSQL exigeant le nom exact de la cible, refusant les bases système et remplaçant les quatre tables applicatives dans une seule transaction avant vérification ligne par ligne et réalignement des séquences.
+- Conservation du refus par défaut d'une cible non vide ; ni l'audit, ni la copie initiale, ni la vérification ne peuvent déclencher implicitement le rafraîchissement destructif.
+- Répétition réussie sur une base jetable : copie initiale de SQLite, injection d'une ligne obsolète, rafraîchissement confirmé, comparaison exacte, parcours applicatifs d'écriture puis nettoyage complet.
+- Baseline après répétition du rafraîchissement validée : TypeScript, 47 tests et build réussis ; la copie PostgreSQL contrôlée reste strictement identique à SQLite.
 
 ## En cours
 
-- Définir une répétition contrôlée de rafraîchissement et de bascule, car toute écriture SQLite postérieure peut rendre la copie PostgreSQL obsolète.
+- Préparer la décision et la fenêtre de maintenance de la bascule finale ; aucune bascule durable n'est exécutée tant que l'arrêt des écritures et la limite du retour arrière ne sont pas explicitement acceptés.
 
 ## Prochaines étapes
 
-- Documenter puis répéter la séquence de rafraîchissement final, vérification, bascule et retour arrière sans supprimer SQLite.
+- Pendant une fenêtre approuvée, arrêter les écritures SQLite, rafraîchir la cible contrôlée, vérifier son égalité, démarrer PostgreSQL et exécuter les contrôles avant de rouvrir les accès.
 - Décider les niveaux initiaux des départements existants avant toute application de la hiérarchie.
 - Clarifier les opérations qu'un administrateur peut effectuer sur son propre département avant de modifier les routes de gestion.
 - Migrer les contrats, filtres et décisions serveur de département vers `departmentId` en conservant une compatibilité contrôlée.
@@ -209,6 +213,7 @@ Mettre ce fichier à jour après chaque modification significative de l'impléme
 - Quels formats doivent être pris en charge par le premier visualiseur protégé et quelle conversion utiliser pour les documents bureautiques modifiables ?
 - Qui décide qu'un document peut recevoir des demandes d'accès : l'auteur comme proposition, ou uniquement l'approbateur autorisé lors de l'archivage ?
 - Quelles sauvegardes et quel chiffrement sont requis pour la première version ?
+- Quand planifier la fenêtre de bascule PostgreSQL et peut-on accepter qu'après les premières écritures PostgreSQL, un retour vers SQLite exige une migration inverse encore absente ?
 
 ## Décisions d'architecture
 
@@ -217,6 +222,8 @@ Mettre ce fichier à jour après chaque modification significative de l'impléme
 - L'application sélectionne un seul fournisseur au démarrage ; SQLite reste le défaut et aucune double écriture implicite n'est autorisée pendant la transition.
 - L'environnement PostgreSQL Docker d'Archivio reste isolé des autres projets locaux et n'est publié que sur l'interface de boucle locale pendant le développement.
 - Les validations destructives PostgreSQL utilisent exclusivement une base au nom temporaire strictement contrôlé et un dossier d'uploads système temporaire ; la copie contrôlée et les archives réelles restent en lecture seule pendant ces essais.
+- Le rafraîchissement d'une cible PostgreSQL non vide exige une confirmation égale à son nom configuré, refuse les bases système et remplace les données transactionnellement ; l'application doit être arrêtée pendant l'opération.
+- Le retour vers SQLite est sans perte uniquement avant toute écriture acceptée exclusivement dans PostgreSQL ; aucune double écriture ni migration inverse n'est actuellement implémentée.
 - Un déploiement en ligne reste possible mais exigera une configuration et une étude de sécurité adaptées.
 - Les autorisations doivent être appliquées côté serveur, indépendamment des restrictions de l'interface.
 - Les départements et documents utilisent provisoirement une échelle croissante de niveaux 1 à 4.

@@ -5,7 +5,14 @@ import {
   Prisma as PostgreSQLPrisma,
   PrismaClient as PostgreSQLClient,
 } from '@archivio/postgresql-client'
-import { getPostgreSQLUrl } from '../server/database-config'
+import {
+  getPostgreSQLDatabaseName,
+  getPostgreSQLUrl,
+} from '../server/database-config'
+import {
+  assertRefreshTarget,
+  parsePostgreSQLCopyMode,
+} from './postgresql-copy-options'
 
 const sqlite = new SQLiteClient()
 
@@ -225,11 +232,34 @@ async function copySnapshot(snapshot: SourceSnapshot): Promise<void> {
         throw new Error('La cible PostgreSQL n’est pas vide ; aucune ligne n’a été copiée.')
       }
 
-      await transaction.department.createMany({ data: snapshot.departments })
-      await transaction.user.createMany({ data: snapshot.users })
-      await transaction.file.createMany({ data: snapshot.files })
-      await transaction.activity.createMany({ data: snapshot.activities })
-      await resetSequences(transaction)
+      await writeSnapshot(transaction, snapshot)
+    },
+    {
+      maxWait: 10_000,
+      timeout: 60_000,
+    },
+  )
+}
+
+async function writeSnapshot(
+  transaction: PostgreSQLPrisma.TransactionClient,
+  snapshot: SourceSnapshot,
+): Promise<void> {
+  await transaction.department.createMany({ data: snapshot.departments })
+  await transaction.user.createMany({ data: snapshot.users })
+  await transaction.file.createMany({ data: snapshot.files })
+  await transaction.activity.createMany({ data: snapshot.activities })
+  await resetSequences(transaction)
+}
+
+async function refreshSnapshot(snapshot: SourceSnapshot): Promise<void> {
+  await postgresql.$transaction(
+    async (transaction) => {
+      await transaction.activity.deleteMany()
+      await transaction.file.deleteMany()
+      await transaction.user.deleteMany()
+      await transaction.department.deleteMany()
+      await writeSnapshot(transaction, snapshot)
     },
     {
       maxWait: 10_000,
@@ -239,21 +269,7 @@ async function copySnapshot(snapshot: SourceSnapshot): Promise<void> {
 }
 
 async function main(): Promise<void> {
-  const argumentsSet = new Set(process.argv.slice(2))
-  const unknownArguments = Array.from(argumentsSet).filter(
-    (argument) => argument !== '--apply' && argument !== '--verify',
-  )
-
-  if (unknownArguments.length > 0) {
-    throw new Error(`Option inconnue : ${unknownArguments.join(', ')}`)
-  }
-
-  const apply = argumentsSet.has('--apply')
-  const verify = argumentsSet.has('--verify')
-
-  if (apply && verify) {
-    throw new Error('Utiliser --apply ou --verify, mais pas les deux simultanément.')
-  }
+  const mode = parsePostgreSQLCopyMode(process.argv.slice(2))
 
   const snapshot = await readSourceSnapshot()
   validateSource(snapshot)
@@ -264,9 +280,21 @@ async function main(): Promise<void> {
   console.log('Source SQLite valide :', sourceCounts)
   console.log('Cible PostgreSQL avant copie :', initialTargetCounts)
 
-  if (verify) {
+  if (mode.kind === 'verify') {
     await verifyTarget(snapshot)
     console.log('PostgreSQL correspond exactement à SQLite et ses séquences sont alignées.')
+    return
+  }
+
+  if (mode.kind === 'refresh') {
+    const databaseName = getPostgreSQLDatabaseName()
+    assertRefreshTarget(databaseName, mode.confirmedDatabaseName)
+    await refreshSnapshot(snapshot)
+    await verifyTarget(snapshot)
+    console.log(
+      `Rafraîchissement transactionnel terminé pour « ${databaseName} » : contenu exact et séquences vérifiés.`,
+      sourceCounts,
+    )
     return
   }
 
@@ -274,7 +302,7 @@ async function main(): Promise<void> {
     throw new Error('La cible PostgreSQL n’est pas vide ; la copie est refusée.')
   }
 
-  if (!apply) {
+  if (mode.kind === 'audit') {
     console.log('Audit terminé sans écriture. Utiliser --apply pour lancer la copie transactionnelle.')
     return
   }

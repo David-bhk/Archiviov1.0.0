@@ -38,9 +38,15 @@ function getPostgreSQLHost(environment: NodeJS.ProcessEnv): string {
   return value
 }
 
+export function getPostgreSQLDatabaseName(
+  environment: NodeJS.ProcessEnv = process.env,
+): string {
+  return environment.ARCHIVIO_DB_NAME?.trim() || 'archivio'
+}
+
 export function getPostgreSQLUrl(environment: NodeJS.ProcessEnv = process.env): string {
   const password = getRequiredValue(environment, 'ARCHIVIO_DB_PASSWORD')
-  const database = environment.ARCHIVIO_DB_NAME?.trim() || 'archivio'
+  const database = getPostgreSQLDatabaseName(environment)
   const user = environment.ARCHIVIO_DB_USER?.trim() || 'archivio'
   const host = getPostgreSQLHost(environment)
   const port = getPostgreSQLPort(environment)

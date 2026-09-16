@@ -59,6 +59,31 @@ async function runPostgreSQLMigrations(databaseUrl: string): Promise<void> {
   })
 }
 
+async function runPostgreSQLCopy(databaseName: string, argument: string): Promise<void> {
+  const tsxCli = path.resolve('node_modules', 'tsx', 'dist', 'cli.mjs')
+  const copyScript = path.resolve('scripts', 'migrate-sqlite-to-postgresql.ts')
+
+  await new Promise<void>((resolve, reject) => {
+    const child = spawn(process.execPath, [tsxCli, copyScript, argument], {
+      cwd: process.cwd(),
+      env: { ...process.env, ARCHIVIO_DB_NAME: databaseName },
+      stdio: 'ignore',
+    })
+
+    child.once('error', () => {
+      reject(new Error('Impossible de lancer la copie PostgreSQL temporaire.'))
+    })
+    child.once('exit', (code) => {
+      if (code === 0) {
+        resolve()
+        return
+      }
+
+      reject(new Error(`La copie PostgreSQL temporaire a échoué (code ${code ?? 'inconnu'}).`))
+    })
+  })
+}
+
 async function expectJson<ResponseBody>(
   baseUrl: URL,
   route: string,
@@ -131,6 +156,21 @@ async function main(): Promise<void> {
 
     const targetUrl = getDatabaseUrl(databaseName)
     await runPostgreSQLMigrations(targetUrl)
+
+    await runPostgreSQLCopy(databaseName, '--apply')
+
+    target = new PostgreSQLClient({ datasources: { db: { url: targetUrl } } })
+    await target.department.create({
+      data: {
+        name: `Donnée obsolète ${randomUUID()}`,
+        description: 'Cette ligne doit disparaître pendant la répétition du rafraîchissement.',
+      },
+    })
+    await target.$disconnect()
+    target = undefined
+
+    await runPostgreSQLCopy(databaseName, `--refresh=${databaseName}`)
+    await runPostgreSQLCopy(databaseName, '--verify')
 
     target = new PostgreSQLClient({ datasources: { db: { url: targetUrl } } })
 
@@ -294,7 +334,7 @@ async function main(): Promise<void> {
     }
 
     console.log(
-      'Validation PostgreSQL réussie : connexion, upload, audits, rollback transactionnel et suppression logique.',
+      'Validation PostgreSQL réussie : rafraîchissement, connexion, upload, audits, rollback transactionnel et suppression logique.',
     )
   } finally {
     await closeServer(server).catch(() => undefined)

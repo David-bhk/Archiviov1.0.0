@@ -34,7 +34,24 @@ Une fois la cible remplie, revérifier l'égalité exacte des lignes et l'aligne
 npm run db:postgres:copy -- --verify
 ```
 
-Puisque SQLite reste active, toute écriture ultérieure peut rendre la copie PostgreSQL obsolète. La vérification exacte doit donc réussir juste avant les essais de bascule ; le rafraîchissement d'une cible déjà remplie nécessitera une procédure explicite séparée.
+Puisque SQLite reste active, toute écriture ultérieure peut rendre la copie PostgreSQL obsolète. La vérification exacte doit donc réussir juste avant les essais de bascule.
+
+## Rafraîchissement contrôlé avant bascule
+
+Le rafraîchissement d'une cible déjà remplie remplace les quatre tables applicatives dans une seule transaction, réinitialise leurs séquences puis compare la cible à SQLite. Sans cette option explicite, une cible non vide reste refusée. Le nom confirmé après `--refresh=` doit correspondre exactement à `ARCHIVIO_DB_NAME`, et les bases PostgreSQL système sont toujours interdites.
+
+Avant ce rafraîchissement final, arrêter toutes les instances Archivio susceptibles d'écrire dans SQLite ou PostgreSQL et suspendre les opérations utilisateur. Pour la base locale par défaut :
+
+```powershell
+npm run db:postgres:copy -- --refresh=archivio
+npm run db:postgres:copy -- --verify
+```
+
+En cas d'échec pendant la transaction de remplacement, son contenu antérieur est conservé. SQLite et les fichiers archivés ne sont ni supprimés ni modifiés par cette commande.
+
+Une fois la comparaison exacte réussie, démarrer Archivio avec `ARCHIVIO_DB_PROVIDER=postgresql`, puis exécuter le smoke test avant de rouvrir les accès utilisateurs. Le retour immédiat consiste à arrêter cette instance et redémarrer sans le sélecteur, ou avec `ARCHIVIO_DB_PROVIDER=sqlite`.
+
+Ce retour arrière n'est sans perte que tant qu'aucune écriture métier n'a été acceptée exclusivement dans PostgreSQL. Après ouverture des écritures PostgreSQL, revenir à SQLite nécessitera une migration inverse qui n'est pas encore implémentée ; la décision de mise en service définitive reste donc une étape séparée.
 
 ## Sélection réversible du moteur
 
@@ -57,7 +74,7 @@ Le smoke test refuse toute adresse autre que `localhost`, garde son jeton tempor
 
 ## Validation isolée des écritures
 
-La validation des écritures crée une base PostgreSQL jetable portant un nom généré et un dossier d'uploads dans le répertoire temporaire du système. Elle applique les migrations, utilise uniquement des données synthétiques, puis vérifie la connexion, le téléversement, les audits de téléversement et d'approbation, le rollback transactionnel d'une décision incomplète et la suppression logique. La base et le dossier temporaires sont supprimés même si un contrôle échoue.
+La validation des écritures crée une base PostgreSQL jetable portant un nom généré et un dossier d'uploads dans le répertoire temporaire du système. Elle applique les migrations, copie les métadonnées SQLite dans cette base isolée, injecte une ligne obsolète puis vérifie que le rafraîchissement confirmé rétablit une copie exacte. Elle utilise ensuite des données synthétiques pour vérifier la connexion, le téléversement, les audits de téléversement et d'approbation, le rollback transactionnel d'une décision incomplète et la suppression logique. La base et le dossier temporaires sont supprimés même si un contrôle échoue.
 
 ```powershell
 npm run db:postgres:validate-writes
