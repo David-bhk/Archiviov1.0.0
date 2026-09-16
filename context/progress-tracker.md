@@ -161,14 +161,16 @@ Mettre ce fichier à jour après chaque modification significative de l'impléme
 - Ajout d'un schéma Prisma PostgreSQL parallèle et d'un historique de migrations distinct, sans modification du schéma, des migrations ou du client SQLite actifs.
 - Baseline PostgreSQL appliquée avec Prisma dans un conteneur éphémère isolé : historique à jour, quatre tables attendues, relations créées et deux contraintes de niveau 1 à 4 vérifiées.
 - Génération réussie d'un client Prisma PostgreSQL séparé dans `node_modules` ; TypeScript reste valide et aucun artefact généré n'est versionné.
+- Secret PostgreSQL local détecté sans exposition de sa valeur, puis démarrage réussi du service persistant `archivio-postgres-1` dans le seul projet Compose `archivio`.
+- Contrôle de santé réussi avec publication limitée à `127.0.0.1:5433` ; le réseau et le volume persistants restent propres à Archivio.
+- Baseline appliquée et vérifiée dans la base persistante : une migration terminée, quatre tables applicatives, deux contraintes de niveau et zéro ligne métier avant la copie contrôlée.
 
 ## En cours
 
-- Configuration locale du secret PostgreSQL puis démarrage et contrôle de santé du service Docker Archivio ; préparer ensuite la copie contrôlée depuis SQLite sans basculer l'application.
+- Préparer la copie contrôlée depuis SQLite vers PostgreSQL sans basculer l'application, en validant d'abord les données sources, les relations, les identifiants et les séquences.
 
 ## Prochaines étapes
 
-- Définir `ARCHIVIO_DB_PASSWORD` uniquement dans le fichier local `.env`, puis démarrer le Compose Archivio et vérifier PostgreSQL sans toucher aux autres projets Docker.
 - Préparer une copie contrôlée des données SQLite vers PostgreSQL avec vérification des lignes, relations, identifiants et séquences avant toute bascule.
 - Décider les niveaux initiaux des départements existants avant toute application de la hiérarchie.
 - Clarifier les opérations qu'un administrateur peut effectuer sur son propre département avant de modifier les routes de gestion.
