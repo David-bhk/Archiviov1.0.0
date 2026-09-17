@@ -31,7 +31,7 @@ Ce document décrit à la fois l'architecture actuellement observée et l'archit
 - Le port PostgreSQL de développement est publié uniquement sur l'interface locale. Le déploiement final pourra garder la base sur un réseau Docker privé sans publication sur le réseau de l'organisation.
 - Les fichiers archivés restent séparés de PostgreSQL dans la racine documentaire configurée.
 - La base SQLite figée reste intacte pour un retour immédiat avant toute écriture exclusive dans PostgreSQL. Après de telles écritures, revenir sans perte exige une migration inverse qui n'est pas encore implémentée.
-- Un volume Docker assure la persistance entre recréations du conteneur, mais ne remplace pas une sauvegarde ; la base et les fichiers archivés doivent être sauvegardés ensemble.
+- Un volume Docker assure la persistance entre recréations du conteneur, mais ne remplace pas une sauvegarde. La procédure locale arrête les écritures applicatives, produit un dump PostgreSQL au format personnalisé et copie la racine documentaire dans un même instantané accompagné d'un manifeste de tailles et d'empreintes SHA-256. Sa vérification restaure exclusivement dans une base et un dossier temporaires strictement nommés, puis les supprime. Cet outil local ne définit pas encore la fréquence, le stockage hors machine ni le chiffrement requis pour l'exploitation.
 - Un déploiement en ligne est une cible possible, mais pas un simple changement d'adresse : il exige HTTPS, gestion sécurisée des secrets, stockage durable, sauvegardes, durcissement réseau et réévaluation de SQLite et du stockage local.
 - Les adresses réseau et secrets ne doivent jamais être codés en dur ; ils proviennent de la configuration d'environnement.
 
@@ -201,7 +201,7 @@ Le client peut masquer une action interdite pour améliorer l'expérience, mais 
 - Le secret JWT possède actuellement une valeur de repli non sécurisée.
 - Certaines routes, notamment les statistiques, ne sont pas toutes protégées de manière uniforme.
 - Le téléversement et le téléchargement doivent être vérifiés de bout en bout avant d'être considérés comme fonctionnels.
-- La stratégie de sauvegarde et de restauration reste à définir.
+- La procédure locale de sauvegarde et de restauration est vérifiée, mais 34 métadonnées historiques portent encore un chemin hors de la racine documentaire actuelle ; seuls les deux fichiers réellement présents sont inclus dans l'instantané. La politique d'exploitation, le chiffrement et la destination hors machine restent à définir.
 
 ## Questions d'architecture encore ouvertes
 

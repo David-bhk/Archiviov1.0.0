@@ -91,3 +91,23 @@ Cette commande refuse de supprimer une base ou un dossier ne respectant pas son 
 ```powershell
 npm run db:postgres:copy -- --verify
 ```
+
+## Sauvegarde locale cohérente
+
+La sauvegarde locale regroupe un dump PostgreSQL au format personnalisé, une copie des fichiers présents sous `UPLOADS_DIR` et un manifeste contenant les tailles, empreintes SHA-256, comptes de lignes et états des séquences. Le dossier `.archivio-backups/` est ignoré par Git et contient des données sensibles non chiffrées : il ne doit jamais être ajouté au dépôt ni considéré comme une sauvegarde hors machine.
+
+Arrêter toutes les instances Archivio avant la création. La confirmation doit correspondre exactement au nom configuré de la base :
+
+```powershell
+npm run db:backup:create -- --confirm-stopped=archivio
+```
+
+La commande affiche le sous-dossier créé et signale le nombre de chemins documentaires absents ou situés hors de la racine actuelle. Elle ne déplace, ne corrige et ne fabrique aucun document historique.
+
+Vérifier ensuite l'instantané indiqué. Cette opération contrôle toutes les empreintes, restaure les fichiers dans le dossier temporaire du système et restaure le dump dans une base jetable dont le nom est strictement contrôlé. La base active, les uploads réels et les ressources des autres projets ne sont jamais ciblés :
+
+```powershell
+npm run db:backup:verify -- --snapshot=.archivio-backups/<dossier-créé>
+```
+
+Une vérification réussie prouve que cet instantané peut être relu avec l'environnement local courant. Elle ne remplace pas encore les décisions concernant la fréquence, le chiffrement, la rétention et la copie vers un support distinct.

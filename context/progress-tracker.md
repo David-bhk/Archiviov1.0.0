@@ -188,14 +188,19 @@ Mettre ce fichier à jour après chaque modification significative de l'impléme
 - Comparaison indépendante réussie après rafraîchissement : 6 départements, 9 utilisateurs, 36 documents, 6 activités et quatre séquences identiques à SQLite.
 - Sélecteur local `.env` fixé à `ARCHIVIO_DB_PROVIDER=postgresql`, sans versionner ni afficher les secrets ; Archivio redémarré sur le port 5000 avec le moteur PostgreSQL confirmé dans le journal.
 - Cinq parcours HTTP authentifiés en lecture seule et l'interface racine validés sur l'instance active ; SQLite conserve exactement son empreinte d'avant bascule.
+- Ajout d'une commande de sauvegarde PostgreSQL locale exigeant l'arrêt confirmé d'Archivio et le nom exact de la base, refusant les bases système et regroupant dans un même instantané le dump personnalisé, les fichiers présents et un manifeste SHA-256.
+- Ajout d'une vérification de restauration isolée : contrôle des empreintes, copie des fichiers dans un dossier système temporaire, restauration dans une base au nom jetable strict puis comparaison des comptes de lignes et des quatre séquences avant nettoyage.
+- Création et restauration de contrôle réussies le 17 septembre 2026 : 6 départements, 9 utilisateurs, 36 documents, 6 activités et 2 fichiers physiques ; l'application a ensuite redémarré sur PostgreSQL avec une réponse HTTP 200.
+- Le contrôle de cohérence a confirmé un écart historique préexistant : 34 métadonnées documentaires portent un chemin hors de la racine actuelle. Aucun chemin, fichier ou enregistrement n'a été modifié automatiquement.
 
 ## En cours
 
-- Conserver SQLite figée, surveiller les premiers usages PostgreSQL et préparer une stratégie de sauvegarde commune aux métadonnées et aux fichiers.
+- Conserver SQLite figée, surveiller les premiers usages PostgreSQL et analyser sans mutation les 34 chemins documentaires historiques avant de décider leur réconciliation.
 
 ## Prochaines étapes
 
-- Définir et tester une sauvegarde/restauration cohérente de PostgreSQL et du dossier documentaire avant de considérer la bascule comme durable.
+- Définir la politique d'exploitation des sauvegardes locales déjà vérifiées : fréquence, rétention, chiffrement et copie hors machine.
+- Auditer l'origine et la récupérabilité des 34 chemins documentaires historiques situés hors de la racine actuelle avant toute correction de données.
 - Décider les niveaux initiaux des départements existants avant toute application de la hiérarchie.
 - Clarifier les opérations qu'un administrateur peut effectuer sur son propre département avant de modifier les routes de gestion.
 - Migrer les contrats, filtres et décisions serveur de département vers `departmentId` en conservant une compatibilité contrôlée.
@@ -228,6 +233,7 @@ Mettre ce fichier à jour après chaque modification significative de l'impléme
 - Le rafraîchissement d'une cible PostgreSQL non vide exige une confirmation égale à son nom configuré, refuse les bases système et remplace les données transactionnellement ; l'application doit être arrêtée pendant l'opération.
 - Le retour vers SQLite est sans perte uniquement avant toute écriture acceptée exclusivement dans PostgreSQL ; aucune double écriture ni migration inverse n'est actuellement implémentée.
 - L'environnement local actif sélectionne désormais PostgreSQL ; SQLite reste conservée et ne doit plus recevoir d'écriture applicative pendant cette phase.
+- Une sauvegarde locale cohérente exige l'arrêt des écritures applicatives, associe dump PostgreSQL et fichiers dans un instantané sensible ignoré par Git, et ne peut être vérifiée que dans une base et un dossier temporaires strictement contrôlés.
 - Un déploiement en ligne reste possible mais exigera une configuration et une étude de sécurité adaptées.
 - Les autorisations doivent être appliquées côté serveur, indépendamment des restrictions de l'interface.
 - Les départements et documents utilisent provisoirement une échelle croissante de niveaux 1 à 4.
@@ -259,3 +265,4 @@ Mettre ce fichier à jour après chaque modification significative de l'impléme
 - Après la migration majeure coordonnée du 15 septembre 2026, les audits npm complet et de production ne signalent plus aucune vulnérabilité connue ; aucune correction forcée n'a été appliquée.
 - Ne pas commencer l'interface des demandes d'accès avant la stabilisation des rôles, autorisations serveur et tests.
 - Décision du 23 août 2026 : les accès exceptionnels seront des consultations temporaires en lecture seule ; les téléchargements restent réservés aux utilisateurs disposant d'un accès direct.
+- La sauvegarde locale du 17 septembre 2026 est restaurable, mais elle ne contient que les deux fichiers physiques présents ; les 34 chemins historiques hors racine restent un écart de données explicite et ne doivent pas être présentés comme récupérables sans preuve supplémentaire.
