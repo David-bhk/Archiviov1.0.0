@@ -111,3 +111,13 @@ npm run db:backup:verify -- --snapshot=.archivio-backups/<dossier-créé>
 ```
 
 Une vérification réussie prouve que cet instantané peut être relu avec l'environnement local courant. Elle ne remplace pas encore les décisions concernant la fréquence, le chiffrement, la rétention et la copie vers un support distinct.
+
+## Audit des chemins documentaires
+
+La commande suivante ouvre une transaction PostgreSQL en lecture seule et compare les métadonnées à la racine `UPLOADS_DIR`, aux cibles absolues encore référencées et aux fichiers de même nom et taille présents dans le dépôt. Elle n'affiche aucun nom de document ni chemin physique et ne modifie aucune donnée :
+
+```powershell
+npm run db:documents:audit
+```
+
+Le contrôle distingue les fichiers gérés, les anciens chemins `/uploads/...`, les autres chemins externes, les cibles encore présentes avec la taille déclarée et les répétitions exactes de métadonnées. Une taille identique sur un chemin historique constitue un candidat de récupération, pas une preuve cryptographique de l'identité du contenu. Toute copie vers la racine gérée ou modification de `filePath` exige donc une sauvegarde préalable et une procédure de réconciliation séparée.

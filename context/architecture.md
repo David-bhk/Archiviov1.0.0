@@ -201,7 +201,7 @@ Le client peut masquer une action interdite pour améliorer l'expérience, mais 
 - Le secret JWT possède actuellement une valeur de repli non sécurisée.
 - Certaines routes, notamment les statistiques, ne sont pas toutes protégées de manière uniforme.
 - Le téléversement et le téléchargement doivent être vérifiés de bout en bout avant d'être considérés comme fonctionnels.
-- La procédure locale de sauvegarde et de restauration est vérifiée, mais 34 métadonnées historiques portent encore un chemin hors de la racine documentaire actuelle ; seuls les deux fichiers réellement présents sont inclus dans l'instantané. La politique d'exploitation, le chiffrement et la destination hors machine restent à définir.
+- La procédure locale de sauvegarde et de restauration est vérifiée, mais seuls deux documents utilisent actuellement la racine gérée. L'audit en lecture seule répartit les 34 autres métadonnées entre 12 anciens chemins `/uploads/...` sans fichier et 22 chemins absolus externes. Onze des cibles externes existent encore avec la taille déclarée, hors du dépôt et de la sauvegarde Archivio ; onze sont absentes. Aucune copie, réécriture de chemin ou suppression de doublon ne peut être effectuée sans une unité de réconciliation explicitement décidée et sauvegardée. La politique d'exploitation, le chiffrement et la destination hors machine restent à définir.
 
 ## Questions d'architecture encore ouvertes
 

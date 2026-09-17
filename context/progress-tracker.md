@@ -192,15 +192,19 @@ Mettre ce fichier à jour après chaque modification significative de l'impléme
 - Ajout d'une vérification de restauration isolée : contrôle des empreintes, copie des fichiers dans un dossier système temporaire, restauration dans une base au nom jetable strict puis comparaison des comptes de lignes et des quatre séquences avant nettoyage.
 - Création et restauration de contrôle réussies le 17 septembre 2026 : 6 départements, 9 utilisateurs, 36 documents, 6 activités et 2 fichiers physiques ; l'application a ensuite redémarré sur PostgreSQL avec une réponse HTTP 200.
 - Le contrôle de cohérence a confirmé un écart historique préexistant : 34 métadonnées documentaires portent un chemin hors de la racine actuelle. Aucun chemin, fichier ou enregistrement n'a été modifié automatiquement.
+- Ajout d'une commande d'audit documentaire exécutant ses lectures PostgreSQL dans une transaction explicitement en lecture seule, classant les chemins sans afficher les noms ni les emplacements physiques et recherchant uniquement des candidats de même nom et taille dans le dépôt.
+- Audit du stockage du 17 septembre 2026 : 2 fichiers gérés présents et de taille conforme ; 12 chemins historiques `/uploads/...` sans cible ; 22 chemins absolus externes, dont 11 cibles encore présentes avec la taille déclarée et 11 absentes ; aucun candidat de même nom et taille ailleurs dans le dépôt.
+- Les 12 chemins issus du seed forment 3 groupes physiques répétés quatre fois, soit 9 répétitions supplémentaires. Le seed crée les métadonnées à chaque exécution mais ne crée pas les fichiers binaires correspondants.
 
 ## En cours
 
-- Conserver SQLite figée, surveiller les premiers usages PostgreSQL et analyser sans mutation les 34 chemins documentaires historiques avant de décider leur réconciliation.
+- Conserver SQLite figée et les chemins documentaires historiques inchangés jusqu'à une décision explicite sur le rapatriement des 11 cibles encore présentes et le traitement des 12 entrées de démonstration sans fichier.
 
 ## Prochaines étapes
 
 - Définir la politique d'exploitation des sauvegardes locales déjà vérifiées : fréquence, rétention, chiffrement et copie hors machine.
-- Auditer l'origine et la récupérabilité des 34 chemins documentaires historiques situés hors de la racine actuelle avant toute correction de données.
+- Après décision utilisateur, préparer séparément une réconciliation sauvegardée et transactionnelle des 11 cibles externes encore présentes, avec copie vérifiée avant toute modification de chemin.
+- Décider séparément si les 12 métadonnées de démonstration sans fichier, dont 9 répétitions, doivent être conservées comme données de test ou retirées de la base active.
 - Décider les niveaux initiaux des départements existants avant toute application de la hiérarchie.
 - Clarifier les opérations qu'un administrateur peut effectuer sur son propre département avant de modifier les routes de gestion.
 - Migrer les contrats, filtres et décisions serveur de département vers `departmentId` en conservant une compatibilité contrôlée.
@@ -222,6 +226,8 @@ Mettre ce fichier à jour après chaque modification significative de l'impléme
 - Quels formats doivent être pris en charge par le premier visualiseur protégé et quelle conversion utiliser pour les documents bureautiques modifiables ?
 - Qui décide qu'un document peut recevoir des demandes d'accès : l'auteur comme proposition, ou uniquement l'approbateur autorisé lors de l'archivage ?
 - Quelles sauvegardes et quel chiffrement sont requis pour la première version ?
+- Les 11 cibles externes encore présentes doivent-elles être copiées dans la racine gérée puis leurs chemins réécrits après vérification ?
+- Les 12 métadonnées issues du seed sans fichier réel doivent-elles être conservées pour la démonstration ou retirées de la base active ?
 
 ## Décisions d'architecture
 
@@ -265,4 +271,4 @@ Mettre ce fichier à jour après chaque modification significative de l'impléme
 - Après la migration majeure coordonnée du 15 septembre 2026, les audits npm complet et de production ne signalent plus aucune vulnérabilité connue ; aucune correction forcée n'a été appliquée.
 - Ne pas commencer l'interface des demandes d'accès avant la stabilisation des rôles, autorisations serveur et tests.
 - Décision du 23 août 2026 : les accès exceptionnels seront des consultations temporaires en lecture seule ; les téléchargements restent réservés aux utilisateurs disposant d'un accès direct.
-- La sauvegarde locale du 17 septembre 2026 est restaurable, mais elle ne contient que les deux fichiers physiques présents ; les 34 chemins historiques hors racine restent un écart de données explicite et ne doivent pas être présentés comme récupérables sans preuve supplémentaire.
+- La sauvegarde locale du 17 septembre 2026 est restaurable, mais elle ne contient que les deux fichiers physiques gérés. Onze fichiers externes existent encore avec la taille déclarée sans être protégés par cette sauvegarde, tandis que 23 métadonnées n'ont aucune cible confirmée ; aucune de ces lignes ne doit être présentée comme récupérable sans réconciliation vérifiée.
