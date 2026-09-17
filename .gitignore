@@ -20,6 +20,7 @@ replit.md
 # Database/Prisma
 prisma/dev.db
 uploads/
+.archivio-backups/
 *.sqlite
 *.db
 
