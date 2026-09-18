@@ -121,3 +121,21 @@ npm run db:documents:audit
 ```
 
 Le contrôle distingue les fichiers gérés, les anciens chemins `/uploads/...`, les autres chemins externes, les cibles encore présentes avec la taille déclarée et les répétitions exactes de métadonnées. Une taille identique sur un chemin historique constitue un candidat de récupération, pas une preuve cryptographique de l'identité du contenu. Toute copie vers la racine gérée ou modification de `filePath` exige donc une sauvegarde préalable et une procédure de réconciliation séparée.
+
+## Réconciliation des fichiers externes récupérables
+
+La commande de réconciliation est en lecture seule par défaut. Elle recalcule les candidats à partir de PostgreSQL, refuse les liens symboliques, les tailles divergentes et tout chemin appartenant à un projet dont un segment commence par `business-management` :
+
+```powershell
+npm run db:documents:reconcile
+```
+
+L'application exige une sauvegarde récente déjà créée et vérifiée, l'arrêt confirmé d'Archivio, le nom exact de la base et le nombre exact de candidats avant d'autoriser l'écriture :
+
+```powershell
+npm run db:documents:reconcile -- --apply --confirm-database=archivio --confirm-stopped=archivio --confirm-backup=<dossier-instantané> --confirm-count=<nombre-attendu>
+```
+
+Chaque source éligible est copiée dans `UPLOADS_DIR` sous un nom UUID. La source, la copie et la source relue sont comparées par SHA-256 avant que `filename` et `filePath` soient mis à jour ensemble dans une transaction PostgreSQL avec prédicats optimistes. Si la transaction n'est pas validée, les copies préparées sont supprimées. Les sources externes ne sont jamais modifiées ni supprimées.
+
+Après application, relancer `npm run db:documents:audit`, créer un nouvel instantané puis vérifier sa restauration. Le 18 septembre 2026, cette procédure a rattaché 11 fichiers et l'instantané post-opération a restauré les 13 fichiers désormais gérés.

@@ -8,7 +8,7 @@ Mettre ce fichier à jour après chaque modification significative de l'impléme
 
 ## Objectif actuel
 
-- Stabiliser l'application sur PostgreSQL et définir la sauvegarde cohérente de la base et des fichiers avant une utilisation durable avec des documents sensibles.
+- Stabiliser le stockage documentaire restant sur PostgreSQL et décider du traitement des 23 métadonnées historiques sans cible confirmée.
 
 ## Terminé
 
@@ -195,16 +195,20 @@ Mettre ce fichier à jour après chaque modification significative de l'impléme
 - Ajout d'une commande d'audit documentaire exécutant ses lectures PostgreSQL dans une transaction explicitement en lecture seule, classant les chemins sans afficher les noms ni les emplacements physiques et recherchant uniquement des candidats de même nom et taille dans le dépôt.
 - Audit du stockage du 17 septembre 2026 : 2 fichiers gérés présents et de taille conforme ; 12 chemins historiques `/uploads/...` sans cible ; 22 chemins absolus externes, dont 11 cibles encore présentes avec la taille déclarée et 11 absentes ; aucun candidat de même nom et taille ailleurs dans le dépôt.
 - Les 12 chemins issus du seed forment 3 groupes physiques répétés quatre fois, soit 9 répétitions supplémentaires. Le seed crée les métadonnées à chaque exécution mais ne crée pas les fichiers binaires correspondants.
+- Ajout d'une commande de réconciliation en lecture seule par défaut, dont l'application exige une sauvegarde récente, l'arrêt confirmé d'Archivio, le nom exact de la base et le nombre exact de candidats ; les chemins d'autres projets `business-management` sont explicitement exclus.
+- Restauration de contrôle réussie de l'instantané préalable, puis réconciliation le 18 septembre 2026 des 11 cibles externes récupérables : copie sous noms UUID, vérification SHA-256 et rattachement transactionnel, sans modifier ni supprimer les sources.
+- Audit post-réconciliation : 13 fichiers gérés cohérents, aucun fichier géré manquant et 23 métadonnées encore sans cible confirmée, réparties entre 12 entrées du seed et 11 chemins externes absents.
+- Création et restauration réussies d'un instantané post-opération contenant les 13 fichiers gérés ; Archivio a ensuite redémarré sur PostgreSQL avec une réponse HTTP 200 et cinq parcours authentifiés en lecture seule réussis.
 
 ## En cours
 
-- Conserver SQLite figée et les chemins documentaires historiques inchangés jusqu'à une décision explicite sur le rapatriement des 11 cibles encore présentes et le traitement des 12 entrées de démonstration sans fichier.
+- Conserver SQLite figée, les 11 sources externes réconciliées intactes et les 23 métadonnées sans cible inchangées jusqu'à des décisions séparées sur les entrées du seed et les chemins externes absents.
 
 ## Prochaines étapes
 
 - Définir la politique d'exploitation des sauvegardes locales déjà vérifiées : fréquence, rétention, chiffrement et copie hors machine.
-- Après décision utilisateur, préparer séparément une réconciliation sauvegardée et transactionnelle des 11 cibles externes encore présentes, avec copie vérifiée avant toute modification de chemin.
 - Décider séparément si les 12 métadonnées de démonstration sans fichier, dont 9 répétitions, doivent être conservées comme données de test ou retirées de la base active.
+- Décider si les 11 autres métadonnées dont le chemin externe est absent doivent rester signalées pendant une recherche dans les anciens supports de stockage ou suivre une autre procédure contrôlée.
 - Décider les niveaux initiaux des départements existants avant toute application de la hiérarchie.
 - Clarifier les opérations qu'un administrateur peut effectuer sur son propre département avant de modifier les routes de gestion.
 - Migrer les contrats, filtres et décisions serveur de département vers `departmentId` en conservant une compatibilité contrôlée.
@@ -226,8 +230,8 @@ Mettre ce fichier à jour après chaque modification significative de l'impléme
 - Quels formats doivent être pris en charge par le premier visualiseur protégé et quelle conversion utiliser pour les documents bureautiques modifiables ?
 - Qui décide qu'un document peut recevoir des demandes d'accès : l'auteur comme proposition, ou uniquement l'approbateur autorisé lors de l'archivage ?
 - Quelles sauvegardes et quel chiffrement sont requis pour la première version ?
-- Les 11 cibles externes encore présentes doivent-elles être copiées dans la racine gérée puis leurs chemins réécrits après vérification ?
 - Les 12 métadonnées issues du seed sans fichier réel doivent-elles être conservées pour la démonstration ou retirées de la base active ?
+- Les 11 métadonnées dont le chemin externe est absent doivent-elles rester signalées pendant la recherche d'un ancien support de stockage ?
 
 ## Décisions d'architecture
 
@@ -240,6 +244,7 @@ Mettre ce fichier à jour après chaque modification significative de l'impléme
 - Le retour vers SQLite est sans perte uniquement avant toute écriture acceptée exclusivement dans PostgreSQL ; aucune double écriture ni migration inverse n'est actuellement implémentée.
 - L'environnement local actif sélectionne désormais PostgreSQL ; SQLite reste conservée et ne doit plus recevoir d'écriture applicative pendant cette phase.
 - Une sauvegarde locale cohérente exige l'arrêt des écritures applicatives, associe dump PostgreSQL et fichiers dans un instantané sensible ignoré par Git, et ne peut être vérifiée que dans une base et un dossier temporaires strictement contrôlés.
+- La réconciliation d'un fichier externe exige une sauvegarde récente vérifiée, conserve la source, copie sous un nom UUID, compare les empreintes SHA-256 avant rattachement et met à jour les métadonnées dans une transaction PostgreSQL.
 - Un déploiement en ligne reste possible mais exigera une configuration et une étude de sécurité adaptées.
 - Les autorisations doivent être appliquées côté serveur, indépendamment des restrictions de l'interface.
 - Les départements et documents utilisent provisoirement une échelle croissante de niveaux 1 à 4.
@@ -271,4 +276,4 @@ Mettre ce fichier à jour après chaque modification significative de l'impléme
 - Après la migration majeure coordonnée du 15 septembre 2026, les audits npm complet et de production ne signalent plus aucune vulnérabilité connue ; aucune correction forcée n'a été appliquée.
 - Ne pas commencer l'interface des demandes d'accès avant la stabilisation des rôles, autorisations serveur et tests.
 - Décision du 23 août 2026 : les accès exceptionnels seront des consultations temporaires en lecture seule ; les téléchargements restent réservés aux utilisateurs disposant d'un accès direct.
-- La sauvegarde locale du 17 septembre 2026 est restaurable, mais elle ne contient que les deux fichiers physiques gérés. Onze fichiers externes existent encore avec la taille déclarée sans être protégés par cette sauvegarde, tandis que 23 métadonnées n'ont aucune cible confirmée ; aucune de ces lignes ne doit être présentée comme récupérable sans réconciliation vérifiée.
+- L'instantané post-réconciliation du 18 septembre 2026 contient et restaure les 13 fichiers physiques gérés. Les 23 métadonnées restantes n'ont aucune cible confirmée et ne doivent pas être présentées comme récupérables sans nouvelle preuve contrôlée.

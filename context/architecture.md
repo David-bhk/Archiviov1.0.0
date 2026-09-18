@@ -201,7 +201,7 @@ Le client peut masquer une action interdite pour améliorer l'expérience, mais 
 - Le secret JWT possède actuellement une valeur de repli non sécurisée.
 - Certaines routes, notamment les statistiques, ne sont pas toutes protégées de manière uniforme.
 - Le téléversement et le téléchargement doivent être vérifiés de bout en bout avant d'être considérés comme fonctionnels.
-- La procédure locale de sauvegarde et de restauration est vérifiée, mais seuls deux documents utilisent actuellement la racine gérée. L'audit en lecture seule répartit les 34 autres métadonnées entre 12 anciens chemins `/uploads/...` sans fichier et 22 chemins absolus externes. Onze des cibles externes existent encore avec la taille déclarée, hors du dépôt et de la sauvegarde Archivio ; onze sont absentes. Aucune copie, réécriture de chemin ou suppression de doublon ne peut être effectuée sans une unité de réconciliation explicitement décidée et sauvegardée. La politique d'exploitation, le chiffrement et la destination hors machine restent à définir.
+- La procédure locale de sauvegarde et de restauration est vérifiée. Treize documents utilisent maintenant la racine gérée : les deux fichiers initiaux et onze cibles externes copiées sous des noms UUID, contrôlées par empreinte SHA-256 puis rattachées transactionnellement après une sauvegarde restaurée avec succès. Les fichiers sources ont été conservés. Vingt-trois métadonnées restent sans cible confirmée : 12 anciens chemins `/uploads/...` issus du seed et 11 chemins absolus externes absents. L'instantané post-réconciliation contient et restaure les 13 fichiers gérés. La politique d'exploitation, le chiffrement et la destination hors machine restent à définir.
 
 ## Questions d'architecture encore ouvertes
 
