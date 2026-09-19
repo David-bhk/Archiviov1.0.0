@@ -6,13 +6,13 @@ import path from 'path'
 import { PrismaClient as PostgreSQLClient } from '@archivio/postgresql-client'
 
 import { getPostgreSQLDatabaseName, getPostgreSQLUrl } from '../server/database-config'
+import { verifyRecentBackupConfirmation } from './confirmed-postgresql-operation'
 import { classifyStoredPath } from './document-storage-audit'
 import {
   isForbiddenExternalSource,
   managedFilename,
   parseDocumentStorageReconciliationOptions,
 } from './document-storage-reconciliation'
-import { resolveInsideRoot } from './postgresql-backup-options'
 
 type DocumentMetadata = {
   id: number
@@ -104,34 +104,6 @@ async function readDocuments(client: PostgreSQLClient, readOnly: boolean): Promi
     },
     { timeout: 30_000 },
   )
-}
-
-function verifyBackupConfirmation(backupName: string, databaseName: string): void {
-  const backupRoot = getBackupRoot()
-  const snapshotDirectory = resolveInsideRoot(backupRoot, path.join(backupRoot, backupName))
-  const manifestPath = path.join(snapshotDirectory, 'manifest.json')
-  if (!fs.existsSync(manifestPath)) {
-    throw new Error('La sauvegarde confirmée est absente de la racine configurée.')
-  }
-
-  const stats = fs.statSync(manifestPath)
-  const ageMilliseconds = Date.now() - stats.mtimeMs
-  if (!stats.isFile() || ageMilliseconds < 0 || ageMilliseconds > 24 * 60 * 60 * 1_000) {
-    throw new Error('La sauvegarde confirmée doit avoir été créée et vérifiée depuis moins de 24 heures.')
-  }
-
-  const manifest: unknown = JSON.parse(fs.readFileSync(manifestPath, 'utf8'))
-  if (
-    typeof manifest !== 'object' ||
-    manifest === null ||
-    !('database' in manifest) ||
-    typeof manifest.database !== 'object' ||
-    manifest.database === null ||
-    !('name' in manifest.database) ||
-    manifest.database.name !== databaseName
-  ) {
-    throw new Error('La sauvegarde confirmée ne correspond pas à la base active.')
-  }
 }
 
 async function prepareCopies(
@@ -256,7 +228,11 @@ async function main(): Promise<void> {
     if (plan.forbidden > 0) {
       throw new Error('Un candidat appartient à un projet explicitement protégé ; opération annulée.')
     }
-    verifyBackupConfirmation(options.confirmedBackup, databaseName)
+    verifyRecentBackupConfirmation({
+      backupName: options.confirmedBackup,
+      databaseName,
+      backupRoot: getBackupRoot(),
+    })
 
     prepared = await prepareCopies(plan.candidates, uploadsRoot)
     await applyDatabaseUpdates(client, prepared)
