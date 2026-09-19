@@ -199,6 +199,8 @@ Mettre ce fichier à jour après chaque modification significative de l'impléme
 - Restauration de contrôle réussie de l'instantané préalable, puis réconciliation le 18 septembre 2026 des 11 cibles externes récupérables : copie sous noms UUID, vérification SHA-256 et rattachement transactionnel, sans modifier ni supprimer les sources.
 - Audit post-réconciliation : 13 fichiers gérés cohérents, aucun fichier géré manquant et 23 métadonnées encore sans cible confirmée, réparties entre 12 entrées du seed et 11 chemins externes absents.
 - Création et restauration réussies d'un instantané post-opération contenant les 13 fichiers gérés ; Archivio a ensuite redémarré sur PostgreSQL avec une réponse HTTP 200 et cinq parcours authentifiés en lecture seule réussis.
+- Sécurisation du seed SQLite de développement : refus de PostgreSQL et de la production, confirmation exacte de `prisma/dev.db`, mot de passe local obligatoire avec refus de l'ancien secret connu, et transaction idempotente pour les départements et comptes.
+- Retrait de la création de métadonnées documentaires sans contenu par le seed ; les 12 lignes historiques restent intactes en attente d'une décision séparée. Le refus sans écriture sur l'environnement PostgreSQL actif, TypeScript, 67 tests et le build ont été vérifiés.
 
 ## En cours
 

@@ -209,7 +209,7 @@ La route logout ne révoque rien. Avec un JWT autonome valable sept jours, suppr
 
 ### A23 — Seed non sûr et non idempotent pour les fichiers
 
-Tous les comptes de démonstration utilisent `password123`. Les fichiers sont recréés à chaque exécution et pointent vers des contenus susceptibles de ne pas exister. Le seed doit être explicitement réservé au développement et utiliser une stratégie reproductible.
+**État : résolu pour les exécutions futures, données historiques encore ouvertes.** Le seed refuse désormais la production et tout fournisseur autre que SQLite, exige la confirmation exacte de `prisma/dev.db` et lit le mot de passe de démonstration depuis une variable locale non versionnée. L'ancien mot de passe connu est explicitement refusé. Les départements et comptes sont réconciliés par `upsert` dans une transaction, avec leurs relations stables, et aucune métadonnée documentaire n'est plus créée sans fichier réel. Les 12 métadonnées historiques déjà présentes restent inchangées jusqu'à une décision produit séparée.
 
 ### A24 — Journal d'activité incomplet
 

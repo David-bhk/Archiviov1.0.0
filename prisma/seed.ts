@@ -1,9 +1,15 @@
+import 'dotenv/config'
+
 import { PrismaClient } from '@prisma/client'
 import bcrypt from 'bcryptjs'
 
-const prisma = new PrismaClient()
+import { parseDemoSeedOptions } from '../scripts/demo-seed-options'
 
 async function main() {
+  const { password } = parseDemoSeedOptions(process.argv.slice(2))
+  const hashedPassword = await bcrypt.hash(password, 10)
+  const prisma = new PrismaClient()
+
   const departmentData = [
     { name: 'Administration', description: 'Administration générale' },
     { name: 'Comptabilité', description: 'Gestion financière' },
@@ -12,115 +18,74 @@ async function main() {
     { name: 'IT', description: 'Informatique' },
   ]
 
-  // Upsert departments
-  const departments = await Promise.all(
-    departmentData.map((dept) =>
-      prisma.department.upsert({
-        where: { name: dept.name },
-        update: {},
-        create: dept,
-      })
+  try {
+    await prisma.$transaction(async (transaction) => {
+      const departments = await Promise.all(
+        departmentData.map((department) =>
+          transaction.department.upsert({
+            where: { name: department.name },
+            update: { description: department.description },
+            create: department,
+          }),
+        ),
+      )
+      const departmentIds = new Map(
+        departments.map((department) => [department.name, department.id]),
+      )
+
+      const users = [
+        {
+          username: 'john.doe',
+          email: 'john.doe@archivio.com',
+          role: 'SUPERUSER' as const,
+          department: 'Administration',
+          firstName: 'John',
+          lastName: 'Doe',
+        },
+        {
+          username: 'marie.dubois',
+          email: 'marie.dubois@archivio.com',
+          role: 'ADMIN' as const,
+          department: 'Comptabilité',
+          firstName: 'Marie',
+          lastName: 'Dubois',
+        },
+        {
+          username: 'pierre.martin',
+          email: 'pierre.martin@archivio.com',
+          role: 'USER' as const,
+          department: 'Ressources Humaines',
+          firstName: 'Pierre',
+          lastName: 'Martin',
+        },
+      ]
+
+      for (const user of users) {
+        const departmentId = departmentIds.get(user.department)
+        if (!departmentId) {
+          throw new Error('Département de démonstration introuvable.')
+        }
+
+        const data = { ...user, departmentId, password: hashedPassword }
+        await transaction.user.upsert({
+          where: { email: user.email },
+          update: data,
+          create: data,
+        })
+      }
+    })
+
+    console.log(
+      'Seed SQLite de développement terminé : départements et comptes uniquement, sans métadonnée documentaire.',
     )
-  )
-
-  // Hash password once
-  const hashedPassword = await bcrypt.hash('password123', 10)
-
-  // Upsert users
-  const users = await Promise.all([
-    prisma.user.upsert({
-      where: { email: 'john.doe@archivio.com' },
-      update: {},
-      create: {
-        username: 'john.doe',
-        email: 'john.doe@archivio.com',
-        password: hashedPassword,
-        role: 'SUPERUSER',
-        department: 'Administration',
-        firstName: 'John',
-        lastName: 'Doe',
-      },
-    }),
-    prisma.user.upsert({
-      where: { email: 'marie.dubois@archivio.com' },
-      update: {},
-      create: {
-        username: 'marie.dubois',
-        email: 'marie.dubois@archivio.com',
-        password: hashedPassword,
-        role: 'ADMIN',
-        department: 'Comptabilité',
-        firstName: 'Marie',
-        lastName: 'Dubois',
-      },
-    }),
-    prisma.user.upsert({
-      where: { email: 'pierre.martin@archivio.com' },
-      update: {},
-      create: {
-        username: 'pierre.martin',
-        email: 'pierre.martin@archivio.com',
-        password: hashedPassword,
-        role: 'USER',
-        department: 'Ressources Humaines',
-        firstName: 'Pierre',
-        lastName: 'Martin',
-      },
-    }),
-  ])
-
-  // Create some sample files
-  await Promise.all([
-    prisma.file.create({
-      data: {
-        filename: 'rapport_q1_2024.pdf',
-        originalName: 'Rapport_Q1_2024.pdf',
-        fileType: 'pdf',
-        fileSize: 2400000,
-        filePath: '/uploads/rapport_q1_2024.pdf',
-        uploadedBy: users[1].id, // Marie Dubois
-        department: 'Comptabilité',
-        category: 'Rapport',
-        description: 'Rapport trimestriel Q1 2024',
-      },
-    }),
-    prisma.file.create({
-      data: {
-        filename: 'manuel_procedures.docx',
-        originalName: 'Manuel_Procedures.docx',
-        fileType: 'docx',
-        fileSize: 1800000,
-        filePath: '/uploads/manuel_procedures.docx',
-        uploadedBy: users[2].id, // Pierre Martin
-        department: 'Ressources Humaines',
-        category: 'Manuel',
-        description: 'Manuel des procédures internes',
-      },
-    }),
-    prisma.file.create({
-      data: {
-        filename: 'budget_2024.xlsx',
-        originalName: 'Budget_2024.xlsx',
-        fileType: 'xlsx',
-        fileSize: 3200000,
-        filePath: '/uploads/budget_2024.xlsx',
-        uploadedBy: users[1].id, // Marie Dubois
-        department: 'Comptabilité',
-        category: 'Budget',
-        description: 'Budget prévisionnel 2024',
-      },
-    }),
-  ])
-
-  console.log('✅ Seed data created successfully!')
+  } finally {
+    await prisma.$disconnect()
+  }
 }
 
 main()
-  .then(async () => {
-    await prisma.$disconnect()
-  })
-  .catch(async (e) => {
-    console.error('❌ Error seeding data:', e)
-    await prisma.$disconnect()
+  .catch((error: unknown) => {
+    const message = error instanceof Error ? error.message : 'Erreur inconnue.'
+    console.error(`Échec du seed de développement : ${message}`)
     process.exit(1)
   })
