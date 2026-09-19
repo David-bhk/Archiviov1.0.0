@@ -23,6 +23,7 @@
     "db:backup:verify": "tsx scripts/postgresql-backup.ts --verify",
     "db:documents:audit": "tsx scripts/audit-document-storage.ts",
     "db:documents:reconcile": "tsx scripts/reconcile-document-storage.ts",
+    "db:documents:cleanup-seed": "tsx scripts/cleanup-seed-document-metadata.ts",
     "db:push": "prisma db push",
     "db:seed": "tsx prisma/seed.ts",
     "postinstall": "npm run db:generate"

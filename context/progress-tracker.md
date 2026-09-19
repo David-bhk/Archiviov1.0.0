@@ -201,15 +201,16 @@ Mettre ce fichier à jour après chaque modification significative de l'impléme
 - Création et restauration réussies d'un instantané post-opération contenant les 13 fichiers gérés ; Archivio a ensuite redémarré sur PostgreSQL avec une réponse HTTP 200 et cinq parcours authentifiés en lecture seule réussis.
 - Sécurisation du seed SQLite de développement : refus de PostgreSQL et de la production, confirmation exacte de `prisma/dev.db`, mot de passe local obligatoire avec refus de l'ancien secret connu, et transaction idempotente pour les départements et comptes.
 - Retrait de la création de métadonnées documentaires sans contenu par le seed ; les 12 lignes historiques restent intactes en attente d'une décision séparée. Le refus sans écriture sur l'environnement PostgreSQL actif, TypeScript, 67 tests et le build ont été vérifiés.
+- Décision utilisateur du 19 septembre 2026 : retirer de la base active les 12 métadonnées historiques du seed sans cible physique, tout en conservant les 11 autres chemins externes absents.
+- Ajout d'une commande de nettoyage en lecture seule par défaut, exigeant trois groupes exacts de quatre signatures, une sauvegarde récente, l'arrêt confirmé d'Archivio et un compte attendu de 12. La simulation confirme 12 candidats, 3 références d'activité à préserver et 3 lignes déjà revues ou classifiées ; aucune donnée n'a encore été supprimée à cette étape. TypeScript, 76 tests et le build réussissent.
 
 ## En cours
 
-- Conserver SQLite figée, les 11 sources externes réconciliées intactes et les 23 métadonnées sans cible inchangées jusqu'à des décisions séparées sur les entrées du seed et les chemins externes absents.
+- Appliquer le nettoyage sauvegardé des 12 métadonnées du seed approuvé, en conservant SQLite figée, les 11 sources externes réconciliées, les activités et les 11 autres métadonnées dont le chemin externe est absent.
 
 ## Prochaines étapes
 
 - Définir la politique d'exploitation des sauvegardes locales déjà vérifiées : fréquence, rétention, chiffrement et copie hors machine.
-- Décider séparément si les 12 métadonnées de démonstration sans fichier, dont 9 répétitions, doivent être conservées comme données de test ou retirées de la base active.
 - Décider si les 11 autres métadonnées dont le chemin externe est absent doivent rester signalées pendant une recherche dans les anciens supports de stockage ou suivre une autre procédure contrôlée.
 - Décider les niveaux initiaux des départements existants avant toute application de la hiérarchie.
 - Clarifier les opérations qu'un administrateur peut effectuer sur son propre département avant de modifier les routes de gestion.
@@ -232,7 +233,6 @@ Mettre ce fichier à jour après chaque modification significative de l'impléme
 - Quels formats doivent être pris en charge par le premier visualiseur protégé et quelle conversion utiliser pour les documents bureautiques modifiables ?
 - Qui décide qu'un document peut recevoir des demandes d'accès : l'auteur comme proposition, ou uniquement l'approbateur autorisé lors de l'archivage ?
 - Quelles sauvegardes et quel chiffrement sont requis pour la première version ?
-- Les 12 métadonnées issues du seed sans fichier réel doivent-elles être conservées pour la démonstration ou retirées de la base active ?
 - Les 11 métadonnées dont le chemin externe est absent doivent-elles rester signalées pendant la recherche d'un ancien support de stockage ?
 
 ## Décisions d'architecture

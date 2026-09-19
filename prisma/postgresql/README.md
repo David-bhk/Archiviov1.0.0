@@ -139,3 +139,19 @@ npm run db:documents:reconcile -- --apply --confirm-database=archivio --confirm-
 Chaque source éligible est copiée dans `UPLOADS_DIR` sous un nom UUID. La source, la copie et la source relue sont comparées par SHA-256 avant que `filename` et `filePath` soient mis à jour ensemble dans une transaction PostgreSQL avec prédicats optimistes. Si la transaction n'est pas validée, les copies préparées sont supprimées. Les sources externes ne sont jamais modifiées ni supprimées.
 
 Après application, relancer `npm run db:documents:audit`, créer un nouvel instantané puis vérifier sa restauration. Le 18 septembre 2026, cette procédure a rattaché 11 fichiers et l'instantané post-opération a restauré les 13 fichiers désormais gérés.
+
+## Nettoyage des métadonnées historiques du seed
+
+La commande suivante simule en lecture seule le retrait des trois signatures physiques créées autrefois par le seed. Elle exige exactement quatre lignes pour chacune, l'absence de toute cible physique et conserve les activités associées grâce à la relation `ON DELETE SET NULL` :
+
+```powershell
+npm run db:documents:cleanup-seed
+```
+
+L'application est destructive uniquement avec toutes les confirmations suivantes et une sauvegarde récente déjà vérifiée :
+
+```powershell
+npm run db:documents:cleanup-seed -- --apply --confirm-database=archivio --confirm-stopped=archivio --confirm-backup=<dossier-instantané> --confirm-count=12
+```
+
+La commande ne supprime aucun fichier physique et refuse l'opération si le nombre ou les signatures ont changé depuis la simulation.
