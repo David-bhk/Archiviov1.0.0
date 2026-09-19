@@ -155,3 +155,5 @@ npm run db:documents:cleanup-seed -- --apply --confirm-database=archivio --confi
 ```
 
 La commande ne supprime aucun fichier physique et refuse l'opération si le nombre ou les signatures ont changé depuis la simulation.
+
+Le 19 septembre 2026, les 12 métadonnées historiques ont été retirées après restauration de contrôle de la sauvegarde préalable. Les 7 activités et les 13 fichiers physiques ont été conservés ; la sauvegarde post-opération restaure 24 métadonnées et 13 fichiers.

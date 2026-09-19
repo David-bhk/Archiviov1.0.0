@@ -8,7 +8,7 @@ Mettre ce fichier à jour après chaque modification significative de l'impléme
 
 ## Objectif actuel
 
-- Stabiliser le stockage documentaire restant sur PostgreSQL et décider du traitement des 23 métadonnées historiques sans cible confirmée.
+- Stabiliser le stockage documentaire restant sur PostgreSQL et décider du traitement des 11 métadonnées historiques dont le chemin externe est absent.
 
 ## Terminé
 
@@ -202,11 +202,14 @@ Mettre ce fichier à jour après chaque modification significative de l'impléme
 - Sécurisation du seed SQLite de développement : refus de PostgreSQL et de la production, confirmation exacte de `prisma/dev.db`, mot de passe local obligatoire avec refus de l'ancien secret connu, et transaction idempotente pour les départements et comptes.
 - Retrait de la création de métadonnées documentaires sans contenu par le seed ; les 12 lignes historiques restent intactes en attente d'une décision séparée. Le refus sans écriture sur l'environnement PostgreSQL actif, TypeScript, 67 tests et le build ont été vérifiés.
 - Décision utilisateur du 19 septembre 2026 : retirer de la base active les 12 métadonnées historiques du seed sans cible physique, tout en conservant les 11 autres chemins externes absents.
-- Ajout d'une commande de nettoyage en lecture seule par défaut, exigeant trois groupes exacts de quatre signatures, une sauvegarde récente, l'arrêt confirmé d'Archivio et un compte attendu de 12. La simulation confirme 12 candidats, 3 références d'activité à préserver et 3 lignes déjà revues ou classifiées ; aucune donnée n'a encore été supprimée à cette étape. TypeScript, 76 tests et le build réussissent.
+- Ajout d'une commande de nettoyage en lecture seule par défaut, exigeant trois groupes exacts de quatre signatures, une sauvegarde récente, l'arrêt confirmé d'Archivio et un compte attendu de 12. La simulation préalable a confirmé 12 candidats, 3 références d'activité à préserver et 3 lignes déjà revues ou classifiées. TypeScript, 76 tests et le build réussissent.
+- Création et restauration réussies d'un instantané préalable contenant 36 métadonnées, 7 activités et 13 fichiers, puis suppression transactionnelle des 12 métadonnées approuvées sans toucher aux fichiers physiques ; les 7 activités ont été conservées.
+- Audit post-nettoyage : 24 métadonnées, 13 fichiers gérés cohérents, aucun fichier géré manquant, aucun ancien chemin `/uploads/...`, aucun doublon physique et 11 chemins externes absents encore inchangés.
+- Création et restauration réussies d'un instantané post-opération contenant 24 métadonnées, 7 activités et 13 fichiers ; Archivio a redémarré sur PostgreSQL avec une réponse HTTP 200 et cinq parcours authentifiés en lecture seule réussis.
 
 ## En cours
 
-- Appliquer le nettoyage sauvegardé des 12 métadonnées du seed approuvé, en conservant SQLite figée, les 11 sources externes réconciliées, les activités et les 11 autres métadonnées dont le chemin externe est absent.
+- Conserver SQLite figée, les 11 sources externes réconciliées, les activités et les 11 métadonnées dont le chemin externe est absent jusqu'à une décision séparée sur leur recherche ou leur traitement.
 
 ## Prochaines étapes
 
@@ -278,4 +281,4 @@ Mettre ce fichier à jour après chaque modification significative de l'impléme
 - Après la migration majeure coordonnée du 15 septembre 2026, les audits npm complet et de production ne signalent plus aucune vulnérabilité connue ; aucune correction forcée n'a été appliquée.
 - Ne pas commencer l'interface des demandes d'accès avant la stabilisation des rôles, autorisations serveur et tests.
 - Décision du 23 août 2026 : les accès exceptionnels seront des consultations temporaires en lecture seule ; les téléchargements restent réservés aux utilisateurs disposant d'un accès direct.
-- L'instantané post-réconciliation du 18 septembre 2026 contient et restaure les 13 fichiers physiques gérés. Les 23 métadonnées restantes n'ont aucune cible confirmée et ne doivent pas être présentées comme récupérables sans nouvelle preuve contrôlée.
+- L'instantané post-nettoyage du 19 septembre 2026 contient et restaure 24 métadonnées, 7 activités et les 13 fichiers physiques gérés. Les 11 métadonnées portant un chemin externe absent n'ont aucune cible confirmée et ne doivent pas être présentées comme récupérables sans nouvelle preuve contrôlée.
