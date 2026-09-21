@@ -48,6 +48,10 @@ function adminToken() {
   return generateToken({ id: 20, role: "ADMIN", department: "IT" });
 }
 
+function superuserToken() {
+  return generateToken({ id: 1, role: "SUPERUSER", department: "Administration" });
+}
+
 beforeEach(async () => {
   vi.clearAllMocks();
   temporaryDirectory = mkdtempSync(path.join(tmpdir(), "archivio-security-test-"));
@@ -320,5 +324,52 @@ describe("critical route protections", () => {
     });
     expect(JSON.stringify(body)).not.toContain("hash-qui-ne-doit-pas-sortir");
     expect(JSON.stringify(body)).not.toContain("chemin-interne.pdf");
+  });
+
+  it("reports missing content without exposing its internal storage path", async () => {
+    storageMocks.getUser.mockResolvedValue({
+      id: 1,
+      role: "SUPERUSER",
+      department: "Administration",
+      firstName: "Super",
+      lastName: "Utilisateur",
+      isActive: true,
+    });
+    storageMocks.getFilesWithFilters.mockResolvedValue({
+      data: [{
+        id: 95,
+        filename: "stored.pdf",
+        originalName: "archive-historique.pdf",
+        fileType: "application/pdf",
+        fileSize: 42,
+        filePath: "private-storage-name.pdf",
+        uploadedBy: 1,
+        department: "Administration",
+        departmentId: 1,
+        classificationLevel: 1,
+        category: "Archive",
+        description: null,
+        status: "archived",
+        reviewedBy: 1,
+        reviewedAt: new Date("2026-09-20T10:00:00.000Z"),
+        reviewComment: "Conforme",
+        createdAt: new Date("2026-09-20T09:00:00.000Z"),
+        isDeleted: false,
+      }],
+      total: 1,
+      page: 1,
+      limit: 12,
+      totalPages: 1,
+    });
+
+    const response = await fetch(`${baseUrl}/api/files`, {
+      headers: { Authorization: `Bearer ${superuserToken()}` },
+    });
+    const body = await response.json();
+
+    expect(response.status).toBe(200);
+    expect(body.data[0].isAvailable).toBe(false);
+    expect(body.data[0]).not.toHaveProperty("filePath");
+    expect(JSON.stringify(body)).not.toContain("private-storage-name.pdf");
   });
 });

@@ -26,9 +26,12 @@ import {
 import {
   ensureUploadsRoot,
   removeStoredFile,
-  resolveStoredFilePath,
   uploadsRoot,
 } from "./services/file-storage";
+import {
+  resolveAvailableDocumentPath,
+  toPublicDocument,
+} from "./services/document-presentation";
 
 const loginSchema = z.object({
   username: z.string().min(1),
@@ -139,7 +142,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       if (!file) {
         return res.status(404).json({ message: "Fichier non trouvé" });
       }
-      res.json({ message: "Fichier approuvé", file });
+      res.json({ message: "Fichier approuvé", file: toPublicDocument(file) });
     } catch (error) {
       if (error instanceof z.ZodError) {
         return res.status(400).json({ message: "Justification invalide" });
@@ -165,13 +168,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
       if (!canDownloadDocument(actor, file)) {
         return res.status(403).json({ message: "Accès interdit" });
       }
-      const absolutePath = resolveStoredFilePath(file.filePath);
-      if (!absolutePath) {
-        return res.status(400).json({ message: "Chemin de fichier invalide" });
-      }
-      if (!fs.existsSync(absolutePath)) {
-        return res.status(404).json({ message: "Fichier non trouvé sur le serveur" });
-      }
+      const absolutePath = resolveAvailableDocumentPath(file);
+      if (!absolutePath) return res.status(404).json({ message: "Contenu documentaire indisponible" });
       // Détermine le type MIME
       const ext = path.extname(file.originalName || file.filename).toLowerCase();
       const mimeTypes: Record<string, string> = {
@@ -204,7 +202,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const { justification } = reviewDocumentSchema.parse(req.body);
       const file = await storage.reviewFile(id, actor.id, "rejected", justification);
       if (!file) return res.status(404).json({ message: "Fichier non trouvé" });
-      res.json({ message: "Fichier refusé", file });
+      res.json({ message: "Fichier refusé", file: toPublicDocument(file) });
     } catch (error) {
       if (error instanceof z.ZodError) {
         return res.status(400).json({ message: "Justification invalide" });
@@ -475,7 +473,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         const uploaderName = uploader
           ? `${uploader.firstName} ${uploader.lastName}`.trim()
           : "Inconnu";
-        return { ...file, uploaderName };
+        return { ...toPublicDocument(file), uploaderName };
       }));
       res.json({ ...result, data });
     } catch {
@@ -571,7 +569,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
             }
           }
         }
-        return { ...file, uploaderName };
+        return { ...toPublicDocument(file), uploaderName };
       }));
       
       // Return paginated response
@@ -614,7 +612,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
             }
           }
         }
-        return { ...file, uploaderName };
+        return { ...toPublicDocument(file), uploaderName };
       }));
       
       // Return paginated response
@@ -707,7 +705,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         description: `Document téléversé : ${file.originalName}`,
       });
       
-      res.json(file);
+      res.json(toPublicDocument(file));
     } catch (error) {
       console.error("File upload error:", error);
       
