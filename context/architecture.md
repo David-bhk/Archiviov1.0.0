@@ -62,6 +62,8 @@ Le fichier binaire est conservé localement et son chemin est enregistré dans l
 
 La racine est résolue depuis `UPLOADS_DIR`, avec `uploads/` comme valeur locale par défaut. Les nouveaux documents enregistrent uniquement leur nom physique relatif. Toute lecture ou suppression résout ce nom dans la racine configurée et refuse un chemin qui en sort. Les anciens chemins absolus situés à l'intérieur de cette même racine restent lisibles pendant la transition.
 
+Les réponses documentaires publiques ne contiennent jamais `filePath`. Elles exposent un indicateur `isAvailable` calculé au moment de la réponse : le contenu est disponible uniquement si le chemin reste dans la racine gérée, désigne un fichier régulier non symbolique et si sa taille correspond à la métadonnée. Le téléchargement réutilise cette même vérification. Une métadonnée dont le contenu est absent reste conservée et signalée comme indisponible jusqu'à une décision ou une récupération contrôlée.
+
 ### Séparation obligatoire
 
 - Les métadonnées, relations, statuts et autorisations appartiennent à la base de données.

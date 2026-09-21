@@ -8,7 +8,7 @@ Mettre ce fichier à jour après chaque modification significative de l'impléme
 
 ## Objectif actuel
 
-- Stabiliser le stockage documentaire restant sur PostgreSQL et décider du traitement des 11 métadonnées historiques dont le chemin externe est absent.
+- Définir la politique d'exploitation des sauvegardes locales vérifiées, puis poursuivre les décisions nécessaires à l'activation de la hiérarchie d'accès.
 
 ## Terminé
 
@@ -206,15 +206,17 @@ Mettre ce fichier à jour après chaque modification significative de l'impléme
 - Création et restauration réussies d'un instantané préalable contenant 36 métadonnées, 7 activités et 13 fichiers, puis suppression transactionnelle des 12 métadonnées approuvées sans toucher aux fichiers physiques ; les 7 activités ont été conservées.
 - Audit post-nettoyage : 24 métadonnées, 13 fichiers gérés cohérents, aucun fichier géré manquant, aucun ancien chemin `/uploads/...`, aucun doublon physique et 11 chemins externes absents encore inchangés.
 - Création et restauration réussies d'un instantané post-opération contenant 24 métadonnées, 7 activités et 13 fichiers ; Archivio a redémarré sur PostgreSQL avec une réponse HTTP 200 et cinq parcours authentifiés en lecture seule réussis.
+- Décision utilisateur du 21 septembre 2026 : conserver les 11 métadonnées dont le chemin externe est absent et les signaler comme indisponibles pendant la recherche d'anciens supports, sans les supprimer ni fabriquer de contenu.
+- Ajout d'une projection documentaire publique retirant `filePath` et calculant `isAvailable` à partir d'un fichier régulier non symbolique, situé dans la racine gérée et de taille conforme ; le téléchargement applique exactement la même vérification.
+- Signalement « Contenu indisponible » dans la bibliothèque, le tableau de bord et la file de validation ; l'action de téléchargement est masquée pour ces documents, tandis que leurs métadonnées et les autres actions autorisées restent disponibles.
 
 ## En cours
 
-- Conserver SQLite figée, les 11 sources externes réconciliées, les activités et les 11 métadonnées dont le chemin externe est absent jusqu'à une décision séparée sur leur recherche ou leur traitement.
+- Conserver SQLite figée, les 11 sources externes réconciliées, les activités et les 11 métadonnées signalées comme indisponibles pendant la recherche d'anciens supports.
 
 ## Prochaines étapes
 
 - Définir la politique d'exploitation des sauvegardes locales déjà vérifiées : fréquence, rétention, chiffrement et copie hors machine.
-- Décider si les 11 autres métadonnées dont le chemin externe est absent doivent rester signalées pendant une recherche dans les anciens supports de stockage ou suivre une autre procédure contrôlée.
 - Décider les niveaux initiaux des départements existants avant toute application de la hiérarchie.
 - Clarifier les opérations qu'un administrateur peut effectuer sur son propre département avant de modifier les routes de gestion.
 - Migrer les contrats, filtres et décisions serveur de département vers `departmentId` en conservant une compatibilité contrôlée.
@@ -236,7 +238,6 @@ Mettre ce fichier à jour après chaque modification significative de l'impléme
 - Quels formats doivent être pris en charge par le premier visualiseur protégé et quelle conversion utiliser pour les documents bureautiques modifiables ?
 - Qui décide qu'un document peut recevoir des demandes d'accès : l'auteur comme proposition, ou uniquement l'approbateur autorisé lors de l'archivage ?
 - Quelles sauvegardes et quel chiffrement sont requis pour la première version ?
-- Les 11 métadonnées dont le chemin externe est absent doivent-elles rester signalées pendant la recherche d'un ancien support de stockage ?
 
 ## Décisions d'architecture
 
@@ -260,6 +261,7 @@ Mettre ce fichier à jour après chaque modification significative de l'impléme
 - Toute décision de demande d'accès exige une justification et une trace d'audit.
 - L'interface reste sobre, sans dégradés et sans multiplication décorative des icônes.
 - Le thème clair est prioritaire ; le thème sombre doit rester cohérent s'il est proposé.
+- Les 11 métadonnées dont le chemin externe est absent sont conservées et signalées comme indisponibles pendant la recherche d'anciens supports ; leur chemin physique interne ne doit pas être exposé et aucun téléchargement ne doit être proposé tant que le contenu n'est pas récupéré et vérifié.
 
 ## Notes de session
 
@@ -282,3 +284,4 @@ Mettre ce fichier à jour après chaque modification significative de l'impléme
 - Ne pas commencer l'interface des demandes d'accès avant la stabilisation des rôles, autorisations serveur et tests.
 - Décision du 23 août 2026 : les accès exceptionnels seront des consultations temporaires en lecture seule ; les téléchargements restent réservés aux utilisateurs disposant d'un accès direct.
 - L'instantané post-nettoyage du 19 septembre 2026 contient et restaure 24 métadonnées, 7 activités et les 13 fichiers physiques gérés. Les 11 métadonnées portant un chemin externe absent n'ont aucune cible confirmée et ne doivent pas être présentées comme récupérables sans nouvelle preuve contrôlée.
+- Baseline de la disponibilité documentaire du 21 septembre 2026 : TypeScript, 80 tests et build de production réussis.

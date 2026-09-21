@@ -9,6 +9,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import type { DocumentStatus } from "@shared/schema";
 import type { File } from "../../types";
+import DocumentAvailabilityBadge from "./DocumentAvailabilityBadge";
 
 interface FileTableProps {
   files: File[];
@@ -134,6 +135,7 @@ export default function FileTable(props: FileTableProps) {
                     <div className="min-w-0">
                       <p className="truncate font-medium" title={file.originalName}>{file.originalName}</p>
                       <p className="mt-0.5 text-xs uppercase text-muted-foreground">{file.fileType}</p>
+                      <div className="mt-1"><DocumentAvailabilityBadge isAvailable={file.isAvailable} /></div>
                     </div>
                   </div>
                 </td>
@@ -161,6 +163,7 @@ export default function FileTable(props: FileTableProps) {
                 <p className="mt-1 font-mono text-xs text-muted-foreground">
                   DOC-{String(file.id).padStart(4, "0")} · {file.fileType.toUpperCase()}
                 </p>
+                <div className="mt-2"><DocumentAvailabilityBadge isAvailable={file.isAvailable} /></div>
               </div>
               <StatusBadge status={file.status} />
             </div>

@@ -35,7 +35,7 @@ export function RoleProvider({ children }: { children: React.ReactNode }) {
   };
 
   const canDownloadFile = (file: File): boolean => {
-    if (!user) return false;
+    if (!user || !file.isAvailable) return false;
     if (user.role === "SUPERUSER") return true;
     if (user.role === "ADMIN") {
       return Boolean(user.department && user.department === file.department);

@@ -29,7 +29,7 @@ export interface File {
   originalName: string;
   fileType: string;
   fileSize: number;
-  filePath: string;
+  isAvailable: boolean;
   uploadedBy?: number;
   uploaderName?: string; // Ajouté pour affichage frontend
   department?: string;

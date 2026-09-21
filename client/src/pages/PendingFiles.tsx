@@ -35,6 +35,7 @@ import {
 import { Textarea } from "@/components/ui/textarea";
 import { useToast } from "@/hooks/use-toast";
 import UploadModal from "../components/Files/UploadModal";
+import DocumentAvailabilityBadge from "../components/Files/DocumentAvailabilityBadge";
 import Sidebar from "../components/Layout/Sidebar";
 import TopBar from "../components/Layout/TopBar";
 import UserManagementModal from "../components/Users/UserManagementModal";
@@ -281,6 +282,7 @@ export default function PendingFiles() {
                                   <p className="mt-0.5 text-xs text-muted-foreground">
                                     Réf. {file.id} · {documentType(file)}{file.category ? ` · ${file.category}` : ""}
                                   </p>
+                                  <div className="mt-1"><DocumentAvailabilityBadge isAvailable={file.isAvailable} /></div>
                                 </div>
                               </div>
                             </TableCell>
@@ -317,6 +319,7 @@ export default function PendingFiles() {
                             <p className="mt-1 text-xs text-muted-foreground">
                               Réf. {file.id} · {documentType(file)}{file.category ? ` · ${file.category}` : ""}
                             </p>
+                            <div className="mt-2"><DocumentAvailabilityBadge isAvailable={file.isAvailable} /></div>
                           </div>
                         </div>
                         <dl className="mt-4 grid grid-cols-2 gap-x-4 gap-y-3 text-sm">

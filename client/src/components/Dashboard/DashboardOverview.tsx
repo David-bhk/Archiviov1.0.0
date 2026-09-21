@@ -8,6 +8,7 @@ import { useAuth } from "../../contexts/AuthContext";
 import { apiRequest } from "../../lib/queryClient";
 import type { DocumentStatus } from "@shared/schema";
 import type { File, PaginatedResponse, Stats } from "../../types";
+import DocumentAvailabilityBadge from "../Files/DocumentAvailabilityBadge";
 
 interface DashboardOverviewProps {
   searchQuery: string;
@@ -244,6 +245,7 @@ export default function DashboardOverview({ searchQuery, onUpload }: DashboardOv
                           <div className="min-w-0">
                             <p className="truncate font-medium" title={document.originalName}>{document.originalName}</p>
                             <p className="mt-0.5 text-xs uppercase text-muted-foreground">{document.fileType}</p>
+                            <div className="mt-1"><DocumentAvailabilityBadge isAvailable={document.isAvailable} /></div>
                           </div>
                         </div>
                       </td>
@@ -267,6 +269,7 @@ export default function DashboardOverview({ searchQuery, onUpload }: DashboardOv
                       <p className="mt-1 font-mono text-xs text-muted-foreground">
                         DOC-{String(document.id).padStart(4, "0")}
                       </p>
+                      <div className="mt-2"><DocumentAvailabilityBadge isAvailable={document.isAvailable} /></div>
                     </div>
                     <DocumentStatusBadge status={document.status} />
                   </div>
