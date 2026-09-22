@@ -31,7 +31,7 @@ Ce document décrit à la fois l'architecture actuellement observée et l'archit
 - Le port PostgreSQL de développement est publié uniquement sur l'interface locale. Le déploiement final pourra garder la base sur un réseau Docker privé sans publication sur le réseau de l'organisation.
 - Les fichiers archivés restent séparés de PostgreSQL dans la racine documentaire configurée.
 - La base SQLite figée reste intacte pour un retour immédiat avant toute écriture exclusive dans PostgreSQL. Après de telles écritures, revenir sans perte exige une migration inverse qui n'est pas encore implémentée.
-- Un volume Docker assure la persistance entre recréations du conteneur, mais ne remplace pas une sauvegarde. La procédure locale arrête les écritures applicatives, produit un dump PostgreSQL au format personnalisé et copie la racine documentaire dans un même instantané accompagné d'un manifeste de tailles et d'empreintes SHA-256. Sa vérification restaure exclusivement dans une base et un dossier temporaires strictement nommés, puis les supprime. Cet outil local ne définit pas encore la fréquence, le stockage hors machine ni le chiffrement requis pour l'exploitation.
+- Un volume Docker assure la persistance entre recréations du conteneur, mais ne remplace pas une sauvegarde. La procédure locale arrête les écritures applicatives, produit un dump PostgreSQL au format personnalisé et copie la racine documentaire dans un même instantané accompagné d'un manifeste de tailles et d'empreintes SHA-256. Sa vérification restaure exclusivement dans une base et un dossier temporaires strictement nommés, puis les supprime. La politique locale prévoit un instantané quotidien vérifié et une conservation d'au moins 30 jours. L'inventaire de rétention reste en lecture seule : aucune purge automatique, tâche planifiée, copie hors machine ou protection chiffrée n'est encore activée.
 - Un déploiement en ligne est une cible possible, mais pas un simple changement d'adresse : il exige HTTPS, gestion sécurisée des secrets, stockage durable, sauvegardes, durcissement réseau et réévaluation de SQLite et du stockage local.
 - Les adresses réseau et secrets ne doivent jamais être codés en dur ; ils proviennent de la configuration d'environnement.
 
@@ -211,4 +211,4 @@ Le client peut masquer une action interdite pour améliorer l'expérience, mais 
 - Formats, tailles maximales et méthode fiable de détection du type de fichier.
 - Durées de conservation, restauration et destruction définitive.
 - Chiffrement requis au repos pour les fichiers et les sauvegardes.
-- Stratégie, fréquence et emplacement des sauvegardes locales.
+- Destination hors machine, chiffrement et automatisation contrôlée des sauvegardes.

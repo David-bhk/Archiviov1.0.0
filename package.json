@@ -21,6 +21,7 @@
     "db:postgres:validate-writes": "tsx scripts/validate-postgresql-writes.ts",
     "db:backup:create": "tsx scripts/postgresql-backup.ts --create",
     "db:backup:verify": "tsx scripts/postgresql-backup.ts --verify",
+    "db:backup:inventory": "tsx scripts/inventory-postgresql-backups.ts",
     "db:documents:audit": "tsx scripts/audit-document-storage.ts",
     "db:documents:reconcile": "tsx scripts/reconcile-document-storage.ts",
     "db:documents:cleanup-seed": "tsx scripts/cleanup-seed-document-metadata.ts",

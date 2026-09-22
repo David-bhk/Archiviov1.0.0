@@ -313,7 +313,7 @@ Le README demande d'installer les dépendances séparément dans `client` et `se
 
 1. Finaliser les parcours UI et les états d'erreur.
 2. Ajouter les tests de bout en bout essentiels.
-3. Définir sauvegarde et restauration de la base et des fichiers.
+3. Compléter la politique locale déjà vérifiée par le chiffrement, une destination hors machine et une automatisation contrôlée.
 4. Documenter l'installation locale réelle et préparer des données de démonstration sûres.
 5. Vérifier la première version contre tous les critères de réussite de `project-overview.md`.
 

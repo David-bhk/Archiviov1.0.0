@@ -8,7 +8,7 @@ Mettre ce fichier à jour après chaque modification significative de l'impléme
 
 ## Objectif actuel
 
-- Définir la politique d'exploitation des sauvegardes locales vérifiées, puis poursuivre les décisions nécessaires à l'activation de la hiérarchie d'accès.
+- Poursuivre les décisions nécessaires à l'activation de la hiérarchie d'accès, tout en conservant la politique locale de sauvegarde vérifiée.
 
 ## Terminé
 
@@ -209,6 +209,9 @@ Mettre ce fichier à jour après chaque modification significative de l'impléme
 - Décision utilisateur du 21 septembre 2026 : conserver les 11 métadonnées dont le chemin externe est absent et les signaler comme indisponibles pendant la recherche d'anciens supports, sans les supprimer ni fabriquer de contenu.
 - Ajout d'une projection documentaire publique retirant `filePath` et calculant `isAvailable` à partir d'un fichier régulier non symbolique, situé dans la racine gérée et de taille conforme ; le téléchargement applique exactement la même vérification.
 - Signalement « Contenu indisponible » dans la bibliothèque, le tableau de bord et la file de validation ; l'action de téléchargement est masquée pour ces documents, tandis que leurs métadonnées et les autres actions autorisées restent disponibles.
+- Adoption d'une politique locale de sauvegarde quotidienne avec conservation d'au moins 30 jours, vérification isolée de chaque nouvel instantané et arrêt des écritures pendant sa création ; aucune automatisation, purge, copie hors machine ou protection chiffrée n'est encore activée.
+- Ajout d'un inventaire de rétention strictement en lecture seule, séparant les sauvegardes courantes, âgées de plus de 30 jours, invalides et appartenant à une autre base. L'inventaire réel du 22 septembre 2026 compte 5 sauvegardes courantes et aucune entrée expirée, invalide ou étrangère.
+- Documentation de la procédure quotidienne manuelle de création, restauration de contrôle, inventaire et redémarrage dans `docs/BACKUP_OPERATIONS.md`.
 
 ## En cours
 
@@ -216,7 +219,7 @@ Mettre ce fichier à jour après chaque modification significative de l'impléme
 
 ## Prochaines étapes
 
-- Définir la politique d'exploitation des sauvegardes locales déjà vérifiées : fréquence, rétention, chiffrement et copie hors machine.
+- Décider le chiffrement et la destination hors machine avant l'exploitation de documents réels sensibles.
 - Décider les niveaux initiaux des départements existants avant toute application de la hiérarchie.
 - Clarifier les opérations qu'un administrateur peut effectuer sur son propre département avant de modifier les routes de gestion.
 - Migrer les contrats, filtres et décisions serveur de département vers `departmentId` en conservant une compatibilité contrôlée.
@@ -237,7 +240,7 @@ Mettre ce fichier à jour après chaque modification significative de l'impléme
 - Quels types et tailles de fichiers faut-il accepter ?
 - Quels formats doivent être pris en charge par le premier visualiseur protégé et quelle conversion utiliser pour les documents bureautiques modifiables ?
 - Qui décide qu'un document peut recevoir des demandes d'accès : l'auteur comme proposition, ou uniquement l'approbateur autorisé lors de l'archivage ?
-- Quelles sauvegardes et quel chiffrement sont requis pour la première version ?
+- Quel chiffrement et quelle destination hors machine faut-il retenir pour les sauvegardes de la première version ?
 
 ## Décisions d'architecture
 
@@ -262,6 +265,7 @@ Mettre ce fichier à jour après chaque modification significative de l'impléme
 - L'interface reste sobre, sans dégradés et sans multiplication décorative des icônes.
 - Le thème clair est prioritaire ; le thème sombre doit rester cohérent s'il est proposé.
 - Les 11 métadonnées dont le chemin externe est absent sont conservées et signalées comme indisponibles pendant la recherche d'anciens supports ; leur chemin physique interne ne doit pas être exposé et aucun téléchargement ne doit être proposé tant que le contenu n'est pas récupéré et vérifié.
+- La politique locale exige un instantané quotidien vérifié et une conservation minimale de 30 jours ; tant qu'une purge contrôlée n'est pas conçue séparément, les instantanés plus anciens restent conservés et ne sont jamais supprimés automatiquement.
 
 ## Notes de session
 
@@ -285,3 +289,4 @@ Mettre ce fichier à jour après chaque modification significative de l'impléme
 - Décision du 23 août 2026 : les accès exceptionnels seront des consultations temporaires en lecture seule ; les téléchargements restent réservés aux utilisateurs disposant d'un accès direct.
 - L'instantané post-nettoyage du 19 septembre 2026 contient et restaure 24 métadonnées, 7 activités et les 13 fichiers physiques gérés. Les 11 métadonnées portant un chemin externe absent n'ont aucune cible confirmée et ne doivent pas être présentées comme récupérables sans nouvelle preuve contrôlée.
 - Baseline de la disponibilité documentaire du 21 septembre 2026 : TypeScript, 80 tests et build de production réussis.
+- Baseline de la politique locale de sauvegarde du 22 septembre 2026 : TypeScript, 83 tests et build de production réussis ; l'inventaire en lecture seule confirme 5 sauvegardes courantes et aucune entrée à examiner.
