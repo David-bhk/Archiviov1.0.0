@@ -143,7 +143,7 @@ La première priorité n'est pas d'ajouter l'interface des demandes d'accès. Il
 
 ### A10 — Hiérarchie de niveaux non activée
 
-**État : fondation de données introduite, comportement absent.** `Department.accessLevel` et `File.classificationLevel` acceptent uniquement les niveaux 1 à 4 lorsqu'ils sont renseignés. Ils restent nullable pendant la transition afin de ne pas inventer la classification des départements existants. Aucun contrôle d'autorisation ne s'appuie encore sur ces champs.
+**État : fondation départementale initialisée, comportement absent.** `Department.accessLevel` et `File.classificationLevel` acceptent uniquement les niveaux 1 à 4 lorsqu'ils sont renseignés. Après décision explicite et sauvegarde restaurée avec succès, les six départements existants ont reçu leur niveau approuvé dans une transaction auditée : Administration 4, IT 3, Ressources Humaines 3, Comptabilité 3, Marketing 2 et Test Department 1. Les niveaux documentaires restent nullable et aucun contrôle d'autorisation ne s'appuie encore sur ces champs. La modification ultérieure depuis l'administration est une exigence validée, mais son périmètre d'autorisation reste à décider.
 
 **Cible :** `departmentId` stable, niveau 1 à 4, niveau documentaire et service d'autorisation centralisé.
 

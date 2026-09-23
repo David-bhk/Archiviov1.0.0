@@ -52,7 +52,7 @@ Ce document décrit à la fois l'architecture actuellement observée et l'archit
 
 ### Base de données
 
-Le schéma actuel contient les entités `User`, `Department`, `File` et `Activity`. Il stocke les comptes, rôles, métadonnées documentaires et événements. Une migration de transition ajoute `departmentId` aux utilisateurs et documents, `accessLevel` aux départements et `classificationLevel` aux documents. Les identifiants sont rétromigrés depuis les noms existants sans supprimer les colonnes textuelles historiques. Les niveaux restent nullable tant que leur attribution initiale n'a pas été décidée ; ils ne participent donc pas encore aux autorisations. Les demandes d'accès et autorisations temporaires ne sont pas encore modélisées.
+Le schéma actuel contient les entités `User`, `Department`, `File` et `Activity`. Il stocke les comptes, rôles, métadonnées documentaires et événements. Une migration de transition ajoute `departmentId` aux utilisateurs et documents, `accessLevel` aux départements et `classificationLevel` aux documents. Les identifiants sont rétromigrés depuis les noms existants sans supprimer les colonnes textuelles historiques. Les six départements existants possèdent désormais leur niveau initial approuvé : Administration 4, IT 3, Ressources Humaines 3, Comptabilité 3, Marketing 2 et Test Department 1. Les niveaux documentaires restent nullable et la hiérarchie ne participe pas encore aux autorisations. Les demandes d'accès et autorisations temporaires ne sont pas encore modélisées.
 
 `prisma/schema.prisma` et `prisma/migrations/` restent exclusivement associés à la copie SQLite figée. Le schéma et l'historique PostgreSQL vivent séparément dans `prisma/postgresql/` et génèrent un client isolé dans `node_modules`. Les migrations propres à un fournisseur ne sont jamais appliquées à l'autre. La baseline PostgreSQL est réservée à une base Archivio vide. La copie initiale valide la source, refuse une cible non vide, conserve les identifiants et vérifie les lignes ainsi que les séquences. Un rafraîchissement d'une cible déjà remplie exige le nom exact de la base, refuse les bases système et remplace les quatre tables dans une transaction avant leur comparaison exacte. Le stockage sélectionne un seul client au démarrage : `sqlite` par défaut dans le code ou `postgresql` explicitement dans l'environnement local actif, sans double écriture ni synchronisation implicite.
 
@@ -194,7 +194,7 @@ Le client peut masquer une action interdite pour améliorer l'expérience, mais 
 
 ## Écarts connus entre l'existant et la cible
 
-- `Department.accessLevel` et `File.classificationLevel` existent comme champs de transition nullable, mais les niveaux initiaux ne sont pas encore attribués et la hiérarchie n'est pas appliquée aux autorisations.
+- `Department.accessLevel` est initialisé pour les six départements existants. `File.classificationLevel` reste nullable, aucun document historique n'a été classifié automatiquement et la hiérarchie n'est pas encore appliquée aux autorisations.
 - `User` et `File` possèdent une relation stable `departmentId` rétromigrée depuis le nom historique ; les contrats et règles d'exécution utilisent encore temporairement le nom et doivent être migrés avant le retrait des anciennes colonnes.
 - Les demandes d'accès et leurs décisions ne sont pas modélisées.
 - Le statut actuel utilise `approved`, tandis que la cible produit emploie `archived`.
@@ -212,3 +212,4 @@ Le client peut masquer une action interdite pour améliorer l'expérience, mais 
 - Durées de conservation, restauration et destruction définitive.
 - Chiffrement requis au repos pour les fichiers et les sauvegardes.
 - Destination hors machine, chiffrement et automatisation contrôlée des sauvegardes.
+- Autorité exacte permettant de modifier ultérieurement un niveau départemental depuis l'administration, notamment pour un administrateur non global.

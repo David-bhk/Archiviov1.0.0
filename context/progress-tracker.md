@@ -212,6 +212,11 @@ Mettre ce fichier à jour après chaque modification significative de l'impléme
 - Adoption d'une politique locale de sauvegarde quotidienne avec conservation d'au moins 30 jours, vérification isolée de chaque nouvel instantané et arrêt des écritures pendant sa création ; aucune automatisation, purge, copie hors machine ou protection chiffrée n'est encore activée.
 - Ajout d'un inventaire de rétention strictement en lecture seule, séparant les sauvegardes courantes, âgées de plus de 30 jours, invalides et appartenant à une autre base. L'inventaire réel du 22 septembre 2026 compte 5 sauvegardes courantes et aucune entrée expirée, invalide ou étrangère.
 - Documentation de la procédure quotidienne manuelle de création, restauration de contrôle, inventaire et redémarrage dans `docs/BACKUP_OPERATIONS.md`.
+- Décision utilisateur du 23 septembre 2026 : Administration niveau 4, IT niveau 3, Ressources Humaines niveau 3, Comptabilité niveau 3, Marketing niveau 2 et Test Department niveau 1.
+- Ajout d'une initialisation PostgreSQL simulable et transactionnelle, exigeant l'arrêt d'Archivio, une sauvegarde récente vérifiée, le nom exact de la base et le nombre attendu de départements ; toute grille absente, supplémentaire, renommée ou contradictoire bloque l'opération.
+- Création et restauration réussies d'un instantané préalable contenant 6 départements, 9 utilisateurs, 24 documents, 7 activités et 13 fichiers, puis attribution des six niveaux et ajout d'une trace d'audit sans classifier les documents.
+- Vérification post-opération : 6 départements conformes, aucun niveau départemental manquant, aucun document classifié et un événement d'initialisation. L'instantané post-opération contenant 8 activités et les 13 fichiers a été restauré avec succès.
+- Exigence future validée : permettre la modification des niveaux depuis l'administration. L'autorité exacte d'un administrateur non global doit être décidée avant d'exposer cette action.
 
 ## En cours
 
@@ -220,7 +225,6 @@ Mettre ce fichier à jour après chaque modification significative de l'impléme
 ## Prochaines étapes
 
 - Décider le chiffrement et la destination hors machine avant l'exploitation de documents réels sensibles.
-- Décider les niveaux initiaux des départements existants avant toute application de la hiérarchie.
 - Clarifier les opérations qu'un administrateur peut effectuer sur son propre département avant de modifier les routes de gestion.
 - Migrer les contrats, filtres et décisions serveur de département vers `departmentId` en conservant une compatibilité contrôlée.
 - Attribuer le niveau documentaire initial côté serveur à partir du département authentifié.
@@ -232,8 +236,7 @@ Mettre ce fichier à jour après chaque modification significative de l'impléme
 
 ## Questions ouvertes
 
-- Quels niveaux 1 à 4 faut-il attribuer aux six départements existants : Administration, IT, Marketing, Ressources Humaines, Comptabilité et Test Department ?
-- Un administrateur peut-il uniquement modifier les informations de son département, ou peut-il aussi créer, renommer et supprimer des départements ?
+- Un administrateur peut-il modifier uniquement les informations et le niveau de son département, ou aussi créer, renommer, supprimer et changer le niveau d'autres départements ?
 - Tous les documents d'un même département sont-ils visibles par ses membres autorisés ?
 - Que devient un document refusé ?
 - Quelle politique de suppression, restauration et conservation faut-il appliquer ?
@@ -266,6 +269,7 @@ Mettre ce fichier à jour après chaque modification significative de l'impléme
 - Le thème clair est prioritaire ; le thème sombre doit rester cohérent s'il est proposé.
 - Les 11 métadonnées dont le chemin externe est absent sont conservées et signalées comme indisponibles pendant la recherche d'anciens supports ; leur chemin physique interne ne doit pas être exposé et aucun téléchargement ne doit être proposé tant que le contenu n'est pas récupéré et vérifié.
 - La politique locale exige un instantané quotidien vérifié et une conservation minimale de 30 jours ; tant qu'une purge contrôlée n'est pas conçue séparément, les instantanés plus anciens restent conservés et ne sont jamais supprimés automatiquement.
+- La grille départementale initiale est Administration 4, IT 3, Ressources Humaines 3, Comptabilité 3, Marketing 2 et Test Department 1. Toute modification ultérieure doit passer par une autorisation serveur et produire une trace d'audit.
 
 ## Notes de session
 
@@ -290,3 +294,5 @@ Mettre ce fichier à jour après chaque modification significative de l'impléme
 - L'instantané post-nettoyage du 19 septembre 2026 contient et restaure 24 métadonnées, 7 activités et les 13 fichiers physiques gérés. Les 11 métadonnées portant un chemin externe absent n'ont aucune cible confirmée et ne doivent pas être présentées comme récupérables sans nouvelle preuve contrôlée.
 - Baseline de la disponibilité documentaire du 21 septembre 2026 : TypeScript, 80 tests et build de production réussis.
 - Baseline de la politique locale de sauvegarde du 22 septembre 2026 : TypeScript, 83 tests et build de production réussis ; l'inventaire en lecture seule confirme 5 sauvegardes courantes et aucune entrée à examiner.
+- L'initialisation des niveaux du 23 septembre 2026 a modifié uniquement les six départements et ajouté une activité d'audit. Les 24 documents, leurs classifications nulles et les 13 fichiers gérés sont restés inchangés.
+- Baseline après initialisation des niveaux : TypeScript, 86 tests, build de production et cinq parcours PostgreSQL authentifiés en lecture seule réussis ; Archivio a redémarré sur le port 5000.

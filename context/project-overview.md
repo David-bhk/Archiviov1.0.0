@@ -67,6 +67,7 @@ Archivio est un système moderne d'archivage destiné aux organisations qui doiv
 
 - Création et gestion des départements.
 - Attribution à chaque département d'un niveau d'accès numérique compris entre 1 et 4.
+- Possibilité future de modifier ce niveau depuis l'espace d'administration, avec une autorisation serveur et une trace d'audit ; le périmètre exact d'un administrateur non global reste à décider avant l'implémentation.
 - Interprétation provisoire des niveaux : niveau 1 `ordinaire`, niveau 2 `interne`, niveau 3 `confidentiel` et niveau 4 `très sensible`.
 - Classification initiale automatique d'un document au niveau du département de son auteur.
 - Possibilité pour l'approbateur autorisé de corriger le niveau proposé avant l'archivage.
@@ -157,3 +158,4 @@ Archivio est un système moderne d'archivage destiné aux organisations qui doiv
 - Une demande approuvée autorise uniquement une consultation protégée en lecture seule pendant une fenêtre maximale de 24 heures ; elle ne donne pas accès au téléchargement.
 - Toute approbation ou tout refus exige une justification et une trace d'audit.
 - Cette politique constitue la règle de la première version et pourra évoluer à travers une décision produit et une migration documentées.
+- La grille initiale validée est : Administration 4, IT 3, Ressources Humaines 3, Comptabilité 3, Marketing 2 et Test Department 1.
